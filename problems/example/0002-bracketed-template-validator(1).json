@@ -1,0 +1,99 @@
+{
+  "id": "0002-bracketed-template-validator",
+  "title": "Bracketed Template Validator",
+  "difficulty": "easy",
+  "tags": [
+    "string",
+    "stack"
+  ],
+  "pattern_tags": [
+    "stack-matching"
+  ],
+  "description_md": "A configuration template may contain three kinds of paired markers: (), [], and {}. A template is valid if every opener is closed by the same type, closures happen in the correct order, and no closer appears without a matching opener. Return true if the template is valid and false otherwise.",
+  "examples": [
+    {
+      "input": "template = '{[()]}'",
+      "output": "true",
+      "explanation": "Each opener is closed by the correct marker in reverse order."
+    },
+    {
+      "input": "template = '{[(])}'",
+      "output": "false",
+      "explanation": "The closing order does not match the most recent opener."
+    }
+  ],
+  "constraints": [
+    "0 <= template.length <= 10^4",
+    "template contains only the characters '(', ')', '[', ']', '{', '}'"
+  ],
+  "starter_code": {
+    "python": "def bracketed_template_validator(template: str) -> bool:\n    pass\n"
+  },
+  "test_cases": {
+    "python": [
+      {
+        "input": [
+          ""
+        ],
+        "expected": true
+      },
+      {
+        "input": [
+          "()[]{}"
+        ],
+        "expected": true
+      },
+      {
+        "input": [
+          "([{}])"
+        ],
+        "expected": true
+      },
+      {
+        "input": [
+          "(]"
+        ],
+        "expected": false
+      },
+      {
+        "input": [
+          "([)]"
+        ],
+        "expected": false
+      },
+      {
+        "input": [
+          "(("
+        ],
+        "expected": false
+      },
+      {
+        "input": [
+          "]"
+        ],
+        "expected": false
+      },
+      {
+        "input": [
+          "("
+        ],
+        "expected": false
+      }
+    ]
+  },
+  "canonical_solution_md": "Use a stack of opening markers and a lookup dict that maps each closer to its expected opener: {')': '(', ']': '[', '}': '{'}. When you see an opener, push it. When you see a closer, the stack must be non-empty and its top must be the matching opener from the lookup dict. Pop on a match, and return false immediately on any mismatch or empty stack. At the end, the stack must be empty; leftover openers mean the template is invalid.",
+  "fallback_hints": [
+    "When you read a closing marker, which earlier symbol is the only one that matters?",
+    "A last-in, first-out structure matches the nesting behavior of brackets.",
+    "Push openers on a stack. On each closer, check the top of the stack for the matching opener using a lookup dict, then pop it."
+  ],
+  "common_mistakes": [
+    "Only counting totals of each bracket type instead of enforcing order.",
+    "Popping from an empty stack on an early closer.",
+    "Forgetting to reject leftover openers after the scan finishes."
+  ],
+  "follow_up_questions": [
+    "Why is counting the number of open and close symbols not enough?",
+    "How would you extend the validator to ignore bracket characters that appear inside quoted strings?"
+  ]
+}
