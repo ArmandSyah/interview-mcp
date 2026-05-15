@@ -1,0 +1,144 @@
+{
+  "id": "0003-event-log-uniqueness-window",
+  "title": "Event Log Uniqueness Window",
+  "difficulty": "medium",
+  "tags": [
+    "string",
+    "hash-map",
+    "sliding-window"
+  ],
+  "pattern_tags": [
+    "sliding-window-unique"
+  ],
+  "description_md": "You are given a list of event codes in the order they were recorded. Return the length of the longest contiguous window that contains no repeated code.",
+  "examples": [
+    {
+      "input": "events = ['A', 'B', 'C', 'A', 'D']",
+      "output": "4",
+      "explanation": "The longest window without repetition is ['B', 'C', 'A', 'D']."
+    },
+    {
+      "input": "events = ['x', 'x', 'x']",
+      "output": "1",
+      "explanation": "Any valid window can contain only one 'x'."
+    }
+  ],
+  "constraints": [
+    "0 <= events.length <= 10^5",
+    "Each event code is a non-empty string of length at most 20"
+  ],
+  "starter_code": {
+    "python": "def event_log_uniqueness_window(events: list[str]) -> int:\n    pass\n"
+  },
+  "test_cases": {
+    "python": [
+      {
+        "input": [
+          [
+            "A",
+            "B",
+            "C",
+            "A",
+            "D"
+          ]
+        ],
+        "expected": 4
+      },
+      {
+        "input": [
+          [
+            "x",
+            "x",
+            "x"
+          ]
+        ],
+        "expected": 1
+      },
+      {
+        "input": [
+          [
+            "login",
+            "query",
+            "save",
+            "logout"
+          ]
+        ],
+        "expected": 4
+      },
+      {
+        "input": [
+          [
+            "a",
+            "b",
+            "c",
+            "b",
+            "e",
+            "f"
+          ]
+        ],
+        "expected": 4
+      },
+      {
+        "input": [
+          []
+        ],
+        "expected": 0
+      },
+      {
+        "input": [
+          [
+            "one"
+          ]
+        ],
+        "expected": 1
+      },
+      {
+        "input": [
+          [
+            "a",
+            "b",
+            "c",
+            "a"
+          ]
+        ],
+        "expected": 3
+      },
+      {
+        "input": [
+          [
+            "z",
+            "y",
+            "x",
+            "w",
+            "v"
+          ]
+        ],
+        "expected": 5
+      }
+    ]
+  },
+  "canonical_solution_md": "Maintain a sliding window with two pointers (left and right) and a map from event code to its most recent index. As you advance the right pointer, check whether the new code already appears in the map at an index that is within the current window (i.e., stored index >= left). If it does, advance the left pointer to one past that stored index. Always update the map with the new right-index position, then update the maximum window length. The key invariant: only move left forward, never backward, even if the map contains a stale entry for a code that was last seen before the current left boundary.",
+  "fallback_hints": [
+    "You only need to track a contiguous region, not every subset.",
+    "When you see a repeated code, you do not need to restart from scratch. You only need to move past the earlier duplicate.",
+    "Use two pointers for the current window and a map from code to last seen index. When a duplicate falls inside the window, advance the left boundary to one past it."
+  ],
+  "common_mistakes": [
+    "Resetting the whole window after a repeat instead of moving the left pointer precisely.",
+    "Moving the left pointer backward when the previous duplicate is already outside the current window.",
+    "Using a set only, then losing the position needed for efficient jumps."
+  ],
+  "follow_up_questions": [
+    "Why is it safe to move the left pointer directly to one past the previous duplicate?",
+    "How would you modify the solution if you needed the actual window contents instead of just its length?",
+    "If event codes were single characters from a fixed 26-letter alphabet, how would you change the data structure and what would that do to memory usage?",
+    "What is the time complexity difference between this map-based approach and a set-based approach that advances left one step at a time on a collision?"
+  ],
+  "suboptimal_solutions": [
+    {
+      "name": "Set-based sliding window",
+      "complexity": "O(n^2) worst case, O(n) space",
+      "description": "Use a set to track codes in the window. On a duplicate, remove codes one by one from the left until the duplicate is gone. Correct, but each removal is O(1) and you may advance left O(n) steps per right step, giving O(n^2) in the worst case (e.g., all-same input). The map approach jumps left directly, keeping the total O(n)."
+    }
+  ]
+}

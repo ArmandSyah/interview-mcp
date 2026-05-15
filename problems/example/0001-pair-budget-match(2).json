@@ -1,0 +1,167 @@
+{
+  "id": "0001-pair-budget-match",
+  "title": "Pair Budget Match",
+  "difficulty": "easy",
+  "tags": [
+    "array",
+    "hash-map"
+  ],
+  "pattern_tags": [
+    "hash-map-lookup"
+  ],
+  "description_md": "You are reviewing a list of item prices and a target budget. Return the indices of the first valid pair of items whose prices add up exactly to the target budget. If more than one valid pair exists, choose the pair with the smallest second index. You may assume at least one valid pair exists, and you may not use the same item twice.",
+  "examples": [
+    {
+      "input": "prices = [4, 9, 1, 8], budget = 10",
+      "output": "[1, 2]",
+      "explanation": "prices[1] + prices[2] = 9 + 1 = 10."
+    },
+    {
+      "input": "prices = [3, 3], budget = 6",
+      "output": "[0, 1]",
+      "explanation": "The two items at indices 0 and 1 both cost 3 and together match the budget."
+    }
+  ],
+  "constraints": [
+    "2 <= prices.length <= 10^4",
+    "-10^9 <= prices[i] <= 10^9",
+    "-10^9 <= budget <= 10^9"
+  ],
+  "starter_code": {
+    "python": "def pair_budget_match(prices: list[int], budget: int) -> list[int]:\n    pass\n"
+  },
+  "test_cases": {
+    "python": [
+      {
+        "input": [
+          [
+            4,
+            9,
+            1,
+            8
+          ],
+          10
+        ],
+        "expected": [
+          1,
+          2
+        ]
+      },
+      {
+        "input": [
+          [
+            3,
+            3
+          ],
+          6
+        ],
+        "expected": [
+          0,
+          1
+        ]
+      },
+      {
+        "input": [
+          [
+            5,
+            -2,
+            11,
+            7
+          ],
+          9
+        ],
+        "expected": [
+          1,
+          2
+        ]
+      },
+      {
+        "input": [
+          [
+            2,
+            6,
+            4,
+            4
+          ],
+          8
+        ],
+        "expected": [
+          0,
+          1
+        ]
+      },
+      {
+        "input": [
+          [
+            10,
+            1,
+            9,
+            1
+          ],
+          2
+        ],
+        "expected": [
+          1,
+          3
+        ]
+      },
+      {
+        "input": [
+          [
+            0,
+            4,
+            3,
+            0
+          ],
+          0
+        ],
+        "expected": [
+          0,
+          3
+        ]
+      },
+      {
+        "input": [
+          [
+            3,
+            3,
+            3
+          ],
+          6
+        ],
+        "expected": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "canonical_solution_md": "Scan the list once while storing each seen value and its index in a hash map. For each price x at index i, check whether budget - x has already been seen. If it has, return the stored index and i. Store x and i only after checking, so a value is never matched against itself. When the same value appears more than once, always store the first-seen index and do not overwrite it; this ensures the pair with the smallest second index is returned. When budget - x equals x itself, the check-before-insert order handles it correctly: the first occurrence is already in the map before the second is processed.",
+  "fallback_hints": [
+    "What information would let you answer 'have I already seen the matching value?' quickly?",
+    "As you scan left to right, the current price tells you the exact complementary price you need.",
+    "Use a hash map from seen price to index. For each price x, check whether budget - x is already in the map before inserting x."
+  ],
+  "common_mistakes": [
+    "Checking the current value against itself before handling duplicates correctly.",
+    "Sorting the array and losing the original indices.",
+    "Overwriting the earliest index for a duplicated value and breaking tie behavior."
+  ],
+  "follow_up_questions": [
+    "Why does a one-pass hash map solution run in linear time?",
+    "How would the problem change if you needed all valid pairs instead of exactly one answer?",
+    "If the array were already sorted, how would you solve this without a hash map, and what are the trade-offs?"
+  ],
+  "alternative_solutions": [
+    {
+      "name": "Brute force (nested loops)",
+      "complexity": "O(n^2) time, O(1) space",
+      "description": "Check every pair (i, j) where i < j. Return the first pair where prices[i] + prices[j] == budget. Correct but too slow for large inputs. Good as a starting point to motivate the hash map approach."
+    },
+    {
+      "name": "Two-pointer on sorted copy",
+      "complexity": "O(n log n) time, O(n) space",
+      "description": "Sort a copy of prices alongside original indices. Use left and right pointers moving inward. Works for detecting a pair but recovering original indices requires bookkeeping. More complex than the hash map approach for this problem."
+    }
+  ]
+}
