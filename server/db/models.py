@@ -1,3 +1,6 @@
+# server/db/models.py
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import uuid4
 
@@ -5,6 +8,11 @@ from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from server.db.base import Base
+from server.db.types import (
+    AlternativeSolutionData,
+    ExampleData,
+    TestCaseData,
+)
 
 
 class Problem(Base):
@@ -13,26 +21,37 @@ class Problem(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     difficulty: Mapped[str] = mapped_column(String, nullable=False)
+
     description_md: Mapped[str] = mapped_column(Text, nullable=False)
     canonical_solution_md: Mapped[str] = mapped_column(Text, nullable=False)
 
-    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    pattern_tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    examples: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    constraints: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    starter_code: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    test_cases: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    fallback_hints: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    common_mistakes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    follow_up_questions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    alternative_solutions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    pattern_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    examples: Mapped[list[ExampleData]] = mapped_column(JSON, nullable=False, default=list)
+    constraints: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    starter_code: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+    test_cases: Mapped[dict[str, list[TestCaseData]]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+    fallback_hints: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    common_mistakes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    follow_up_questions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    alternative_solutions: Mapped[list[AlternativeSolutionData]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )
 
-    attempts: Mapped[list["Attempt"]] = relationship(back_populates="problem")
+    attempts: Mapped[list[Attempt]] = relationship(back_populates="problem")
 
     def __repr__(self) -> str:
         return f"<Problem id={self.id} title={self.title!r}>"
@@ -49,8 +68,8 @@ class Attempt(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    problem: Mapped["Problem"] = relationship(back_populates="attempts")
-    events: Mapped[list["Event"]] = relationship(back_populates="attempt")
+    problem: Mapped[Problem] = relationship(back_populates="attempts")
+    events: Mapped[list[Event]] = relationship(back_populates="attempt")
 
     def __repr__(self) -> str:
         return f"<Attempt id={self.id} problem_id={self.problem_id} status={self.status!r}>"
@@ -62,10 +81,10 @@ class Event(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
     attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.id"), nullable=False)
     kind: Mapped[str] = mapped_column(String, nullable=False)
-    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    attempt: Mapped["Attempt"] = relationship(back_populates="events")
+    attempt: Mapped[Attempt] = relationship(back_populates="events")
 
     def __repr__(self) -> str:
         return f"<Event id={self.id} kind={self.kind!r}>"
@@ -77,7 +96,9 @@ class State(Base):
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[str | None] = mapped_column(String, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )
 
     def __repr__(self) -> str:
