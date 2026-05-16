@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -52,7 +52,7 @@ def create_attempt(problem_id: str, language: str) -> AttemptRead:
             problem_id=problem_id,
             language=language,
             status="in_progress",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
         )
         session.add(attempt)
         session.flush()
@@ -83,9 +83,9 @@ def set_active_attempt(attempt_id: str) -> None:
     with get_session() as session:
         statement = (
             insert(State)
-            .values(key=ACTIVE_ATTEMPT_KEY, value=attempt_id, updated_at=datetime.utcnow())
+            .values(key=ACTIVE_ATTEMPT_KEY, value=attempt_id, updated_at=datetime.now(UTC))
             .on_conflict_do_update(
-                index_elements=["key"], set_={"updated_at": datetime.utcnow(), "value": attempt_id}
+                index_elements=["key"], set_={"updated_at": datetime.now(UTC), "value": attempt_id}
             )
         )
         session.execute(statement)
@@ -103,7 +103,7 @@ def mark_completed(attempt_id: str) -> None:
         attempt = session.get(Attempt, attempt_id)
         if attempt is not None:
             attempt.status = "completed"
-            attempt.completed_at = datetime.utcnow()
+            attempt.completed_at = datetime.now(UTC)
     clear_active_attempt()
 
 
@@ -114,7 +114,7 @@ def record_event(attempt_id: str, kind: str, payload: dict[str, object] | None =
             attempt_id=attempt_id,
             kind=kind,
             payload=payload,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         session.add(event)
         session.flush()
