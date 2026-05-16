@@ -17,6 +17,7 @@ class Base(DeclarativeBase):
 engine = create_engine(f"sqlite:///{DB_PATH}")
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 @contextmanager
 def get_session() -> Generator[Session, None, None]:
     session = SessionLocal()
