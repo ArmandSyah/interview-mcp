@@ -1,8 +1,18 @@
+# server/main.py
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
-load_dotenv()  # loads .env into os.environ before anything else runs
+import server.db.models  # noqa: F401
+from server.db.base import Base, engine
+from server.db.seed import seed_problems
+
+load_dotenv()
 mcp = FastMCP("interview-mcp")
+
+
+def on_startup() -> None:
+    Base.metadata.create_all(engine)
+    seed_problems()
 
 
 @mcp.tool
@@ -12,4 +22,5 @@ def ping() -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()  # defaults to stdio transport
+    on_startup()
+    mcp.run()
