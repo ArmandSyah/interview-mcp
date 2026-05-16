@@ -52,11 +52,21 @@ def create_attempt(problem_id: str, language: str) -> AttemptRead:
             problem_id=problem_id,
             language=language,
             status="in_progress",
-            started_at=datetime.now(UTC),
+            started_at=datetime.utcnow(),
         )
         session.add(attempt)
         session.flush()
-        set_active_attempt(attempt_id=attempt.id)
+
+        statement = (
+            insert(State)
+            .values(key=ACTIVE_ATTEMPT_KEY, value=attempt.id, updated_at=datetime.now(UTC))
+            .on_conflict_do_update(
+                index_elements=["key"],
+                set_={"value": attempt.id, "updated_at": datetime.now(UTC)},
+            )
+        )
+        session.execute(statement)
+
         return AttemptRead.model_validate(attempt)
 
 
@@ -77,18 +87,6 @@ def get_active_attempt() -> AttemptRead | None:
         if attempt is None:
             return None
         return AttemptRead.model_validate(attempt)
-
-
-def set_active_attempt(attempt_id: str) -> None:
-    with get_session() as session:
-        statement = (
-            insert(State)
-            .values(key=ACTIVE_ATTEMPT_KEY, value=attempt_id, updated_at=datetime.now(UTC))
-            .on_conflict_do_update(
-                index_elements=["key"], set_={"updated_at": datetime.now(UTC), "value": attempt_id}
-            )
-        )
-        session.execute(statement)
 
 
 def clear_active_attempt() -> None:
