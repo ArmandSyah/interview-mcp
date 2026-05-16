@@ -1,5 +1,7 @@
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 
+load_dotenv()  # loads .env into os.environ before anything else runs
 mcp = FastMCP("interview-mcp")
 
 
