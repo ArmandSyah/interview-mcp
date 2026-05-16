@@ -1,7 +1,7 @@
 # server/db/models.py
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
@@ -13,6 +13,10 @@ from server.db.write_types import (
     SuboptimalSolutionWrite,
     TestCaseWrite,
 )
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 class Problem(Base):
@@ -44,11 +48,11 @@ class Problem(Base):
         default=list,
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     attempts: Mapped[list[Attempt]] = relationship(back_populates="problem")
@@ -65,7 +69,7 @@ class Attempt(Base):
     language: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="in_progress")
 
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     problem: Mapped[Problem] = relationship(back_populates="attempts")
@@ -82,7 +86,7 @@ class Event(Base):
     attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.id"), nullable=False)
     kind: Mapped[str] = mapped_column(String, nullable=False)
     payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     attempt: Mapped[Attempt] = relationship(back_populates="events")
 
@@ -97,8 +101,8 @@ class State(Base):
     value: Mapped[str | None] = mapped_column(String, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     def __repr__(self) -> str:
