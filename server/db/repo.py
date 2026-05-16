@@ -1,7 +1,10 @@
-import datetime
+from __future__ import annotations
+
+from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import insert, select
+from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 
 from server.db.base import get_session
 from server.db.models import Attempt, Event, Problem, State
