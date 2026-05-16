@@ -8,12 +8,13 @@ from sqlalchemy.dialects.sqlite import insert
 
 from server.db.base import get_session
 from server.db.models import Attempt, Event, Problem, State
-from server.db.types import ProblemData
+from server.db.schemas import AttemptRead, EventRead, ProblemRead
+from server.db.write_types import ProblemWrite
 
 ACTIVE_ATTEMPT_KEY = "active_attempt_id"
 
 
-def upsert_problem(problem_data: ProblemData) -> None:
+def upsert_problem(problem_data: ProblemWrite) -> None:
     with get_session() as session:
         statement = (
             insert(Problem)
@@ -25,12 +26,15 @@ def upsert_problem(problem_data: ProblemData) -> None:
         session.execute(statement)
 
 
-def get_problem(problem_id: str) -> Problem | None:
+def get_problem(problem_id: str) -> ProblemRead | None:
     with get_session() as session:
-        return session.get(Problem, problem_id)
+        problem = session.get(Problem, problem_id)
+        if problem is None:
+            return None
+        return ProblemRead.model_validate(problem)
 
 
-def list_problems(difficulty: str | None = None, tag: str | None = None) -> list[Problem]:
+def list_problems(difficulty: str | None = None, tag: str | None = None) -> list[ProblemRead]:
     with get_session() as session:
         statement = select(Problem)
         if difficulty:
@@ -38,10 +42,10 @@ def list_problems(difficulty: str | None = None, tag: str | None = None) -> list
         results = list(session.scalars(statement))
         if tag:
             results = [problem for problem in results if tag in problem.tags]
-        return results
+        return [ProblemRead.model_validate(p) for p in results]
 
 
-def create_attempt(problem_id: str, language: str) -> Attempt:
+def create_attempt(problem_id: str, language: str) -> AttemptRead:
     with get_session() as session:
         attempt = Attempt(
             id=str(uuid4()),
@@ -53,20 +57,26 @@ def create_attempt(problem_id: str, language: str) -> Attempt:
         session.add(attempt)
         session.flush()
         set_active_attempt(attempt_id=attempt.id)
-        return attempt
+        return AttemptRead.model_validate(attempt)
 
 
-def get_attempt(attempt_id: str) -> Attempt | None:
+def get_attempt(attempt_id: str) -> AttemptRead | None:
     with get_session() as session:
-        return session.get(Attempt, attempt_id)
+        attempt = session.get(Attempt, attempt_id)
+        if attempt is None:
+            return None
+        return AttemptRead.model_validate(attempt)
 
 
-def get_active_attempt() -> Attempt | None:
+def get_active_attempt() -> AttemptRead | None:
     with get_session() as session:
         row = session.get(State, ACTIVE_ATTEMPT_KEY)
         if row is None or row.value is None:
             return None
-        return session.get(Attempt, row.value)
+        attempt = session.get(Attempt, row.value)
+        if attempt is None:
+            return None
+        return AttemptRead.model_validate(attempt)
 
 
 def set_active_attempt(attempt_id: str) -> None:
@@ -97,7 +107,7 @@ def mark_completed(attempt_id: str) -> None:
     clear_active_attempt()
 
 
-def record_event(attempt_id: str, kind: str, payload: dict[str, object] | None = None) -> Event:
+def record_event(attempt_id: str, kind: str, payload: dict[str, object] | None = None) -> EventRead:
     with get_session() as session:
         event = Event(
             id=str(uuid4()),
@@ -107,4 +117,5 @@ def record_event(attempt_id: str, kind: str, payload: dict[str, object] | None =
             created_at=datetime.utcnow(),
         )
         session.add(event)
-        return event
+        session.flush()
+        return EventRead.model_validate(event)
