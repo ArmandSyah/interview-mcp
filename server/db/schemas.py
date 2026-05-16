@@ -32,6 +32,16 @@ class SuboptimalSolutionRead(BaseModel):
     description: str
 
 
+class ProblemSummaryRead(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    title: str
+    difficulty: str
+    tags: list[str]
+    pattern_tags: list[str]
+
+
 class ProblemRead(BaseModel):
     model_config = {"from_attributes": True}
 
