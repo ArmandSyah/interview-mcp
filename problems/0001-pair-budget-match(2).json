@@ -152,7 +152,7 @@
     "How would the problem change if you needed all valid pairs instead of exactly one answer?",
     "If the array were already sorted, how would you solve this without a hash map, and what are the trade-offs?"
   ],
-  "alternative_solutions": [
+  "suboptimal_solutions": [
     {
       "name": "Brute force (nested loops)",
       "complexity": "O(n^2) time, O(1) space",

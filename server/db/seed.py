@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import cast
 
 from server.db import repo
-from server.db.types import ProblemData
+from server.db.write_types import ProblemWrite
 
 PROBLEMS_DIR = Path(os.getenv("INTERVIEW_MCP_PROBLEMS_DIR", "problems"))
 
@@ -24,8 +24,8 @@ REQUIRED_FIELDS = {
 }
 
 
-def load_problem_files() -> list[ProblemData]:
-    problems: list[ProblemData] = []
+def load_problem_files() -> list[ProblemWrite]:
+    problems: list[ProblemWrite] = []
 
     for path in sorted(PROBLEMS_DIR.glob("**/*.json")):
         try:
@@ -43,7 +43,7 @@ def load_problem_files() -> list[ProblemData]:
             print(f"[seed] skipping {path.name}: missing fields {missing}", file=sys.stderr)
             continue
 
-        problems.append(cast(ProblemData, raw))
+        problems.append(cast(ProblemWrite, raw))
 
     return problems
 

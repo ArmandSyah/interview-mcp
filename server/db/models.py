@@ -8,10 +8,10 @@ from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from server.db.base import Base
-from server.db.types import (
-    AlternativeSolutionData,
-    ExampleData,
-    TestCaseData,
+from server.db.write_types import (
+    ExampleWrite,
+    SuboptimalSolutionWrite,
+    TestCaseWrite,
 )
 
 
@@ -27,10 +27,10 @@ class Problem(Base):
 
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     pattern_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    examples: Mapped[list[ExampleData]] = mapped_column(JSON, nullable=False, default=list)
+    examples: Mapped[list[ExampleWrite]] = mapped_column(JSON, nullable=False, default=list)
     constraints: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     starter_code: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
-    test_cases: Mapped[dict[str, list[TestCaseData]]] = mapped_column(
+    test_cases: Mapped[dict[str, list[TestCaseWrite]]] = mapped_column(
         JSON,
         nullable=False,
         default=dict,
@@ -38,7 +38,7 @@ class Problem(Base):
     fallback_hints: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     common_mistakes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     follow_up_questions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    alternative_solutions: Mapped[list[AlternativeSolutionData]] = mapped_column(
+    suboptimal_solutions: Mapped[list[SuboptimalSolutionWrite]] = mapped_column(
         JSON,
         nullable=False,
         default=list,
