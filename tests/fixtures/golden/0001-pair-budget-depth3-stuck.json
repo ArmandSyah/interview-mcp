@@ -1,0 +1,10 @@
+{
+  "problem_id": "0001-pair-budget-match",
+  "current_code": "def pair_budget_match(prices, budget):\n    # I know I need a hash map but not sure how\n    pass",
+  "depth": 3,
+  "assertions": {
+    "must_not_contain_code_fence_over_3_lines": true,
+    "must_not_contain": ["seen[", "seen.get", "return [seen", "for i, price"],
+    "must_mention_one_of": ["complement", "budget -", "before inserting", "one pass", "check first", "insert after", "before you add", "check before"]
+  }
+}
