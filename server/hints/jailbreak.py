@@ -14,11 +14,20 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("ignore_instructions", re.compile(r"ignore\s+(previous|prior|all)\s+instructions", re.I)),
     ("show_solution", re.compile(r"show\s+(me\s+)?(the\s+)?solution", re.I)),
     ("print_answer", re.compile(r"print\s+(the\s+)?answer", re.I)),
-    ("reveal_code", re.compile(r"(reveal|give|output|display)\s+(me\s+)?(the\s+|a\s+)?(code|solution|answer)", re.I)),
+    (
+        "reveal_code",
+        re.compile(
+            r"(reveal|give|output|display)\s+(me\s+)?(the\s+|a\s+)?(code|solution|answer)",
+            re.I,
+        ),
+    ),
     ("act_as", re.compile(r"act\s+as\s+(an?\s+|the\s+)?(senior|staff|principal|expert)", re.I)),
     ("roleplay", re.compile(r"(roleplay|pretend|imagine)\s+(you\s+are|you're|as\s+a)", re.I)),
     ("translate_solution", re.compile(r"translate\s+(the\s+)?solution", re.I)),
-    ("write_function", re.compile(r"write\s+(the\s+)?(function|body|implementation|solution)", re.I)),
+    (
+        "write_function",
+        re.compile(r"write\s+(the\s+)?(function|body|implementation|solution)", re.I),
+    ),
     ("what_would_code_look_like", re.compile(r"what\s+would\s+the\s+code\s+look\s+like", re.I)),
     ("pseudocode", re.compile(r"(pseudo[-\s]?code|pseudocode)\s+(for\s+)?(the\s+)?solution", re.I)),
 ]
