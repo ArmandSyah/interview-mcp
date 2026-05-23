@@ -1,0 +1,10 @@
+{
+  "problem_id": "0001-pair-budget-match",
+  "current_code": "def pair_budget_match(prices, budget):\n    for i in range(len(prices)):\n        for j in range(i+1, len(prices)):\n            if prices[i] + prices[j] == budget:\n                return [i, j]",
+  "depth": 2,
+  "assertions": {
+    "must_not_contain_code_fence_over_3_lines": true,
+    "must_not_contain": ["seen[", "in seen", "complement in", "hash_map["],
+    "must_mention_one_of": ["hash", "map", "dictionary", "lookup", "O(1)", "dict", "constant"]
+  }
+}
