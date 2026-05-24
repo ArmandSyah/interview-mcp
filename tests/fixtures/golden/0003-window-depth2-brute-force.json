@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["left = ", "right += ", "while events"],
-    "concept": "Using two pointers to define a sliding window that grows on the right and shrinks from the left when a duplicate appears."
+    "concept": "Replacing brute force with a sliding-window or two-pointer approach that adjusts the current range as duplicates appear."
   }
 }

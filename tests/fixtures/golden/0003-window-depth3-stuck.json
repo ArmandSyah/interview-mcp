@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["seen[event] =", "left = seen[", "max_len = max("],
-    "concept": "Recording the most recent index of each event so that when a duplicate appears inside the window, the left pointer can jump directly past the previous occurrence."
+    "concept": "When a duplicate appears inside the current window, moving the left boundary forward until the window is valid again."
   }
 }

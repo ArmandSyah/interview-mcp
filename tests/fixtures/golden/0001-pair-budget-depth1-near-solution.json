@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["seen[", "return [seen", "budget - price"],
-    "concept": "Looking up whether the complement of the current number has been seen before, rather than searching the array each time."
+    "concept": "Using the existing dictionary to check whether the current price can pair with a previously seen price."
   }
 }

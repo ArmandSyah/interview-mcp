@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["def ", "return [", "seen[", "for i, ", "enumerate("],
-    "concept": "Tracking what numbers or complements have been seen so far during a single pass, so each new price can be checked quickly."
+    "concept": "Using information from earlier prices to avoid checking every possible pair from scratch."
   }
 }
