@@ -5,8 +5,7 @@ import pytest
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 
-from server.db import base as db_base
-from server.db import repo
+from server.db import base, repo
 from server.db.base import Base
 from server.db.write_types import ProblemWrite
 
@@ -56,15 +55,15 @@ def in_memory_db(monkeypatch: pytest.MonkeyPatch) -> None:
         autoflush=False,
         autocommit=False,
     )
-    monkeypatch.setattr(db_base, "engine", test_engine)
-    monkeypatch.setattr(db_base, "SessionLocal", test_session_local)
+    monkeypatch.setattr(base, "engine", test_engine)
+    monkeypatch.setattr(base, "SessionLocal", test_session_local)
 
 
 # --- schema ---
 
 
 def test_tables_exist() -> None:
-    inspector = inspect(db_base.engine)
+    inspector = inspect(base.engine)
     tables = inspector.get_table_names()
     assert "problems" in tables
     assert "attempts" in tables

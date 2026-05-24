@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from server.db.repo import get_problem as db_get_problem
+from server.db import repo
 from server.db.schemas import AttemptRead
 from server.hints.engine import HintEngine
 from server.llm_provider import get_provider
@@ -63,7 +63,7 @@ def engine() -> HintEngine:
 )
 def test_golden(fixture_path: Path, engine: HintEngine) -> None:
     fixture = json.loads(fixture_path.read_text())
-    problem = db_get_problem(fixture["problem_id"])
+    problem = repo.get_problem(fixture["problem_id"])
     assert problem is not None, f"Problem {fixture['problem_id']} not in DB"
 
     hint, meta = engine.generate_hint(
