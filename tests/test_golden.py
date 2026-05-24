@@ -2,6 +2,7 @@
 Golden conversation tests — eval suite for hint quality.
 
 Run with:  RUN_GOLDEN_TESTS=1 uv run pytest tests/test_golden.py -v
+Debug:    RUN_GOLDEN_TESTS=1 GOLDEN_DEBUG=1 uv run pytest tests/test_golden.py -v -s
 
 These tests call the real Anthropic API and are excluded from normal CI.
 Run them manually every time you change a prompt or the output filter.
@@ -31,6 +32,7 @@ pytestmark = pytest.mark.skipif(
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "golden"
 CODE_FENCE = re.compile(r"```[\s\S]*?```", re.MULTILINE)
+GOLDEN_DEBUG = os.environ.get("GOLDEN_DEBUG") == "1"
 
 
 def _fence_line_count(text: str) -> int:
@@ -104,6 +106,18 @@ def test_golden(
             hint=hint,
             concept=concept,
         )
+        if GOLDEN_DEBUG:
+            print(
+                "\n"
+                f"=== {fixture_path.stem} ===\n"
+                f"Problem: {problem.title}\n"
+                f"Depth: {fixture['depth']}\n"
+                f"Concept: {concept}\n"
+                f"Judge verdict: {'YES' if covered else 'NO'}\n"
+                "Hint:\n"
+                f"{hint}\n"
+                "=== end ==="
+            )
         assert covered, (
             f"Judge ruled the hint does not cover the concept.\nConcept: {concept}\nHint:\n{hint}"
         )
