@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["seen[event] =", "left = seen[", "max_len = max("],
-    "must_mention_one_of": ["last seen", "previous index", "one past", "jump", "last position", "where you last saw", "index of", "position of", "old occurrence", "boundary", "slide", "forward past", "past the"]
+    "concept": "When a duplicate appears inside the current window, moving the left boundary forward until the window is valid again."
   }
 }

@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["def ", "return [", "seen[", "for i, ", "enumerate("],
-    "must_mention_one_of": ["look up", "search", "complement", "find", "track", "remember", "seen", "store", "check"]
+    "concept": "Using information from earlier prices to avoid checking every possible pair from scratch."
   }
 }

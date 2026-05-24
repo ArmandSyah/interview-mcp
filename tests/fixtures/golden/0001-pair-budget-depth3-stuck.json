@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["seen[", "seen.get", "return [seen", "for i, price"],
-    "must_mention_one_of": ["complement", "budget -", "before inserting", "one pass", "check first", "insert after", "before you add", "check before"]
+    "concept": "Scanning forward while using a hash map to connect the current price with a previously seen matching price."
   }
 }

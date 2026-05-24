@@ -2,9 +2,11 @@
 Golden conversation tests — eval suite for hint quality.
 
 Run with:  RUN_GOLDEN_TESTS=1 uv run pytest tests/test_golden.py -v
+Debug:    RUN_GOLDEN_TESTS=1 GOLDEN_DEBUG=1 uv run pytest tests/test_golden.py -v -s
 
 These tests call the real Anthropic API and are excluded from normal CI.
 Run them manually every time you change a prompt or the output filter.
+Each fixture makes one hint-generation call and one judge call.
 """
 
 from __future__ import annotations
@@ -19,8 +21,9 @@ import pytest
 
 from server.db import repo
 from server.db.schemas import AttemptRead
+from server.eval.judge import judge_hint_concept
 from server.hints.engine import HintEngine
-from server.llm_provider import get_provider
+from server.llm_provider import LLMProvider, get_provider
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("RUN_GOLDEN_TESTS"),
@@ -29,6 +32,7 @@ pytestmark = pytest.mark.skipif(
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "golden"
 CODE_FENCE = re.compile(r"```[\s\S]*?```", re.MULTILINE)
+GOLDEN_DEBUG = os.environ.get("GOLDEN_DEBUG") == "1"
 
 
 def _fence_line_count(text: str) -> int:
@@ -52,8 +56,13 @@ def _make_attempt(problem_id: str) -> AttemptRead:
 
 
 @pytest.fixture(scope="module")
-def engine() -> HintEngine:
-    return HintEngine(get_provider())
+def provider() -> LLMProvider:
+    return get_provider()
+
+
+@pytest.fixture(scope="module")
+def engine(provider: LLMProvider) -> HintEngine:
+    return HintEngine(provider)
 
 
 @pytest.mark.parametrize(
@@ -61,7 +70,11 @@ def engine() -> HintEngine:
     sorted(FIXTURES_DIR.glob("*.json")),
     ids=lambda p: p.stem,
 )
-def test_golden(fixture_path: Path, engine: HintEngine) -> None:
+def test_golden(
+    fixture_path: Path,
+    engine: HintEngine,
+    provider: LLMProvider,
+) -> None:
     fixture = json.loads(fixture_path.read_text())
     problem = repo.get_problem(fixture["problem_id"])
     assert problem is not None, f"Problem {fixture['problem_id']} not in DB"
@@ -85,8 +98,27 @@ def test_golden(fixture_path: Path, engine: HintEngine) -> None:
     for banned in assertions.get("must_not_contain", []):
         assert banned not in hint, f"Banned string '{banned}' found in hint:\n{hint}"
 
-    mentions = assertions.get("must_mention_one_of", [])
-    if mentions:
-        assert any(m.lower() in hint.lower() for m in mentions), (
-            f"Hint must mention one of {mentions}:\n{hint}"
+    concept = assertions.get("concept")
+    if concept:
+        judge_result = judge_hint_concept(
+            provider,
+            problem_title=problem.title,
+            hint=hint,
+            concept=concept,
+        )
+        if GOLDEN_DEBUG:
+            print(
+                "\n"
+                f"=== {fixture_path.stem} ===\n"
+                f"Problem: {problem.title}\n"
+                f"Depth: {fixture['depth']}\n"
+                f"Concept: {concept}\n"
+                f"Judge covered: {judge_result.covered}\n"
+                f"Judge raw response: {judge_result.raw_response!r}\n"
+                "Hint:\n"
+                f"{hint}\n"
+                "=== end ==="
+            )
+        assert judge_result.covered, (
+            f"Judge ruled the hint does not cover the concept.\nConcept: {concept}\nHint:\n{hint}"
         )

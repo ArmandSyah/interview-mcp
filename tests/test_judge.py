@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from server.eval.judge import hint_covers_concept
+from server.eval.judge import ConceptJudgeResult, hint_covers_concept, judge_hint_concept
 
 
 class MockProvider:
@@ -28,6 +28,24 @@ def test_yes_returns_true() -> None:
         )
         is True
     )
+
+
+def test_judge_result_preserves_raw_response() -> None:
+    provider = MockProvider(["YES, this points to complement lookup."])
+    result = judge_hint_concept(
+        provider,
+        problem_title="Pair Budget Match",
+        hint="Think about fast lookups for the missing value.",
+        concept="Using a hash map for complement lookup.",
+    )
+
+    assert result.covered is True
+    assert result.raw_response == "YES, this points to complement lookup."
+
+
+def test_judge_result_is_pydantic() -> None:
+    result = ConceptJudgeResult(covered=True, raw_response="YES")
+    assert result.model_dump() == {"covered": True, "raw_response": "YES"}
 
 
 def test_no_returns_false() -> None:

@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["stack.append", "stack.pop", "match = {"],
-    "must_mention_one_of": ["stack", "lifo", "last-in", "last in", "most recent", "order", "first out", "data structure"]
+    "concept": "Counts alone are not enough; the solution needs an order-aware structure such as a stack."
   }
 }

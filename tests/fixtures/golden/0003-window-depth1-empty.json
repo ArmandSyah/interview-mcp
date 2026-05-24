@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["left = 0", "right = 0", "max_len", "seen["],
-    "must_mention_one_of": ["window", "contiguous", "region", "range", "subarray", "section", "stretch", "consecutive"]
+    "concept": "Thinking in terms of a contiguous valid window instead of enumerating every possible subarray."
   }
 }
