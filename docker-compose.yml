@@ -7,8 +7,9 @@
 
 services:
   piston:
-    # Pin the major Piston image instead of using latest so upgrades are deliberate.
-    image: ghcr.io/engineer-man/piston:v3
+    # Upstream publishes the API image without a version tag.
+    # See https://github.com/engineer-man/piston#getting-started
+    image: ghcr.io/engineer-man/piston
     container_name: interview-mcp-piston
     restart: unless-stopped
     ports:

@@ -69,7 +69,7 @@ services:
         condition: service_healthy
 
   piston:
-    image: ghcr.io/engineer-man/piston:v3
+    image: ghcr.io/engineer-man/piston
     expose:
       - "2000"
     volumes:
