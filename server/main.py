@@ -5,21 +5,8 @@ from pydantic import BaseModel
 
 import server.db.models  # noqa: F401
 from server.core.mode import get_execution_mode
+from server.db import repo
 from server.db.base import Base, engine
-from server.db.repo import (
-    create_attempt as db_create_attempt,
-)
-from server.db.repo import (
-    get_active_attempt,
-    get_attempt,
-    record_event,
-)
-from server.db.repo import (
-    get_problem as db_get_problem,
-)
-from server.db.repo import (
-    list_problems as db_list_problems,
-)
 from server.db.schemas import ProblemCatalogRead, ProblemRead, ProblemSummaryRead
 from server.db.seed import seed_problems
 from server.hints.engine import HintEngine
@@ -63,7 +50,7 @@ def get_problem_catalog() -> ProblemCatalogRead:
 
     Call this before list_problems to know what filter values are valid.
     """
-    problems = db_list_problems()
+    problems = repo.list_problems()
     difficulties = sorted({p.difficulty for p in problems})
     tags = sorted({t for p in problems for t in p.tags})
     pattern_tags = sorted({t for p in problems for t in p.pattern_tags})
@@ -84,7 +71,7 @@ def list_problems(
         difficulty: Filter by difficulty ('easy', 'medium', 'hard'). Optional.
         tag: Filter by tag (e.g. 'array', 'sliding-window'). Optional.
     """
-    problems = db_list_problems(difficulty=difficulty, tag=tag)
+    problems = repo.list_problems(difficulty=difficulty, tag=tag)
     return [ProblemSummaryRead.model_validate(p) for p in problems]
 
 
@@ -102,7 +89,7 @@ def start_problem(problem_id: str, language: str = "python") -> StartProblemResu
     if language != "python":
         raise ValueError("start_problem currently supports Python only.")
 
-    problem = db_get_problem(problem_id)
+    problem = repo.get_problem(problem_id)
     if problem is None:
         raise ValueError(f"Problem '{problem_id}' not found.")
 
@@ -113,7 +100,7 @@ def start_problem(problem_id: str, language: str = "python") -> StartProblemResu
             f"Available: {sorted(problem.starter_code.keys())}"
         )
 
-    attempt = db_create_attempt(problem_id=problem.id, language=language)
+    attempt = repo.create_attempt(problem_id=problem.id, language=language)
     example_input, example_output = _first_example_fields(problem)
     contents = build_solution_scaffold_contents(
         problem_id=problem.id,
@@ -185,11 +172,11 @@ def _one_line_description(problem: ProblemRead) -> str:
 @mcp.tool
 def get_problem_description(attempt_id: str) -> str:
     """Return the full problem description for an attempt."""
-    attempt = get_attempt(attempt_id)
+    attempt = repo.get_attempt(attempt_id)
     if attempt is None:
         return f"Attempt {attempt_id!r} not found. Call start_problem first."
 
-    problem = db_get_problem(attempt.problem_id)
+    problem = repo.get_problem(attempt.problem_id)
     if problem is None:
         return "Problem for this attempt could not be found."
 
@@ -228,18 +215,18 @@ def get_hint(current_code: str, depth: int = 1) -> HintResult:
     """
     is_jailbreak, pattern_name = check_jailbreak(current_code)
     if is_jailbreak:
-        record_event(
+        repo.record_event(
             attempt_id="unknown",
             kind="jailbreak_blocked",
             payload={"pattern": pattern_name, "source": "current_code"},
         )
         return HintResult(hint=get_refusal(), depth=depth, used_fallback=False)
 
-    attempt = get_active_attempt()
+    attempt = repo.get_active_attempt()
     if attempt is None:
         raise ValueError("No active problem. Call start_problem first.")
 
-    problem = db_get_problem(attempt.problem_id)
+    problem = repo.get_problem(attempt.problem_id)
     if problem is None:
         raise ValueError(f"Problem '{attempt.problem_id}' not found in database.")
 
@@ -251,7 +238,7 @@ def get_hint(current_code: str, depth: int = 1) -> HintResult:
         depth=depth,
     )
 
-    record_event(
+    repo.record_event(
         attempt_id=attempt.id,
         kind="hint_requested",
         payload={

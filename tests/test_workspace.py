@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-import server.workspace as workspace_module
+from server import workspace
 from server.workspace import (
     build_solution_scaffold_contents,
     scaffold_sha256,
@@ -12,7 +12,7 @@ from server.workspace import (
 
 @pytest.fixture(autouse=True)
 def patch_problem_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(workspace_module, "_problem_dir", lambda: tmp_path)
+    monkeypatch.setattr(workspace, "_problem_dir", lambda: tmp_path)
 
 
 def _sample_contents(problem_id: str = "0001-pair-budget-match") -> str:
