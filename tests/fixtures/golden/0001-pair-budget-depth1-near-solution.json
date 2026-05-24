@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["seen[", "return [seen", "budget - price"],
-    "must_mention_one_of": ["complement", "what you've seen", "before", "lookup", "look up", "already", "find", "check", "pair", "budget -"]
+    "concept": "Looking up whether the complement of the current number has been seen before, rather than searching the array each time."
   }
 }

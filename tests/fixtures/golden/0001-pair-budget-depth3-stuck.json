@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["seen[", "seen.get", "return [seen", "for i, price"],
-    "must_mention_one_of": ["complement", "budget -", "before inserting", "one pass", "check first", "insert after", "before you add", "check before"]
+    "concept": "Checking whether the needed complement is already in the map before inserting the current value, so duplicates and self-pairing are handled correctly."
   }
 }

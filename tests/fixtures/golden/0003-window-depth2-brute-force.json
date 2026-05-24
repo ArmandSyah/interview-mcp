@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["left = ", "right += ", "while events"],
-    "must_mention_one_of": ["sliding window", "two pointer", "two-pointer", "sliding", "window", "pointer", "left", "right"]
+    "concept": "Using two pointers to define a sliding window that grows on the right and shrinks from the left when a duplicate appears."
   }
 }

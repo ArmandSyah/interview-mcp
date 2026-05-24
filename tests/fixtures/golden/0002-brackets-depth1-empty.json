@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["stack.append", "stack.pop", "if char ==", "match[char]"],
-    "must_mention_one_of": ["order", "nest", "last", "recent", "most recent", "opener", "remember", "keep track", "match", "reverse"]
+    "concept": "Tracking the order in which opening brackets appear so closing brackets can be matched against the most recent unmatched opener."
   }
 }

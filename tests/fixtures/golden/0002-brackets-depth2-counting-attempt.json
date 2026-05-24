@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["stack.append", "stack.pop", "match = {"],
-    "must_mention_one_of": ["stack", "lifo", "last-in", "last in", "most recent", "order", "first out", "data structure"]
+    "concept": "Using a last-in-first-out stack data structure so the matching opener for each closer is available at the top."
   }
 }

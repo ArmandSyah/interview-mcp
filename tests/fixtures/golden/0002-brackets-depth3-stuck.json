@@ -5,6 +5,6 @@
   "assertions": {
     "must_not_contain_code_fence_over_3_lines": true,
     "must_not_contain": ["stack.append(char)", "stack.pop()", "if not stack"],
-    "must_mention_one_of": ["push", "pop", "top of the stack", "matching opener", "top", "opener", "closer", "match"]
+    "concept": "Pushing each opener onto the stack while scanning, then on each closer, popping the top opener and confirming it matches."
   }
 }
