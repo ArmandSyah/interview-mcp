@@ -36,6 +36,11 @@ curl -X POST http://localhost:2000/api/v2/execute \
 
 The smoke test should return JSON whose `run.stdout` is `2\n`.
 
+Piston's API container runs with `privileged: true`, stores runtimes in
+`/piston/packages`, and uses an executable tmpfs at `/tmp`. These settings match
+the upstream Piston Compose file while keeping the host port bound to
+`127.0.0.1`.
+
 ## Daily local operation
 
 - Start: `docker compose up -d piston`
@@ -70,12 +75,13 @@ services:
 
   piston:
     image: ghcr.io/engineer-man/piston
+    privileged: true
     expose:
       - "2000"
     volumes:
-      - piston_data:/piston
+      - piston_data:/piston/packages
     tmpfs:
-      - /tmp
+      - /tmp:exec
 ```
 
 Only the MCP server should sit behind public ingress. Piston should be reachable

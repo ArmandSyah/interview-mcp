@@ -12,15 +12,16 @@ services:
     image: ghcr.io/engineer-man/piston
     container_name: interview-mcp-piston
     restart: unless-stopped
+    privileged: true
     ports:
       # Bind to loopback only. Do not publish Piston on 0.0.0.0.
       - "127.0.0.1:2000:2000"
     volumes:
       # Piston stores installed language runtimes here.
-      - piston_data:/piston
+      - piston_data:/piston/packages
     tmpfs:
-      # Scratch space for executions; wiped when the container restarts.
-      - /tmp
+      # Scratch space for executions; exec is required for running job files.
+      - /tmp:exec
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:2000/api/v2/runtimes"]
       interval: 10s
