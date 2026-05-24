@@ -1,0 +1,31 @@
+# Local development sandbox.
+# Brings up Piston on 127.0.0.1:2000 only, not exposed to the network.
+#
+# Usage:
+#   docker compose up -d piston
+#   # then install Python runtime once, see docs/sandbox.md
+
+services:
+  piston:
+    # Pin the major Piston image instead of using latest so upgrades are deliberate.
+    image: ghcr.io/engineer-man/piston:v3
+    container_name: interview-mcp-piston
+    restart: unless-stopped
+    ports:
+      # Bind to loopback only. Do not publish Piston on 0.0.0.0.
+      - "127.0.0.1:2000:2000"
+    volumes:
+      # Piston stores installed language runtimes here.
+      - piston_data:/piston
+    tmpfs:
+      # Scratch space for executions; wiped when the container restarts.
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:2000/api/v2/runtimes"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  piston_data:
