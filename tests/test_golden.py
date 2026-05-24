@@ -21,7 +21,7 @@ import pytest
 
 from server.db import repo
 from server.db.schemas import AttemptRead
-from server.eval.judge import hint_covers_concept
+from server.eval.judge import judge_hint_concept
 from server.hints.engine import HintEngine
 from server.llm_provider import LLMProvider, get_provider
 
@@ -100,7 +100,7 @@ def test_golden(
 
     concept = assertions.get("concept")
     if concept:
-        covered = hint_covers_concept(
+        judge_result = judge_hint_concept(
             provider,
             problem_title=problem.title,
             hint=hint,
@@ -113,11 +113,12 @@ def test_golden(
                 f"Problem: {problem.title}\n"
                 f"Depth: {fixture['depth']}\n"
                 f"Concept: {concept}\n"
-                f"Judge verdict: {'YES' if covered else 'NO'}\n"
+                f"Judge covered: {judge_result.covered}\n"
+                f"Judge raw response: {judge_result.raw_response!r}\n"
                 "Hint:\n"
                 f"{hint}\n"
                 "=== end ==="
             )
-        assert covered, (
+        assert judge_result.covered, (
             f"Judge ruled the hint does not cover the concept.\nConcept: {concept}\nHint:\n{hint}"
         )

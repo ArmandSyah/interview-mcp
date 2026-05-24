@@ -7,6 +7,8 @@ concept? Golden tests use this to replace brittle keyword matching.
 
 from __future__ import annotations
 
+from pydantic import BaseModel
+
 from server.llm_provider import LLMProvider
 
 _JUDGE_SYSTEM = (
@@ -27,6 +29,33 @@ Concept the hint should convey: {concept}
 Does the hint convey, point toward, or hint at this concept (even indirectly)? Answer YES or NO.'''
 
 
+class ConceptJudgeResult(BaseModel):
+    """Structured judge output for audit/debug workflows."""
+
+    covered: bool
+    raw_response: str
+
+
+def judge_hint_concept(
+    provider: LLMProvider,
+    *,
+    problem_title: str,
+    hint: str,
+    concept: str,
+) -> ConceptJudgeResult:
+    """Ask whether a hint covers a specific concept and return the raw answer."""
+    user = _JUDGE_USER_TEMPLATE.format(
+        problem_title=problem_title,
+        hint=hint,
+        concept=concept,
+    )
+    response = provider.generate(system=_JUDGE_SYSTEM, user=user, max_tokens=4)
+    return ConceptJudgeResult(
+        covered=response.strip().upper().startswith("YES"),
+        raw_response=response,
+    )
+
+
 def hint_covers_concept(
     provider: LLMProvider,
     *,
@@ -40,10 +69,9 @@ def hint_covers_concept(
     for evals: if the judge ignores the YES/NO instruction, the fixture should
     fail rather than silently pass.
     """
-    user = _JUDGE_USER_TEMPLATE.format(
+    return judge_hint_concept(
+        provider,
         problem_title=problem_title,
         hint=hint,
         concept=concept,
-    )
-    response = provider.generate(system=_JUDGE_SYSTEM, user=user, max_tokens=4)
-    return response.strip().upper().startswith("YES")
+    ).covered
