@@ -1,4 +1,7 @@
 # server/main.py
+import os
+from collections.abc import Sequence
+
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 from pydantic import BaseModel
@@ -12,6 +15,9 @@ from server.db.seed import seed_problems
 from server.hints.engine import HintEngine
 from server.hints.jailbreak import check_jailbreak, get_refusal
 from server.llm_provider import get_provider
+from server.sandbox.client import PistonClient
+from server.sandbox.result_models import TestCaseResult, TestRunResult
+from server.sandbox.runner import build_wrapper, extract_function_name, parse_result
 from server.tool_models import ScaffoldFile, StartProblemResult
 from server.workspace import (
     build_solution_scaffold_contents,
@@ -23,6 +29,8 @@ load_dotenv()
 mcp = FastMCP("interview-mcp")
 
 _hint_engine: HintEngine | None = None
+_piston_client: PistonClient | None = None
+PYTHON_VERSION = "3.12.0"
 
 
 def _get_hint_engine() -> HintEngine:
@@ -30,6 +38,14 @@ def _get_hint_engine() -> HintEngine:
     if _hint_engine is None:
         _hint_engine = HintEngine(get_provider())
     return _hint_engine
+
+
+def _get_piston_client() -> PistonClient:
+    global _piston_client
+    if _piston_client is None:
+        base_url = os.environ.get("PISTON_BASE_URL", "http://localhost:2000")
+        _piston_client = PistonClient(base_url=base_url)
+    return _piston_client
 
 
 def on_startup() -> None:
@@ -192,6 +208,135 @@ def get_problem_description(attempt_id: str) -> str:
         f"## Examples\n{examples}\n\n"
         f"## Constraints\n{constraints}"
     )
+
+
+def _test_input_as_list(value: object) -> list[object]:
+    if not isinstance(value, Sequence) or isinstance(value, str | bytes):
+        raise ValueError("Test case input must be a list of function arguments.")
+    return list(value)
+
+
+@mcp.tool
+def run_tests(attempt_id: str, code: str) -> TestRunResult:
+    """Run an attempt's tests against provided solution code.
+
+    Args:
+        attempt_id: Identifier returned by start_problem.
+        code: Full contents of the user's solution file.
+    """
+    attempt = repo.get_attempt(attempt_id)
+    if attempt is None:
+        raise ValueError(f"Attempt {attempt_id!r} not found. Call start_problem first.")
+
+    problem = repo.get_problem(attempt.problem_id)
+    if problem is None:
+        raise ValueError(f"Problem {attempt.problem_id!r} not found in database.")
+
+    if attempt.language != "python":
+        raise ValueError(
+            f"run_tests currently supports Python only. Attempt language is {attempt.language!r}."
+        )
+
+    user_code = code.strip()
+    if not user_code:
+        raise ValueError("code argument is empty. Pass the contents of solution.py.")
+
+    function_name = extract_function_name(problem.starter_code["python"])
+    test_cases = problem.test_cases.get("python", [])
+    client = _get_piston_client()
+
+    case_results: list[TestCaseResult] = []
+    for index, test_case in enumerate(test_cases):
+        test_input = _test_input_as_list(test_case["input"])
+        expected = test_case["expected"]
+        wrapper = build_wrapper(
+            user_code=user_code,
+            function_name=function_name,
+            test_input=test_input,
+        )
+        execution = client.execute(
+            language="python",
+            version=PYTHON_VERSION,
+            code=wrapper,
+        )
+
+        if execution.transport_error:
+            case_results.append(
+                TestCaseResult(
+                    index=index,
+                    passed=False,
+                    input=test_input,
+                    expected=expected,
+                    error=execution.transport_error,
+                    wall_time_ms=execution.wall_time_ms,
+                )
+            )
+            continue
+
+        if execution.timed_out:
+            case_results.append(
+                TestCaseResult(
+                    index=index,
+                    passed=False,
+                    input=test_input,
+                    expected=expected,
+                    user_stderr=execution.stderr,
+                    error=f"timed out after {execution.wall_time_ms}ms",
+                    wall_time_ms=execution.wall_time_ms,
+                )
+            )
+            continue
+
+        user_stdout, actual, parse_error = parse_result(execution.stdout)
+        if parse_error is not None:
+            case_results.append(
+                TestCaseResult(
+                    index=index,
+                    passed=False,
+                    input=test_input,
+                    expected=expected,
+                    user_stdout=user_stdout,
+                    user_stderr=execution.stderr,
+                    error=parse_error,
+                    wall_time_ms=execution.wall_time_ms,
+                )
+            )
+            continue
+
+        case_results.append(
+            TestCaseResult(
+                index=index,
+                passed=actual == expected,
+                input=test_input,
+                expected=expected,
+                actual=actual,
+                user_stdout=user_stdout,
+                user_stderr=execution.stderr,
+                wall_time_ms=execution.wall_time_ms,
+            )
+        )
+
+    tests_passed = sum(1 for result in case_results if result.passed)
+    run_result = TestRunResult(
+        attempt_id=attempt.id,
+        problem_id=problem.id,
+        tests_total=len(case_results),
+        tests_passed=tests_passed,
+        tests=case_results,
+        all_passed=tests_passed == len(case_results) and len(case_results) > 0,
+    )
+
+    repo.record_event(
+        attempt_id=attempt.id,
+        kind="test_run",
+        payload={
+            "tests_total": run_result.tests_total,
+            "tests_passed": run_result.tests_passed,
+            "all_passed": run_result.all_passed,
+        },
+    )
+
+    return run_result
 
 
 class HintResult(BaseModel):

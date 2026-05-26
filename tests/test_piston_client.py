@@ -191,6 +191,33 @@ def test_request_payload_shape() -> None:
     assert captured["files"] == [{"content": "print(1)"}]
 
 
+def test_default_run_timeout_matches_piston_limit() -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "run": {
+                    "stdout": "",
+                    "stderr": "",
+                    "code": 0,
+                    "signal": None,
+                    "wall_time": 0,
+                }
+            },
+        )
+
+    _make_client(httpx.MockTransport(handler)).execute(
+        language="python",
+        version="3.12.0",
+        code="print(1)",
+    )
+
+    assert captured["run_timeout"] == 3000
+
+
 def test_execution_result_is_pydantic() -> None:
     result = ExecutionResult(
         stdout="hi",

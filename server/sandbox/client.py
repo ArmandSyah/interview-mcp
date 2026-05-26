@@ -42,7 +42,7 @@ class PistonClient:
         version: str,
         code: str,
         stdin: str = "",
-        run_timeout_ms: int = 5_000,
+        run_timeout_ms: int = 3_000,
         memory_limit_bytes: int = 256 * 1024 * 1024,
     ) -> ExecutionResult:
         """Execute a single file of code in Piston."""
