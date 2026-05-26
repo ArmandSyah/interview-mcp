@@ -1,6 +1,7 @@
 # server/main.py
 import os
 from collections.abc import Sequence
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
@@ -16,7 +17,7 @@ from server.hints.engine import HintEngine
 from server.hints.jailbreak import check_jailbreak, get_refusal
 from server.llm_provider import get_provider
 from server.sandbox.client import PistonClient
-from server.sandbox.result_models import TestCaseResult, TestRunResult
+from server.sandbox.result_models import SubmissionResult, TestCaseResult, TestRunResult
 from server.sandbox.runner import build_wrapper, extract_function_name, parse_result
 from server.tool_models import ScaffoldFile, StartProblemResult
 from server.workspace import (
@@ -30,6 +31,8 @@ mcp = FastMCP("interview-mcp")
 
 _hint_engine: HintEngine | None = None
 _piston_client: PistonClient | None = None
+_followup_prompt: str | None = None
+_FOLLOWUP_PROMPT_PATH = Path(__file__).parent / "hints" / "followup_prompt.txt"
 PYTHON_VERSION = "3.12.0"
 
 
@@ -46,6 +49,13 @@ def _get_piston_client() -> PistonClient:
         base_url = os.environ.get("PISTON_BASE_URL", "http://localhost:2000")
         _piston_client = PistonClient(base_url=base_url)
     return _piston_client
+
+
+def _get_followup_prompt() -> str:
+    global _followup_prompt
+    if _followup_prompt is None:
+        _followup_prompt = _FOLLOWUP_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    return _followup_prompt
 
 
 def on_startup() -> None:
@@ -337,6 +347,82 @@ def run_tests(attempt_id: str, code: str) -> TestRunResult:
     )
 
     return run_result
+
+
+def _fallback_followup_questions() -> str:
+    return (
+        "1. What is the time and space complexity of your solution, and which input "
+        "size drives that cost?\n"
+        "2. What edge case or changed constraint would make you reconsider this approach?"
+    )
+
+
+def _build_followup_user_message(*, problem: ProblemRead, code: str) -> str:
+    return f'''Problem: {problem.title}
+
+Description:
+{problem.description_md}
+
+Candidate's solution:
+"""
+{code}
+"""
+
+Ask exactly 2 follow-up questions.'''
+
+
+@mcp.tool
+def submit_solution(attempt_id: str, code: str) -> SubmissionResult:
+    """Submit a solution and return interviewer-style follow-up questions.
+
+    Args:
+        attempt_id: Identifier returned by start_problem.
+        code: Full contents of the user's solution file.
+    """
+    test_run = run_tests(attempt_id, code)
+    if not test_run.all_passed:
+        return SubmissionResult(
+            completed=False,
+            test_run=test_run,
+            message=(
+                f"{test_run.tests_passed}/{test_run.tests_total} tests passed. "
+                "Keep iterating; review the failures and try again."
+            ),
+        )
+
+    attempt = repo.get_attempt(attempt_id)
+    if attempt is None:
+        raise ValueError(f"Attempt {attempt_id!r} not found. Call start_problem first.")
+
+    problem = repo.get_problem(attempt.problem_id)
+    if problem is None:
+        raise ValueError(f"Problem {attempt.problem_id!r} not found in database.")
+
+    try:
+        followups = get_provider().generate(
+            system=_get_followup_prompt(),
+            user=_build_followup_user_message(problem=problem, code=code),
+            max_tokens=300,
+        )
+    except Exception:
+        followups = _fallback_followup_questions()
+
+    repo.mark_completed(attempt.id)
+    repo.record_event(
+        attempt_id=attempt.id,
+        kind="submission",
+        payload={
+            "tests_passed": test_run.tests_passed,
+            "tests_total": test_run.tests_total,
+        },
+    )
+
+    return SubmissionResult(
+        completed=True,
+        test_run=test_run,
+        followup_questions=followups,
+        message="All tests passed. Attempt completed.",
+    )
 
 
 class HintResult(BaseModel):
