@@ -33,3 +33,12 @@ class TestRunResult(BaseModel):
     tests_passed: int
     tests: list[TestCaseResult]
     all_passed: bool
+
+
+class SubmissionResult(BaseModel):
+    """Outcome of a submit_solution call."""
+
+    completed: bool
+    test_run: TestRunResult
+    followup_questions: str | None = None
+    message: str
