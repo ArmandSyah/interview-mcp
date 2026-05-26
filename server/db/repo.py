@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.orm import joinedload
 
 from server.db.base import get_session
 from server.db.models import Attempt, Event, Problem, State
@@ -12,6 +14,14 @@ from server.db.schemas import AttemptRead, EventRead, ProblemRead
 from server.db.write_types import ProblemWrite
 
 ACTIVE_ATTEMPT_KEY = "active_attempt_id"
+
+
+class AttemptWithProblem(BaseModel):
+    """An attempt joined with display fields from its problem."""
+
+    attempt: AttemptRead
+    problem_title: str
+    problem_difficulty: str
 
 
 def upsert_problem(problem_data: ProblemWrite) -> None:
@@ -43,6 +53,28 @@ def list_problems(difficulty: str | None = None, tag: str | None = None) -> list
         if tag:
             results = [problem for problem in results if tag in problem.tags]
         return [ProblemRead.model_validate(p) for p in results]
+
+
+def list_attempts_with_problems(limit: int = 50) -> list[AttemptWithProblem]:
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+
+    with get_session() as session:
+        statement = (
+            select(Attempt)
+            .options(joinedload(Attempt.problem))
+            .order_by(Attempt.started_at.desc())
+            .limit(limit)
+        )
+        attempts = list(session.scalars(statement))
+        return [
+            AttemptWithProblem(
+                attempt=AttemptRead.model_validate(attempt),
+                problem_title=attempt.problem.title,
+                problem_difficulty=attempt.problem.difficulty,
+            )
+            for attempt in attempts
+        ]
 
 
 def create_attempt(problem_id: str, language: str) -> AttemptRead:
