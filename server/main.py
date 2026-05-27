@@ -425,6 +425,38 @@ def submit_solution(attempt_id: str, code: str) -> SubmissionResult:
     )
 
 
+@mcp.tool
+def get_progress(limit: int = 50) -> str:
+    """Show recent attempts and their status as a Markdown table."""
+    rows = repo.list_attempts_with_problems(limit=limit)
+    if not rows:
+        return "No attempts yet. Call `start_problem` to begin."
+
+    lines = [
+        "| Date | Problem | Difficulty | Status |",
+        "|---|---|---|---|",
+    ]
+    completed = 0
+    in_progress = 0
+
+    for row in rows:
+        started_at = row.attempt.started_at.strftime("%Y-%m-%d")
+        status = row.attempt.status
+        lines.append(
+            f"| {started_at} | {row.problem_title} | {row.problem_difficulty} | {status} |"
+        )
+        if status == "completed":
+            completed += 1
+        elif status == "in_progress":
+            in_progress += 1
+
+    lines.append("")
+    lines.append(
+        f"**Summary:** {completed} completed, {in_progress} in progress, {len(rows)} total."
+    )
+    return "\n".join(lines)
+
+
 class HintResult(BaseModel):
     hint: str
     depth: int
