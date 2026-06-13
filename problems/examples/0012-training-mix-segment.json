@@ -1,0 +1,65 @@
+{
+  "id": "0012-training-mix-segment",
+  "title": "Training Mix Segment",
+  "difficulty": "medium",
+  "tags": ["array", "hash-map", "sliding-window"],
+  "pattern_tags": ["sliding-window", "frequency-map"],
+  "pattern_family": "sliding-window",
+  "pattern_spec": "batches/2026-05-week3-batch-01/pattern-specs/0001-sliding-window-frequency.md",
+  "primary_skill": "Maintain a variable-size contiguous window under a frequency constraint.",
+  "secondary_skills": ["Hash-map counting", "Invariant maintenance", "Pointer movement"],
+  "interview_signal": "Candidate can repair a moving window without recomputing frequency counts from scratch.",
+  "expected_time_minutes": 25,
+  "description_md": "A training platform records lesson categories in the order a learner completes them. A segment is balanced if no category appears more than max_per_category times inside that contiguous segment. Return the length of the longest balanced segment.",
+  "examples": [
+    {
+      "input": "lessons=[\"sql\", \"api\", \"sql\", \"sql\", \"testing\"], max_per_category=2",
+      "output": "4",
+      "explanation": "The segment [\"api\", \"sql\", \"sql\", \"testing\"] is balanced and has length 4."
+    }
+  ],
+  "constraints": [
+    "0 <= len(lessons) <= 100000",
+    "1 <= max_per_category <= 100000",
+    "Each lesson category is a non-empty string."
+  ],
+  "starter_code": {
+    "python": "def longest_balanced_training_segment(lessons: list[str], max_per_category: int) -> int:\n    pass\n"
+  },
+  "test_cases": {
+    "python": [
+      {"input": [["sql", "api", "sql", "sql", "testing"], 2], "expected": 4},
+      {"input": [[], 2], "expected": 0},
+      {"input": [["a", "b", "c"], 1], "expected": 3},
+      {"input": [["a", "a", "a"], 1], "expected": 1},
+      {"input": [["a", "b", "a", "c", "a", "d"], 2], "expected": 5},
+      {"input": [["x", "x", "y", "x", "y", "y"], 2], "expected": 5},
+      {"input": [["a", "b", "b", "a", "b", "c", "b"], 2], "expected": 5}
+    ]
+  },
+  "canonical_solution_md": "Move a right boundary across the lesson list while keeping counts for the active segment. If adding a lesson makes its category exceed the allowed count, move the left boundary forward and decrement counts until the active segment is balanced again. After each repair, measure the current segment length. Each boundary moves forward at most once, so the scan is linear.",
+  "fallback_hints": [
+    "Think about a current contiguous segment that can grow and then be repaired.",
+    "A count table tells you exactly when the newest lesson makes the segment invalid.",
+    "Only move the left boundary until the overrepresented category is allowed again."
+  ],
+  "common_mistakes": [
+    "Recomputing category counts for every possible segment.",
+    "Moving the left boundary too far after one category exceeds the limit.",
+    "Forgetting to decrement counts for lessons that left the active segment."
+  ],
+  "follow_up_questions": [
+    "How would this change if each category had a different maximum?",
+    "How would you process lessons as a stream?",
+    "What extra state would late-arriving lesson events require?"
+  ],
+  "suboptimal_solutions": [
+    {
+      "name": "Enumerate every segment",
+      "complexity": "O(n^2)",
+      "description": "Checks many overlapping segments and repeats frequency work."
+    }
+  ],
+  "source_inspiration": [],
+  "do_not_publish_reason": ""
+}
