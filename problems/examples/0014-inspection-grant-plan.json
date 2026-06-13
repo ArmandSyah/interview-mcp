@@ -1,0 +1,67 @@
+{
+  "id": "0014-inspection-grant-plan",
+  "title": "Inspection Grant Plan",
+  "difficulty": "medium",
+  "tags": ["array", "dynamic-programming"],
+  "pattern_tags": ["prefix-dp", "planning"],
+  "pattern_family": "dynamic-programming",
+  "pattern_spec": "batches/2026-05-week3-batch-01/pattern-specs/0010-dp-prefix-state.md",
+  "primary_skill": "Define a prefix state whose transition uses prior best values.",
+  "secondary_skills": ["Recurrence design", "Base cases", "Space optimization"],
+  "interview_signal": "Candidate can model a local compatibility rule without using a greedy choice.",
+  "expected_time_minutes": 30,
+  "description_md": "A compliance team has inspections in a fixed order. Each inspection is [grant_value, cooldown]. If the team accepts inspection i, it earns grant_value but must skip the next cooldown inspections. Return the maximum total grant value the team can earn.",
+  "examples": [
+    {
+      "input": "inspections=[[6,1],[2,1],[8,1],[4,0]]",
+      "output": "14",
+      "explanation": "Accepting inspections 0 and 2 earns 14 while respecting cooldowns."
+    }
+  ],
+  "constraints": [
+    "0 <= len(inspections) <= 100000",
+    "Each inspection is [grant_value, cooldown].",
+    "0 <= grant_value <= 1000000000",
+    "0 <= cooldown <= 100000"
+  ],
+  "starter_code": {
+    "python": "def max_inspection_grants(inspections: list[list[int]]) -> int:\n    pass\n"
+  },
+  "test_cases": {
+    "python": [
+      {"input": [[[6, 1], [2, 1], [8, 1], [4, 0]]], "expected": 14},
+      {"input": [[]], "expected": 0},
+      {"input": [[[5, 0]]], "expected": 5},
+      {"input": [[[5, 2], [100, 0], [100, 0]]], "expected": 200},
+      {"input": [[[10, 1], [1, 0], [10, 0]]], "expected": 20},
+      {"input": [[[7, 3], [6, 0], [6, 0], [6, 0]]], "expected": 18},
+      {"input": [[[4, 0], [5, 1], [6, 0], [1, 0]]], "expected": 11},
+      {"input": [[[8, 2], [9, 3], [7, 0], [7, 0]]], "expected": 22}
+    ]
+  },
+  "canonical_solution_md": "Use dynamic programming over completed suffixes or prefixes. At each inspection, compare skipping it with accepting it and continuing after the blocked cooldown range. The state stores the best value available from a position after all earlier choices have been resolved. This avoids greedy mistakes because a smaller current grant may allow a better later combination.",
+  "fallback_hints": [
+    "A large grant can block several later inspections, so local value alone is not enough.",
+    "Think about the best total available starting from each position in the order.",
+    "At each inspection, compare skipping it with taking it plus the best compatible future total."
+  ],
+  "common_mistakes": [
+    "Greedily taking the largest visible grant.",
+    "Forgetting that cooldown can skip more than one following inspection.",
+    "Failing to handle empty or single-inspection inputs."
+  ],
+  "follow_up_questions": [
+    "How would you recover which inspections were accepted?",
+    "What changes if cooldowns are measured by calendar date instead of index count?",
+    "How would negative grant values affect the recurrence?"
+  ],
+  "suboptimal_solutions": [
+    {
+      "name": "Plain recursion",
+      "complexity": "Exponential",
+      "description": "Branches on each inspection without remembering repeated subproblems."
+    }
+  ],
+  "source_inspiration": [],
+  "do_not_publish_reason": ""
+}

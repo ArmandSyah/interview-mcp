@@ -23,6 +23,24 @@ REQUIRED_FIELDS = {
     "fallback_hints",
 }
 
+PROBLEM_FIELDS = {
+    "id",
+    "title",
+    "difficulty",
+    "tags",
+    "pattern_tags",
+    "description_md",
+    "examples",
+    "constraints",
+    "starter_code",
+    "test_cases",
+    "canonical_solution_md",
+    "fallback_hints",
+    "common_mistakes",
+    "follow_up_questions",
+    "suboptimal_solutions",
+}
+
 
 def load_problem_files() -> list[ProblemWrite]:
     problems: list[ProblemWrite] = []
@@ -43,7 +61,8 @@ def load_problem_files() -> list[ProblemWrite]:
             print(f"[seed] skipping {path.name}: missing fields {missing}", file=sys.stderr)
             continue
 
-        problems.append(cast(ProblemWrite, raw))
+        problem_data = {key: raw[key] for key in PROBLEM_FIELDS if key in raw}
+        problems.append(cast(ProblemWrite, problem_data))
 
     return problems
 

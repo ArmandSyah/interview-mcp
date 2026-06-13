@@ -1,0 +1,66 @@
+{
+  "id": "0013-signal-triage-board",
+  "title": "Signal Triage Board",
+  "difficulty": "medium",
+  "tags": ["heap", "array"],
+  "pattern_tags": ["top-k", "streaming"],
+  "pattern_family": "heap",
+  "pattern_spec": "batches/2026-05-week3-batch-01/pattern-specs/0008-heap-streaming-top-k.md",
+  "primary_skill": "Keep only the best k items while scanning a stream.",
+  "secondary_skills": ["Comparator design", "Tie-breaking", "Memory bounds"],
+  "interview_signal": "Candidate can maintain a bounded candidate set and apply tie-breakers before eviction.",
+  "expected_time_minutes": 25,
+  "description_md": "A monitoring system receives signals as [severity, timestamp, signal_id]. Higher severity ranks first. Ties prefer the earlier timestamp, then the smaller signal_id. Return the signal_ids for the top k signals in final ranked order.",
+  "examples": [
+    {
+      "input": "signals=[[5,10,8],[7,12,3],[7,9,4]], k=2",
+      "output": "[4, 3]",
+      "explanation": "The two severity 7 signals rank first, and timestamp 9 comes before timestamp 12."
+    }
+  ],
+  "constraints": [
+    "0 <= len(signals) <= 100000",
+    "0 <= k <= 100000",
+    "Each signal_id is unique.",
+    "severity, timestamp, and signal_id are integers."
+  ],
+  "starter_code": {
+    "python": "def top_triage_signals(signals: list[list[int]], k: int) -> list[int]:\n    pass\n"
+  },
+  "test_cases": {
+    "python": [
+      {"input": [[[5, 10, 8], [7, 12, 3], [7, 9, 4]], 2], "expected": [4, 3]},
+      {"input": [[], 3], "expected": []},
+      {"input": [[[1, 1, 1], [2, 2, 2]], 5], "expected": [2, 1]},
+      {"input": [[[9, 5, 10], [9, 5, 3], [9, 4, 8]], 2], "expected": [8, 3]},
+      {"input": [[[3, 1, 1], [4, 1, 2], [5, 1, 3]], 0], "expected": []},
+      {"input": [[[10, 100, 5], [8, 1, 1], [10, 90, 4], [10, 90, 2]], 3], "expected": [2, 4, 5]},
+      {"input": [[[1, 10, 1], [2, 9, 2], [3, 8, 3], [4, 7, 4]], 2], "expected": [4, 3]}
+    ]
+  },
+  "canonical_solution_md": "Maintain a bounded set of the current best k signals while scanning the stream. The comparison must encode severity, timestamp, and signal_id so the weakest kept signal can be evicted correctly. After all signals are processed, order the kept candidates by the final ranking and use their ids as the answer. This keeps memory proportional to k rather than the full stream.",
+  "fallback_hints": [
+    "Only the best k signals need to survive the full scan.",
+    "The tie-breakers need to be part of the ranking before anything is discarded.",
+    "Keep a bounded structure whose easiest item to remove is the weakest currently kept signal."
+  ],
+  "common_mistakes": [
+    "Sorting the entire stream after each signal arrives.",
+    "Applying timestamp or id tie-breakers only after eviction.",
+    "Using a heap direction that evicts the strongest signal instead of the weakest kept signal."
+  ],
+  "follow_up_questions": [
+    "How would you support score updates for an existing signal_id?",
+    "What changes if k is much smaller than the stream size?",
+    "How would you return the top k after every prefix of the stream?"
+  ],
+  "suboptimal_solutions": [
+    {
+      "name": "Full sort",
+      "complexity": "O(n log n)",
+      "description": "Works for a single final answer but does not show bounded streaming top-k maintenance."
+    }
+  ],
+  "source_inspiration": [],
+  "do_not_publish_reason": ""
+}
