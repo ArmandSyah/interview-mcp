@@ -1,7 +1,7 @@
 [project]
 name = "interview-mcp"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "Remote and local MCP coaching for Python coding interview practice"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -21,6 +21,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["[0-9][0-9][0-9][0-9]-*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]

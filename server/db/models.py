@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from server.db.base import Base
@@ -25,6 +25,7 @@ class Problem(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     difficulty: Mapped[str] = mapped_column(String, nullable=False)
+    available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     description_md: Mapped[str] = mapped_column(Text, nullable=False)
     canonical_solution_md: Mapped[str] = mapped_column(Text, nullable=False)
@@ -65,6 +66,7 @@ class Attempt(Base):
     __tablename__ = "attempts"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String, nullable=False, default="local", index=True)
     problem_id: Mapped[str] = mapped_column(ForeignKey("problems.id"), nullable=False)
     language: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="in_progress")
@@ -107,3 +109,12 @@ class State(Base):
 
     def __repr__(self) -> str:
         return f"<State key={self.key!r} value={self.value!r}>"
+
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    key_hash: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    revoked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

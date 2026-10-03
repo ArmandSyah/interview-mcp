@@ -129,6 +129,13 @@ def test_network_unreachable_surfaces_as_transport_error() -> None:
     assert result.exit_code == -1
 
 
+def test_malformed_response_surfaces_as_transport_error() -> None:
+    result = _make_client(
+        httpx.MockTransport(lambda _: httpx.Response(200, json={"unexpected": "response"}))
+    ).execute(language="python", version="3.12.0", code="print(1)")
+    assert result.transport_error == "piston returned an invalid execution response"
+
+
 def test_piston_5xx_surfaces_as_transport_error() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(503, text="upstream busy")
