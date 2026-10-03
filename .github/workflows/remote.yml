@@ -1,0 +1,43 @@
+name: Remote integration
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  remote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen --dev
+      - name: Start real containers
+        run: docker compose -f compose.remote.yml up -d --build --wait --wait-timeout 180
+      - name: Install the sandbox Python runtime
+        run: |
+          docker compose -f compose.remote.yml exec -T server python -c "import httpx; r=httpx.post('http://piston:2000/api/v2/packages', json={'language':'python','version':'3.12.0'}, timeout=300); r.raise_for_status()"
+      - name: Exercise MCP against real Piston
+        run: |
+          SMOKE_KEY=$(docker compose -f compose.remote.yml exec -T server python -m server.auth create-key ci-smoke)
+          echo "::add-mask::$SMOKE_KEY"
+          export INTERVIEW_MCP_API_KEY="$SMOKE_KEY"
+          uv run python scripts/smoke_remote.py --url http://127.0.0.1:8000/mcp --expected-problems 5
+      - name: Container logs on failure
+        if: failure()
+        run: |
+          docker compose -f compose.remote.yml logs --tail 150
+          PISTON_CONTAINER=$(docker compose -f compose.remote.yml ps -aq piston)
+          if [ -n "$PISTON_CONTAINER" ]; then
+            docker inspect --format '{{json .State.Health}}' "$PISTON_CONTAINER"
+          fi
+      - name: Stop containers
+        if: always()
+        run: docker compose -f compose.remote.yml down

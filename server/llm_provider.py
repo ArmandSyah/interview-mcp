@@ -39,7 +39,9 @@ class AnthropicProvider:
         super().__init__()
         from anthropic import Anthropic
 
-        self._client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        self._client = Anthropic(
+            api_key=os.environ["ANTHROPIC_API_KEY"], timeout=15.0, max_retries=0
+        )
 
     def generate(self, system: str, user: str, max_tokens: int = 400) -> str:
         message = self._client.messages.create(
@@ -73,4 +75,13 @@ def get_provider() -> LLMProvider:
     name = os.environ.get("LLM_PROVIDER", "anthropic").lower()
     if name == "anthropic":
         return AnthropicProvider()  # <- AnthropicProvider.__init__ reads the API key here
+    if name == "fallback":
+        return FallbackProvider()
     raise ValueError(f"Unknown LLM_PROVIDER '{name}'")
+
+
+class FallbackProvider:
+    """Allow practice using curated hints without an external LLM account."""
+
+    def generate(self, system: str, user: str, max_tokens: int = 400) -> str:
+        raise RuntimeError("Curated hint mode is enabled.")

@@ -228,6 +228,27 @@ def test_mark_completed_clears_active() -> None:
     assert repo.get_active_attempt() is None
 
 
+def test_completing_older_attempt_preserves_new_active_attempt() -> None:
+    repo.upsert_problem(SAMPLE_PROBLEM)
+    older = repo.create_attempt(SAMPLE_PROBLEM["id"], "python")
+    newer = repo.create_attempt(SAMPLE_PROBLEM["id"], "python")
+    repo.mark_completed(older.id)
+    assert repo.get_active_attempt().id == newer.id
+
+
+def test_retired_problem_hidden_from_catalog_preserves_attempt_history() -> None:
+    repo.upsert_problem(SAMPLE_PROBLEM)
+    repo.upsert_problem(SAMPLE_PROBLEM_2)
+    attempt = repo.create_attempt(SAMPLE_PROBLEM["id"], "python")
+    repo.hide_removed_problems([SAMPLE_PROBLEM_2["id"]])
+    assert [problem.id for problem in repo.list_problems()] == [SAMPLE_PROBLEM_2["id"]]
+    assert repo.get_problem(SAMPLE_PROBLEM["id"], available_only=True) is None
+    assert repo.get_problem(SAMPLE_PROBLEM["id"]) is not None
+    assert repo.get_attempt(attempt.id) is not None
+    repo.upsert_problem(SAMPLE_PROBLEM)
+    assert repo.get_problem(SAMPLE_PROBLEM["id"], available_only=True) is not None
+
+
 def test_mark_completed_on_missing_id_does_not_raise() -> None:
     # should silently do nothing, not raise
     repo.mark_completed("does-not-exist")

@@ -1,0 +1,10 @@
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!server/
+!server/**
+!problems/
+!problems/examples/
+!problems/examples/*.json
+server/**/__pycache__/

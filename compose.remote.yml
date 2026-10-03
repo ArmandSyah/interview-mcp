@@ -1,0 +1,34 @@
+# Local integration stack. Production hostname/TLS configuration belongs in the private ops repo.
+services:
+  server:
+    build: .
+    environment:
+      PISTON_BASE_URL: http://piston:2000
+      LLM_PROVIDER: fallback
+    ports: ['127.0.0.1:8000:8000']
+    volumes: [server_data:/data]
+    depends_on:
+      piston:
+        condition: service_healthy
+    restart: unless-stopped
+
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    privileged: true
+    environment:
+      PISTON_DISABLE_NETWORKING: 'true'
+      PISTON_MAX_CONCURRENT_JOBS: '4'
+      PISTON_OUTPUT_MAX_SIZE: '65536'
+      PISTON_RUN_MEMORY_LIMIT: '268435456'
+    volumes: [piston_data:/piston/packages]
+    tmpfs: [/tmp:exec]
+    healthcheck:
+      test: [CMD, node, '-e', "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>{if(r.statusCode!==200)process.exit(1);r.resume()}).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  server_data:
+  piston_data:

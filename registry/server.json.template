@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ArmandSyah/interview-mcp",
+  "title": "Interview MCP",
+  "description": "Python coding interview practice with progressive hints, sandboxed tests and private progress.",
+  "repository": {
+    "url": "https://github.com/ArmandSyah/interview-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/ArmandSyah/interview-mcp#remote-connection",
+  "version": "0.2.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "${MCP_URL}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer <your personal key issued by the server operator>",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

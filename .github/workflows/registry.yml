@@ -1,0 +1,40 @@
+name: Publish to MCP Registry
+
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: 'Live HTTPS MCP URL, for example https://mcp.your-domain.com/mcp'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen --dev
+      - name: Create metadata and verify the authenticated live service
+        env:
+          MCP_URL: ${{ inputs.endpoint }}
+          INTERVIEW_MCP_API_KEY: ${{ secrets.REGISTRY_SMOKE_API_KEY }}
+        run: |
+          uv run python scripts/make_registry_manifest.py --url "$MCP_URL"
+          uv run python scripts/smoke_remote.py --url "$MCP_URL" --check-only
+      - name: Install official publisher
+        run: |
+          curl --fail --location --retry 3 -o publisher.tar.gz https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz
+          tar -xzf publisher.tar.gz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher validate server.json
+      - run: ./mcp-publisher publish server.json

@@ -90,18 +90,27 @@ class PistonClient:
                 transport_error=f"piston rejected request: {response.status_code}",
             )
 
-        body = response.json()
-        run = body.get("run", {})
-        raw_code = run.get("code")
-        exit_code = int(raw_code) if raw_code is not None else -1
-
-        return ExecutionResult(
-            stdout=run.get("stdout", ""),
-            stderr=run.get("stderr", ""),
-            exit_code=exit_code,
-            timed_out=run.get("signal") == "SIGKILL",
-            wall_time_ms=int(run.get("wall_time", 0) or 0),
-        )
+        try:
+            body = response.json()
+            run = body["run"]
+            raw_code = run.get("code")
+            exit_code = int(raw_code) if raw_code is not None else -1
+            return ExecutionResult(
+                stdout=run.get("stdout", ""),
+                stderr=run.get("stderr", ""),
+                exit_code=exit_code,
+                timed_out=run.get("signal") == "SIGKILL",
+                wall_time_ms=int(run.get("wall_time", 0) or 0),
+            )
+        except (ValueError, KeyError, TypeError, AttributeError):
+            return ExecutionResult(
+                stdout="",
+                stderr="",
+                exit_code=-1,
+                timed_out=False,
+                wall_time_ms=0,
+                transport_error="piston returned an invalid execution response",
+            )
 
     def close(self) -> None:
         """Close the underlying HTTP client."""
