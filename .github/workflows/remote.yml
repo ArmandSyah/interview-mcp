@@ -32,7 +32,12 @@ jobs:
           uv run python scripts/smoke_remote.py --url http://127.0.0.1:8000/mcp --expected-problems 5
       - name: Container logs on failure
         if: failure()
-        run: docker compose -f compose.remote.yml logs --tail 150
+        run: |
+          docker compose -f compose.remote.yml logs --tail 150
+          PISTON_CONTAINER=$(docker compose -f compose.remote.yml ps -aq piston)
+          if [ -n "$PISTON_CONTAINER" ]; then
+            docker inspect --format '{{json .State.Health}}' "$PISTON_CONTAINER"
+          fi
       - name: Stop containers
         if: always()
         run: docker compose -f compose.remote.yml down

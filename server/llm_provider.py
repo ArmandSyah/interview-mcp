@@ -39,7 +39,9 @@ class AnthropicProvider:
         super().__init__()
         from anthropic import Anthropic
 
-        self._client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        self._client = Anthropic(
+            api_key=os.environ["ANTHROPIC_API_KEY"], timeout=15.0, max_retries=0
+        )
 
     def generate(self, system: str, user: str, max_tokens: int = 400) -> str:
         message = self._client.messages.create(

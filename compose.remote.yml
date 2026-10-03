@@ -23,7 +23,7 @@ services:
     volumes: [piston_data:/piston/packages]
     tmpfs: [/tmp:exec]
     healthcheck:
-      test: [CMD, node, '-e', "fetch('http://127.0.0.1:2000/api/v2/runtimes').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test: [CMD, node, '-e', "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>{if(r.statusCode!==200)process.exit(1);r.resume()}).on('error',()=>process.exit(1))"]
       interval: 5s
       timeout: 5s
       retries: 20
