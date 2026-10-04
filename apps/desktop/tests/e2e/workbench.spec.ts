@@ -156,14 +156,14 @@ test('real desktop: browse, edit, hints, save/reopen, and a model-to-MCP tool lo
   }
 });
 
-test('desktop run/submit against a real local Piston sandbox', async () => {
+test('desktop run/submit against a real local Piston sandbox', async ({}, testInfo) => {
   test.skip(
     process.env.INTERVIEW_DESKTOP_TEST_PISTON !== '1',
     'Real Docker/Piston execution is enabled in desktop CI',
   );
   const app = await launch(await mkdtemp(join(tmpdir(), 'interview-desktop-piston-')));
+  const page = await app.firstWindow();
   try {
-    const page = await app.firstWindow();
     await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: /Delivery Hold Clusters/ }).click();
     const editor = page.locator('.monaco-editor textarea');
@@ -173,10 +173,16 @@ test('desktop run/submit against a real local Piston sandbox', async () => {
     await page.getByRole('button', { name: 'Run tests', exact: true }).click();
     await expect
       .poll(
-        async () =>
-          (await page.evaluate(() => window.interview.snapshot())).sessions[0]?.result?.all_passed,
+        async () => {
+          const state = await page.evaluate(() => window.interview.snapshot());
+          return !state.busy && !!(state.error || state.sessions[0]?.result);
+        },
+        { timeout: 30_000 },
       )
-      .toBe(false);
+      .toBe(true);
+    const failed = await page.evaluate(() => window.interview.snapshot());
+    expect(failed.error).toBeNull();
+    expect(failed.sessions[0].result?.all_passed).toBe(false);
     const solution =
       'def merge_delivery_holds(holds, grace_days):\n    merged = []\n    for start, end in sorted(holds):\n        if merged and start - merged[-1][1] <= grace_days:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged\n';
     await editor.focus();
@@ -185,13 +191,36 @@ test('desktop run/submit against a real local Piston sandbox', async () => {
     await page.getByRole('button', { name: 'Submit', exact: true }).click();
     await expect
       .poll(
-        async () => (await page.evaluate(() => window.interview.snapshot())).sessions[0]?.submitted,
+        async () => {
+          const state = await page.evaluate(() => window.interview.snapshot());
+          return (
+            !state.busy &&
+            !!(state.error || (state.sessions[0]?.result && !state.sessions[0].resultStale))
+          );
+        },
+        { timeout: 30_000 },
       )
       .toBe(true);
+    const snapshot: Snapshot = await page.evaluate(() => window.interview.snapshot());
+    expect(snapshot.error).toBeNull();
+    expect(snapshot.sessions[0].code).toBe(solution);
+    expect(snapshot.sessions[0].result).toMatchObject({
+      all_passed: true,
+      tests_passed: 7,
+      tests_total: 7,
+    });
+    expect(snapshot.sessions[0].submitted).toBe(true);
     await expect(page.getByText('Attempt completed', { exact: true })).toBeVisible();
     await expect(page.getByText('7 of 7 tests passed')).toBeVisible();
-    const snapshot: Snapshot = await page.evaluate(() => window.interview.snapshot());
     expect(snapshot.progress).toContain('completed');
+    await page.screenshot({ path: 'test-results/workbench-tests-passed.png', fullPage: true });
+  } catch (error) {
+    await testInfo.attach('sandbox-workspace', {
+      body: JSON.stringify(await page.evaluate(() => window.interview.snapshot()), null, 2),
+      contentType: 'application/json',
+    });
+    await page.screenshot({ path: 'test-results/workbench-tests-failed.png', fullPage: true });
+    throw error;
   } finally {
     await app.close();
   }
