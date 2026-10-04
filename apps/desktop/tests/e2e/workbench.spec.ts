@@ -1,4 +1,10 @@
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -6,6 +12,25 @@ import { createServer, type Server } from 'node:http';
 import type { Snapshot } from '../../src/shared/types';
 
 const appRoot = resolve('.');
+
+async function pasteCode(page: Page, text: string): Promise<void> {
+  const editor = page.locator('.monaco-editor textarea');
+  await editor.focus();
+  await page.keyboard.press('Control+a');
+  // Exercise the editor's paste handler without overwriting the user's OS clipboard.
+  // insertText simulates typing, which applies Python auto-indent to every newline.
+  await editor.evaluate((element, contents) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', contents);
+    element.dispatchEvent(
+      new ClipboardEvent('paste', {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, text);
+}
 async function launch(data: string): Promise<ElectronApplication> {
   return electron.launch({
     ...(process.env.INTERVIEW_DESKTOP_EXECUTABLE
@@ -47,14 +72,12 @@ test('real desktop: browse, edit, hints, save/reopen, and a model-to-MCP tool lo
     await expect(page.getByRole('heading', { name: /Delivery Hold Clusters/ })).toBeVisible();
     await page.getByRole('button', { name: 'solution.py', exact: true }).click();
     const editor = page.locator('.monaco-editor textarea');
-    await editor.focus();
-    await page.keyboard.press('Control+a');
-    await page.keyboard.insertText(
-      '# saved interview draft\ndef merge_delivery_holds(holds, grace_days):\n    pass\n',
-    );
+    const draft =
+      '# saved interview draft\ndef merge_delivery_holds(holds, grace_days):\n    pass\n';
+    await pasteCode(page, draft);
     await expect
       .poll(async () => (await page.evaluate(() => window.interview.snapshot())).sessions[0]?.code)
-      .toContain('# saved interview draft');
+      .toBe(draft);
     await page.getByRole('button', { name: 'Hint', exact: true }).click();
     await expect
       .poll(
@@ -166,10 +189,7 @@ test('desktop run/submit against a real local Piston sandbox', async ({}, testIn
   try {
     await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: /Delivery Hold Clusters/ }).click();
-    const editor = page.locator('.monaco-editor textarea');
-    await editor.focus();
-    await page.keyboard.press('Control+a');
-    await page.keyboard.insertText('def merge_delivery_holds(holds, grace_days): return []');
+    await pasteCode(page, 'def merge_delivery_holds(holds, grace_days): return []');
     await page.getByRole('button', { name: 'Run tests', exact: true }).click();
     await expect
       .poll(
@@ -185,9 +205,7 @@ test('desktop run/submit against a real local Piston sandbox', async ({}, testIn
     expect(failed.sessions[0].result?.all_passed).toBe(false);
     const solution =
       'def merge_delivery_holds(holds, grace_days):\n    merged = []\n    for start, end in sorted(holds):\n        if merged and start - merged[-1][1] <= grace_days:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged\n';
-    await editor.focus();
-    await page.keyboard.press('Control+a');
-    await page.keyboard.insertText(solution);
+    await pasteCode(page, solution);
     await page.getByRole('button', { name: 'Submit', exact: true }).click();
     await expect
       .poll(
