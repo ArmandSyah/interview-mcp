@@ -4,6 +4,15 @@ Coding interview practice through MCP: browse Python problems, start an attempt,
 receive progressive hints, run sandboxed tests, submit solutions, and track progress.
 Supports local stdio and authenticated remote Streamable HTTP.
 
+## Standalone desktop app
+
+[Interview Workbench](apps/desktop/README.md) is the local-first desktop client:
+problem explorer, Monaco Python editor, test results, saved progress, and an optional
+MCP-connected AI coach. No VPS or domain is required. AI is off by default; curated
+hints work without an API key or model download. Packaged builds include the Python
+MCP engine and the five public examples. Running solution tests requires the
+local Docker/Piston sandbox. See the desktop guide for setup and build commands.
+
 ## Remote connection
 
 The public hosted endpoint has not been provisioned yet. Once deployed, connect

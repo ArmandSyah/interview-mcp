@@ -1,0 +1,26 @@
+# Local-only code sandbox for the desktop app. Never expose port 2000 publicly.
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    privileged: true
+    restart: unless-stopped
+    ports: ['127.0.0.1:2000:2000']
+    environment:
+      PISTON_DISABLE_NETWORKING: 'true'
+      PISTON_MAX_CONCURRENT_JOBS: '4'
+      PISTON_OUTPUT_MAX_SIZE: '65536'
+      PISTON_RUN_MEMORY_LIMIT: '268435456'
+    volumes: [desktop_piston_data:/piston/packages]
+    tmpfs: [/tmp:exec]
+    mem_limit: 2g
+    cpus: 1.5
+    healthcheck:
+      test: [CMD, node, '-e', "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>{if(r.statusCode!==200)process.exit(1);r.resume()}).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+volumes:
+  desktop_piston_data:

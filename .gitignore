@@ -10,3 +10,10 @@ htmlcov/
 .ruff_cache/
 docs/
 server.json
+node_modules/
+apps/desktop/dist/
+apps/desktop/release/
+apps/desktop/backend/
+apps/desktop/test-results/
+apps/desktop/playwright-report/
+build/

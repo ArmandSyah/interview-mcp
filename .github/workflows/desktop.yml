@@ -1,0 +1,117 @@
+name: Desktop
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, feat/interview-desktop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen --dev
+        working-directory: .
+      - name: Native window dependencies
+        run: sudo apt-get update && sudo apt-get install -y libnss3 libasound2t64 xvfb
+      - run: npm ci
+      - run: npm run install:electron
+      - run: npm run format:check
+      - run: npm run backend
+      - run: npm run build
+      - run: npm test
+      - name: Start the local sandbox
+        working-directory: .
+        run: docker compose -f compose.desktop.yml up -d --wait --wait-timeout 180
+      - name: Install Python in the sandbox
+        working-directory: .
+        run: uv run python -c "import httpx; r=httpx.post('http://127.0.0.1:2000/api/v2/packages', json={'language':'python','version':'3.12.0'}, timeout=300); r.raise_for_status()"
+      - name: Desktop UI and real Piston
+        run: xvfb-run -a npm run test:desktop
+        env:
+          INTERVIEW_DESKTOP_TEST_PISTON: '1'
+      - name: Build standalone packages
+        run: npx electron-builder --linux --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Test the standalone app
+        run: xvfb-run -a npm run test:desktop
+        env:
+          INTERVIEW_DESKTOP_EXECUTABLE: ${{ github.workspace }}/apps/desktop/release/linux-unpacked/interview-workbench
+          INTERVIEW_DESKTOP_TEST_PISTON: '1'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: interview-workbench-linux
+          path: |
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            compose.desktop.yml
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-ui-results
+          path: apps/desktop/test-results
+      - name: Sandbox logs on failure
+        if: failure()
+        working-directory: .
+        run: docker compose -f compose.desktop.yml logs --tail 100
+      - name: Stop sandbox
+        if: always()
+        working-directory: .
+        run: docker compose -f compose.desktop.yml down
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen --dev
+        working-directory: .
+      - run: npm ci
+      - run: npm run install:electron
+      - run: npm run backend
+      - run: npm run build
+      - run: npm test
+      - run: npx electron-builder --win --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Test Windows standalone app
+        run: npm run test:desktop
+        env:
+          INTERVIEW_DESKTOP_EXECUTABLE: ${{ github.workspace }}/apps/desktop/release/win-unpacked/Interview Workbench.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: interview-workbench-windows
+          path: |
+            apps/desktop/release/*.exe
+            compose.desktop.yml
+          if-no-files-found: error
