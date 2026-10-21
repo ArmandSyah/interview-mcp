@@ -466,6 +466,13 @@ def test_local_reports_are_owned_idempotent_and_explicitly_not_server_verified(
     assert "permission denied" in database.sql(
         "set role authenticated; select * from public.iwb_local_executions", success=False
     )
+    later_report = local_report(plan, submitted=True)
+    later_report["tests"][0]["error"] = "A later draft failed"
+    assert database.call("record_local_execution", later_report)["completed"] is False
+    assert (
+        database.sql(f"select status from public.iwb_attempts where id='{attempt_id}'")
+        == "completed"
+    )
     assert "permission denied" in database.sql(
         "set role authenticated; select iwb_private.iwb_practice('list_problems','{}')",
         success=False,

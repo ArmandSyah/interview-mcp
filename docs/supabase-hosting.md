@@ -159,6 +159,10 @@ Both return forms identify their source as `local_report` and their verification
 
 Malformed data, incorrect case counts, and changed retries cause errors without a partial report.
 The function does not change completion status after a failed submission.
+
+`completed` describes the current submission, not an earlier successful submission.
+A failed submission returns `completed: false`. It does not reopen an attempt that was already completed.
+
 The report protocol uses JSON equality. It distinguishes Boolean values from numbers.
 These report rules do not change the local Python engine's comparison rules.
 
