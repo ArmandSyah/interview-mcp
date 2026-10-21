@@ -5,6 +5,8 @@ Product names, file names, command names, and UI labels keep their specified for
 
 | Term | Meaning |
 | --- | --- |
+| execution plan | Saved test inputs and expected results for one coding attempt. The desktop uses this data for local execution. |
+| local execution report | Results that the desktop sends after local code execution. The remote server does not verify that execution. |
 | practice preview | An incomplete remote service for development. It is not a public release. |
 | account | A hosted identity for optional sign-in and purchase recovery. No account is necessary for local practice. |
 | AI coach | The optional app component that sends practice text to a model and displays its response. |

@@ -110,7 +110,13 @@ export function createHandler(
           practice_tools_available: !!practice,
           hosted_code_execution: false,
           capabilities: practice
-            ? ['coding_catalog', 'coding_attempts', 'curated_hints', 'system_design']
+            ? [
+              'coding_catalog',
+              'coding_attempts',
+              'curated_hints',
+              'system_design',
+              'local_execution_reports',
+            ]
             : [],
         };
         return {

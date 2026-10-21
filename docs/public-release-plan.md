@@ -45,7 +45,9 @@ Sign-out must not erase local drafts or purchased packs.
 
 The Python HTTP server uses database-issued bearer keys. It does not accept Supabase session tokens.
 The Supabase Edge Function accepts verified Supabase account tokens.
-These are different servers. The desktop account connection is not implemented.
+These are different servers.
+The desktop can use an operator-supplied Supabase account token.
+Automatic sign-in and token refresh are not implemented.
 
 An identity provider identifies the user and supplies a session token.
 The private Edge Function uses Supabase Auth for token verification.

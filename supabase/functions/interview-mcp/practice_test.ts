@@ -74,7 +74,7 @@ Deno.test('MCP dispatch validates practice arguments and does not advertise unav
       }),
     );
     const tools = (await client.listTools()).tools.map((tool) => tool.name);
-    assertEquals(tools.length, 17);
+    assertEquals(tools.length, 19);
     for (
       const missing of [
         'run_tests',

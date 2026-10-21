@@ -260,7 +260,11 @@ The archive contains practice data, image assets, and installed content, but no 
 There is no archive restore UI.
 Keep the archive private because it contains personal data.
 
-The app uses different workspaces for different remote server and key identities.
+The app uses different workspaces for different remote servers and account identities.
+Supabase accounts keep the same workspace when an operator replaces an expired token.
+Other remote servers keep the earlier bearer-key workspace behavior.
+See the [Supabase preview guide](../../docs/supabase-hosting.md#desktop-connection) for manual account access and local execution reports.
+
 The default public catalog has five coding examples and five design briefs.
 To use a larger corpus, select an accepted runtime JSON export in Settings.
 Do not select a private authoring repository.

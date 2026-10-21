@@ -192,33 +192,6 @@ export function SettingsDialog({
                   Choose an exported runtime folder, not the authoring repo. Your private questions
                   never enter the app distribution.
                 </p>
-                <label>
-                  Piston sandbox URL
-                  <input
-                    value={values.pistonUrl}
-                    disabled={values.managedSandbox}
-                    onChange={(event) => field('pistonUrl', event.target.value)}
-                    required
-                  />
-                </label>
-                <SandboxSettings
-                  enabled={values.managedSandbox}
-                  beforeAction={beforeAction}
-                  onEnabled={() => {
-                    field('managedSandbox', true);
-                    field('pistonUrl', MANAGED_PISTON_URL);
-                  }}
-                />
-                {(settings.managedSandbox || values.managedSandbox) && (
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={values.managedSandbox}
-                      onChange={(event) => field('managedSandbox', event.target.checked)}
-                    />
-                    Automatically start the app-owned sandbox when running code
-                  </label>
-                )}
               </>
             ) : (
               <>
@@ -232,12 +205,14 @@ export function SettingsDialog({
                   />
                 </label>
                 <label>
-                  Personal MCP bearer key
+                  MCP bearer key or account token
                   <input
                     type="password"
                     autoComplete="off"
                     placeholder={
-                      settings.hasMcpKey ? 'Key saved — leave blank to keep it' : 'imcp_…'
+                      settings.hasMcpKey
+                        ? 'Credential saved — leave blank to keep it'
+                        : 'Bearer credential'
                     }
                     onChange={(event) => field('mcpKey', event.target.value)}
                   />
@@ -250,10 +225,43 @@ export function SettingsDialog({
                   Remove saved MCP key
                 </label>
                 <p className="form-note">
-                  Each server/key combination gets its own local workspace to prevent account
-                  mixing.
+                  Supabase accounts keep the same workspace when you replace an expired token. Other
+                  servers use a different workspace for each bearer key. Account sign-in is not
+                  available in this preview.
+                </p>
+                <p className="form-note warning">
+                  The remote service receives hint requests, design evidence, and test reports. Use
+                  the local engine to keep practice records on your computer. A different remote
+                  server can receive code for execution.
                 </p>
               </>
+            )}
+            <label>
+              Local Piston URL
+              <input
+                value={values.pistonUrl}
+                disabled={values.managedSandbox}
+                onChange={(event) => field('pistonUrl', event.target.value)}
+                required
+              />
+            </label>
+            <SandboxSettings
+              enabled={values.managedSandbox}
+              beforeAction={beforeAction}
+              onEnabled={() => {
+                field('managedSandbox', true);
+                field('pistonUrl', MANAGED_PISTON_URL);
+              }}
+            />
+            {(settings.managedSandbox || values.managedSandbox) && (
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={values.managedSandbox}
+                  onChange={(event) => field('managedSandbox', event.target.checked)}
+                />
+                Start the app-owned sandbox for local code execution
+              </label>
             )}
           </fieldset>
           <DistributionSettings beforeAction={beforeAction} />
@@ -263,7 +271,11 @@ export function SettingsDialog({
             </p>
           )}
           <footer>
-            <span>Files and progress stay on your machine.</span>
+            <span>
+              {values.connection === 'local'
+                ? 'Practice records stay on your computer.'
+                : 'Draft files stay local. Remote practice records go to the selected service.'}
+            </span>
             <button className="primary" disabled={saving}>
               {saving ? 'Connecting…' : 'Save & connect'}
             </button>

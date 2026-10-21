@@ -70,6 +70,33 @@ describe('workspace persistence', () => {
     await expect(store.persist()).rejects.toThrow('saving is disabled');
     expect(await readFile(join(root, 'workspace.json'), 'utf8')).toBe('{broken');
   });
+  it('keeps account drafts across token refresh, restart, and offline access without moving files', async () => {
+    const store = new LocalStore(await mkdtemp(join(tmpdir(), 'interview-account-store-')));
+    await store.load();
+    store.state.settings.connection = 'remote';
+    store.state.settings.mcpUrl = 'https://example.supabase.co/functions/v1/interview-mcp';
+    const account = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      issuer: 'https://example.supabase.co/auth/v1',
+    };
+    const old = store.scope('token-one');
+    store.workspace(old).activeProblemId = '0001-test';
+    expect(store.bindAccount('token-one', account)).toBe(old);
+    expect(store.bindAccount('token-two', account)).toBe(old);
+    await store.persist();
+    const restored = new LocalStore(store.root);
+    await restored.load();
+    expect(restored.scope('token-two')).toBe(old);
+    expect(restored.workspace(restored.scope('token-two')).activeProblemId).toBe('0001-test');
+    const other = { ...account, userId: '22222222-2222-4222-8222-222222222222' };
+    expect(restored.bindAccount('token-three', other)).not.toBe(old);
+    // A credential reassigned to another verified account must not expose old drafts.
+    expect(restored.bindAccount('token-two', other)).not.toBe(old);
+    expect(restored.workspace(old).activeProblemId).toBe('0001-test');
+    restored.state.settings.mcpUrl = 'https://other.supabase.co/functions/v1/interview-mcp';
+    expect(restored.scope('token-one', account)).not.toBe(old);
+    expect(await readFile(join(store.root, 'workspace.json'), 'utf8')).not.toContain('token-one');
+  });
   it.each([
     { managedSandbox: 'yes' },
     { managedSandbox: true, pistonUrl: 'http://127.0.0.1:2999' },

@@ -12,10 +12,11 @@ No model, API key, Docker, or hosting account is necessary for curated hints and
 Select **System design** to open the built-in whiteboard. Select **Coding** to return to the editor.
 See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
 See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
-Accounts and checkout are proposals, not available app features.
+Account registration and checkout are proposals, not available app features.
 
 The [Supabase preview](docs/supabase-hosting.md) supplies remote hints and system-design tools.
-Desktop account access and remote code execution are not available.
+The desktop accepts an operator-supplied account token. Account registration and automatic sign-in are not available.
+Remote attempts use local Docker for code execution. Supabase stores personal reports, not server-verified grades.
 The [term list](docs/terminology.md) gives the meanings of app terms in this guide.
 
 ## Agent workflow demo

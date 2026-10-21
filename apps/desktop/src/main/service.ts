@@ -51,7 +51,7 @@ export const settingsSchema = z
     connection: z.enum(['local', 'remote']),
     mcpUrl: z.string().max(1000),
     apiKey: z.string().max(500).optional(),
-    mcpKey: z.string().max(500).optional(),
+    mcpKey: z.string().max(8192).optional(),
     clearApiKey: z.boolean().optional(),
     clearMcpKey: z.boolean().optional(),
   })
@@ -185,7 +185,10 @@ export class WorkbenchService {
     this.publish();
     try {
       await this.mcp.connect(this.store.state.settings, this.mcpKey);
-      this.scope = this.store.scope(this.mcpKey);
+      this.scope = this.mcp.accountIdentity
+        ? this.store.bindAccount(this.mcpKey, this.mcp.accountIdentity)
+        : this.store.scope(this.mcpKey);
+      if (this.mcp.accountIdentity) await this.store.persist();
       this.problems = await this.mcp.call<Problem[]>('list_problems', {});
       this.progress = await this.mcp.call<string>('get_progress', {});
       this.designProblems = this.mcp.tools.some((tool) => tool.name === 'list_design_problems')
@@ -234,10 +237,7 @@ export class WorkbenchService {
       )
         throw new Error('Use HTTPS for a remote MCP connection');
     }
-    if (
-      this.store.state.settings.managedSandbox &&
-      (!settings.managedSandbox || settings.connection !== 'local')
-    )
+    if (this.store.state.settings.managedSandbox && !settings.managedSandbox)
       await this.sandbox?.stop();
     this.store.state.settings = settings;
     if (clearApiKey) this.apiKey = '';
@@ -278,8 +278,8 @@ export class WorkbenchService {
   async enableSandbox(): Promise<SandboxStatus> {
     this.idle();
     if (!this.sandbox) throw new Error('Sandbox manager is unavailable');
-    if (this.store.state.settings.connection !== 'local')
-      throw new Error('Switch to the local engine before enabling local execution.');
+    if (this.store.state.settings.connection !== 'local' && !this.mcp.usesLocalExecution)
+      throw new Error('This remote server does not support local code execution');
     this.busy = true;
     this.publish();
     let status: SandboxStatus;
@@ -878,7 +878,7 @@ export class WorkbenchService {
     const invoke = () => this.mcp.call(name, input, signal);
     const value =
       ['run_tests', 'submit_solution'].includes(name) &&
-      this.store.state.settings.connection === 'local' &&
+      (this.store.state.settings.connection === 'local' || this.mcp.usesLocalExecution) &&
       this.store.state.settings.managedSandbox
         ? await (this.sandbox
             ? this.sandbox.withExecution(invoke)

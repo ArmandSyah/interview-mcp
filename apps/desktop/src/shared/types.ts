@@ -17,6 +17,8 @@ export type TestCase = {
   wall_time_ms: number;
 };
 export type TestRun = {
+  execution_source?: 'local_report';
+  verification?: 'not_server_verified';
   attempt_id: string;
   problem_id: string;
   tests_total: number;

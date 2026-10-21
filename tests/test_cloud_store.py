@@ -158,8 +158,8 @@ def database():
               $$ select (auth.jwt()->>'sub')::uuid $$;
         """)
         db.sql(f"insert into auth.users values ('{ALICE}'), ('{BOB}');")
-        db.sql((ROOT / "supabase/migrations/20261021142401_practice_store.sql").read_text())
-        db.sql(OUTPUT.read_text())
+        for migration in sorted((ROOT / "supabase/migrations").glob("*.sql")):
+            db.sql(migration.read_text())
         yield db
     finally:
         # The exact container belongs to this fixture. No named volume exists.
@@ -398,6 +398,102 @@ def test_compact_diagram_byte_limit_keeps_spaces_in_labels(database: Database) -
     assert size() == 700_001
     assert "too large" in database.call(
         "save_design_checkpoint", {**arguments, "checkpoint_id": str(uuid4())}, success=False
+    )
+
+
+def local_report(plan, *, submitted=False):
+    return {
+        "attempt_id": plan["attempt_id"],
+        "execution_id": str(uuid4()),
+        "code_digest": "b" * 64,
+        "submitted": submitted,
+        "tests": [
+            {
+                "index": index,
+                "actual": case["expected"],
+                "user_stdout": "",
+                "user_stderr": "",
+                "error": None,
+                "wall_time_ms": 1,
+            }
+            for index, case in enumerate(plan["test_cases"])
+        ],
+    }
+
+
+def test_local_reports_are_owned_idempotent_and_explicitly_not_server_verified(
+    database: Database,
+) -> None:
+    started = database.call("start_problem", {"problem_id": CODING})
+    attempt_id = started["attempt_id"]
+    plan = database.call("get_local_execution_plan", {"attempt_id": attempt_id})
+    assert plan["function_name"] == "fewest_conveyor_steps"
+    assert plan["verification"] == "not_server_verified"
+    assert len(plan["test_cases"]) == 8
+    report = local_report(plan)
+    result = database.call("record_local_execution", report)
+    assert result["all_passed"] and result["tests_total"] == 8
+    assert result["execution_source"] == "local_report"
+    assert result["tests"][0]["input"] == plan["test_cases"][0]["input"]
+    assert database.call("record_local_execution", report) == result
+    assert (
+        database.sql(f"select status from public.iwb_attempts where id='{attempt_id}'")
+        == "in_progress"
+    )
+    assert "immutable" in database.call(
+        "record_local_execution", {**report, "submitted": True}, success=False
+    )
+    for operation, arguments in [
+        ("get_local_execution_plan", {"attempt_id": attempt_id}),
+        ("record_local_execution", report),
+    ]:
+        assert "Attempt not found" in database.call(operation, arguments, owner=BOB, success=False)
+    submitted = local_report(plan, submitted=True)
+    completed = database.call("record_local_execution", submitted)
+    assert completed["completed"] and completed["test_run"]["all_passed"]
+    assert completed["verification"] == "not_server_verified"
+    assert database.call("record_local_execution", submitted) == completed
+    assert (
+        database.sql(
+            f"select count(*) from public.iwb_local_executions where attempt_id='{attempt_id}'"
+        )
+        == "2"
+    )
+    assert (
+        database.sql(f"select status from public.iwb_attempts where id='{attempt_id}'")
+        == "completed"
+    )
+    assert "permission denied" in database.sql(
+        "set role authenticated; select * from public.iwb_local_executions", success=False
+    )
+    assert "permission denied" in database.sql(
+        "set role authenticated; select iwb_private.iwb_practice('list_problems','{}')",
+        success=False,
+    )
+
+
+def test_failed_local_submission_does_not_complete_an_attempt(database: Database) -> None:
+    started = database.call("start_problem", {"problem_id": CODING})
+    attempt_id = started["attempt_id"]
+    plan = database.call("get_local_execution_plan", {"attempt_id": attempt_id})
+    report = local_report(plan, submitted=True)
+    report["tests"][0]["error"] = "Local execution failed"
+    result = database.call("record_local_execution", report)
+    assert result["completed"] is False and result["test_run"]["tests_passed"] == 7
+    assert (
+        database.sql(f"select status from public.iwb_attempts where id='{attempt_id}'")
+        == "in_progress"
+    )
+    forged = {
+        **report,
+        "execution_id": str(uuid4()),
+        "tests": [{**case, "passed": True} for case in report["tests"]],
+    }
+    assert "Invalid local execution report" in database.call(
+        "record_local_execution", forged, success=False
+    )
+    assert "not permitted" in database.call(
+        "record_local_execution", {**report, "owner_id": ALICE}, success=False
     )
 
 

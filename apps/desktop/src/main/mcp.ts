@@ -2,6 +2,9 @@ import { Client, StreamableHTTPClientTransport, type Tool } from '@modelcontextp
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { z } from 'zod';
+import { createHash, randomUUID } from 'node:crypto';
+import { executeLocalPlan, executionPlanSchema } from './local-execution';
 import type { StoredSettings } from './storage';
 
 export const allowedTools = new Set([
@@ -39,10 +42,17 @@ export const allowedTools = new Set([
 export class McpConnection {
   private client: Client | null = null;
   tools: Tool[] = [];
+  accountIdentity: { userId: string; issuer: string } | null = null;
+  private localExecution = false;
+  private pistonUrl = '';
+  get usesLocalExecution(): boolean {
+    return this.localExecution;
+  }
   constructor(
     private readonly root: string,
     private readonly data: string,
     private readonly backend?: string,
+    private readonly pistonFetch: typeof fetch = fetch,
   ) {}
 
   async connect(settings: StoredSettings, key: string): Promise<void> {
@@ -51,7 +61,7 @@ export class McpConnection {
     this.client = client;
     try {
       if (settings.connection === 'remote') {
-        if (!key) throw new Error('Add the personal MCP bearer key in Settings');
+        if (!key) throw new Error('Add an MCP bearer credential in Settings');
         const url = new URL(settings.mcpUrl);
         if (
           url.protocol !== 'https:' &&
@@ -104,7 +114,57 @@ export class McpConnection {
         transport.stderr?.on('data', () => {});
         await client.connect(transport);
       }
-      this.tools = (await client.listTools()).tools.filter((tool) => allowedTools.has(tool.name));
+      const advertised = (await client.listTools()).tools;
+      if (
+        settings.connection === 'remote' &&
+        advertised.some((tool) => tool.name === 'get_connection_identity')
+      ) {
+        const response = await client.callTool({ name: 'get_connection_identity', arguments: {} });
+        if (response.isError) throw new Error('Cannot verify the remote account identity');
+        const raw =
+          response.structuredContent ??
+          JSON.parse(
+            response.content
+              .filter((part) => part.type === 'text')
+              .map((part) => part.text)
+              .join(''),
+          );
+        const identity = z
+          .object({
+            user_id: z.string().uuid(),
+            issuer: z.string().url(),
+            backend: z.literal('supabase'),
+          })
+          .parse(raw);
+        if (identity.issuer !== `${new URL(settings.mcpUrl).origin}/auth/v1`)
+          throw new Error('The account issuer does not agree with the MCP server');
+        // The authenticated server supplies identity. Never decode an unverified JWT.
+        this.accountIdentity = { userId: identity.user_id, issuer: identity.issuer };
+      }
+      this.tools = advertised.filter((tool) => allowedTools.has(tool.name));
+      this.localExecution =
+        !!this.accountIdentity &&
+        ['get_local_execution_plan', 'record_local_execution'].every((name) =>
+          advertised.some((tool) => tool.name === name),
+        );
+      this.pistonUrl = settings.pistonUrl;
+      if (this.localExecution) {
+        for (const name of ['run_tests', 'submit_solution']) {
+          if (this.tools.some((tool) => tool.name === name))
+            throw new Error('The server advertises conflicting execution methods');
+          this.tools.push({
+            name,
+            description:
+              'Execute the saved draft in local Docker and save a personal practice report. This is not a server-verified grade.',
+            inputSchema: {
+              type: 'object',
+              properties: { attempt_id: { type: 'string' }, code: { type: 'string' } },
+              required: ['attempt_id', 'code'],
+              additionalProperties: false,
+            },
+          });
+        }
+      }
       if (!this.tools.some((tool) => tool.name === 'start_problem'))
         throw new Error('Connected server does not expose interview practice tools');
     } catch (error) {
@@ -121,6 +181,44 @@ export class McpConnection {
     if (!this.client) throw new Error('MCP is disconnected. Reconnect in Settings.');
     if (!allowedTools.has(name) || !this.tools.some((tool) => tool.name === name))
       throw new Error('Tool is not permitted');
+    if (this.localExecution && ['run_tests', 'submit_solution'].includes(name)) {
+      const input = z
+        .object({ attempt_id: z.string().uuid(), code: z.string() })
+        .strict()
+        .parse(args);
+      const plan = executionPlanSchema.parse(
+        await this.request('get_local_execution_plan', { attempt_id: input.attempt_id }, signal),
+      );
+      if (plan.attempt_id !== input.attempt_id)
+        throw new Error('The execution plan belongs to a different attempt');
+      const tests = await executeLocalPlan(
+        plan,
+        input.code,
+        this.pistonUrl,
+        signal,
+        this.pistonFetch,
+      );
+      return this.request<T>(
+        'record_local_execution',
+        {
+          attempt_id: input.attempt_id,
+          execution_id: randomUUID(),
+          code_digest: createHash('sha256').update(input.code).digest('hex'),
+          submitted: name === 'submit_solution',
+          tests,
+        },
+        signal,
+      );
+    }
+    return this.request<T>(name, args, signal);
+  }
+
+  private async request<T = unknown>(
+    name: string,
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    if (!this.client) throw new Error('MCP is disconnected');
     const result = await this.client.callTool(
       { name, arguments: args },
       { signal, timeout: 180_000 },
@@ -152,6 +250,9 @@ export class McpConnection {
     const client = this.client;
     this.client = null;
     this.tools = [];
+    this.accountIdentity = null;
+    this.localExecution = false;
+    this.pistonUrl = '';
     await client?.close().catch(() => {});
   }
 }

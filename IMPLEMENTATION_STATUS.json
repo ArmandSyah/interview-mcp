@@ -32,17 +32,18 @@
     "Native raster image paste/restore/reopen, Excalidraw/notes/PNG exports with image-pixel checks, and export-cancellation preservation",
     "Native optional design coach loop proves immutable checkpoint binding, no image-byte disclosure, rejected completion, and one hint per turn",
     "Supabase authenticated MCP practice preview with account-owned attempts, content revisions, curated hints, and immutable design evidence",
-    "PostgreSQL row-level security, restricted RPC access, and public-only catalog generation"
+    "PostgreSQL row-level security, restricted RPC access, and public-only catalog generation",
+    "Stable account workspaces across manual token replacement, without moving earlier draft files",
+    "Remote coding attempts with local Piston execution and immutable personal reports, explicitly not server-verified grades",
+    "Live Supabase two-account verification, actual token refresh, owned coding/design practice, and scoped test cleanup"
   ],
   "engineering_remaining": [
-    "Verify the remote account workflow end to end, not only local authentication fixtures",
-    "Complete remote local-execution integration, exports, and recall tools",
-    "Connect desktop accounts with stable workspace identity across token refresh",
-    "Keep arbitrary code execution outside Supabase Edge Functions",
+    "Optional remote exports and recall tools; these features already work with the local engine",
+    "Public account registration and automatic desktop sign-in remain proposed release work",
     "Coordinated signed app/engine release artifact workflow and macOS CI",
     "Review published dependency notice inventory before a production release",
     "Complete the Part 2 contextual vocabulary check for public documentation",
-    "Final regression of rebuilt packages after the starter-docstring update"
+    "Clean-machine installation and upgrade checks on each public release platform"
   ],
   "external_prerequisites_not_provisioned": [
     "Production Ed25519 public trust keys; private keys must remain outside the repo",
@@ -50,15 +51,15 @@
     "Optional hosted checkout and reviewed paid-pack publication"
   ],
   "last_verified": {
-    "python": "229 passed, 28 skipped in the default run, including 18 opt-in PostgreSQL tests. All 21 catalog/PostgreSQL tests passed separately. 30 existing datetime deprecation warnings.",
-    "desktop_unit_and_process": "60 passed, 1 opt-in Docker test skipped in the default run. Real managed Docker integration passed separately.",
+    "python": "229 passed, 30 skipped in the default run, including 20 opt-in PostgreSQL tests. All 23 catalog/PostgreSQL tests passed separately. 30 existing datetime deprecation warnings.",
+    "desktop_unit_and_process": "74 passed, 2 opt-in tests skipped in the default run. The remote MCP suite passed all 3 tests separately with real Piston. Real managed Docker integration passed earlier.",
     "native_source_ui": "7 passed, including development startup, offline design, exports, practice queue, and real Piston",
     "typescript": "Passed",
     "python_lint_and_types": "Passed",
     "dependency_audit": "Zero known npm advisories at the previous audit. This is not a current security guarantee.",
-    "packaged_linux": "6 native workflows passed before the final starter-docstring update. Packages were then rebuilt. Final packaged regression remains necessary.",
-    "supabase_local": "14 MCP/auth/adapter tests passed. 21 catalog/PostgreSQL tests passed with real isolated PostgreSQL. Deno types, format, and lint passed.",
-    "supabase_remote": "Practice preview deployed as function version 3, with two applied migrations. Remote RPC catalog has five coding and five design items. Live unauthenticated requests rejected with HTTP 401. Full account access remains unverified.",
+    "packaged_linux": "Latest AppImage and Deb rebuilt. Six native workflows passed against the latest unpacked app, including actual Piston execution. The actual AppImage passed the offline design save/reopen workflow. Development-server test is intentionally inapplicable to packaged builds.",
+    "supabase_local": "14 MCP/auth/adapter tests passed. 23 catalog/PostgreSQL tests passed with real isolated PostgreSQL. Deno types, format, and lint passed.",
+    "supabase_remote": "Function version 4 and three migrations deployed. Live tests passed for two real temporary accounts: identity, catalogs, attempts, hints, cross-account rejection, immutable checkpoints/reviews, token refresh, and the desktop service with real local Piston. Both accounts and their data in five practice tables were removed. Public registration and a desktop login page were not tested.",
     "desktop_notices": "Collector handles absent platform-specific optional packages; project/font/dependency notices packaged; 44 package entries lack published notice files and still need release review"
   }
 }

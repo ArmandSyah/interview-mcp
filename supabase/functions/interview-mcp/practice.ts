@@ -33,8 +33,25 @@ const notes = z.object({
   failure_modes: text(5000).optional(),
 }).strict();
 
-// No code execution, submission, paid pack, or queue tool is advertised here.
+// Local reports do not claim that this server executed or verified the code.
 export const practiceSchemas = {
+  get_local_execution_plan: z.object({ attempt_id: uuid }).strict(),
+  record_local_execution: z.object({
+    attempt_id: uuid,
+    execution_id: uuid,
+    code_digest: z.string().regex(/^[a-f0-9]{64}$/),
+    submitted: z.boolean(),
+    tests: z.array(
+      z.object({
+        index: z.number().int().min(0),
+        actual: z.unknown(),
+        user_stdout: text(4000),
+        user_stderr: text(4000),
+        error: text(2000).nullable(),
+        wall_time_ms: z.number().int().min(0).max(9_999_999),
+      }).strict(),
+    ).min(1).max(100),
+  }).strict(),
   get_problem_catalog: z.object({}).strict(),
   list_problems: z.object({
     difficulty: z.string().nullable().optional(),
@@ -71,6 +88,8 @@ export const practiceSchemas = {
 };
 
 const descriptions: Record<keyof typeof practiceSchemas, string> = {
+  get_local_execution_plan: 'Return the pinned test plan for execution in local Docker.',
+  record_local_execution: 'Save a personal local execution report, not a server-verified grade.',
   get_problem_catalog: 'Return available problem filters.',
   list_problems: 'Return available coding problems without solutions.',
   start_problem: 'Start an owned attempt and return a Python scaffold.',
@@ -88,6 +107,7 @@ const descriptions: Record<keyof typeof practiceSchemas, string> = {
   finish_design_session: 'Complete this session after a checkpoint review.',
 };
 const readOnly = new Set([
+  'get_local_execution_plan',
   'get_problem_catalog',
   'list_problems',
   'get_problem_description',
@@ -156,6 +176,9 @@ export function createPracticeFactory(
       });
       if (error) {
         const safeMessages = new Set([
+          'The local execution plan is not available.',
+          'Invalid local execution report.',
+          'A local execution report is immutable.',
           'Problem is not available.',
           'Python is the only supported language.',
           'limit must be between 1 and 500.',

@@ -945,6 +945,9 @@ function TestResults({ session, busy }: { session?: PracticeSession; busy: boole
         {session?.resultStale && (
           <span className="stale-badge">Results are for an older draft</span>
         )}
+        {result.execution_source === 'local_report' && (
+          <span className="stale-badge">Local report — not server verified</span>
+        )}
       </div>
       <div className="test-cases">
         {result.tests.map((test) => (

@@ -24,6 +24,8 @@ type StoredState = {
   settings: StoredSettings;
   credentials: { apiKey?: string; mcpKey?: string };
   workspaces: Record<string, Workspace>;
+  accountScopes?: Record<string, string>;
+  credentialAccounts?: Record<string, string>;
 };
 
 export const defaultSettings: StoredSettings = {
@@ -59,6 +61,21 @@ export class LocalStore {
       const raw = JSON.parse(contents) as Omit<StoredState, 'version'> & { version: number };
       if (![1, 2].includes(raw.version) || !raw.workspaces || !raw.settings)
         throw new Error('Unsupported workspace data');
+      for (const mapping of [raw.accountScopes, raw.credentialAccounts]) {
+        if (
+          mapping !== undefined &&
+          (!mapping ||
+            typeof mapping !== 'object' ||
+            Array.isArray(mapping) ||
+            Object.entries(mapping).some(
+              ([key, value]) =>
+                !/^[a-f0-9]{24}$/.test(key) ||
+                typeof value !== 'string' ||
+                !/^[a-f0-9]{24}$/.test(value),
+            ))
+        )
+          throw new Error('Invalid account workspace mapping');
+      }
       if (
         raw.settings.managedSandbox !== undefined &&
         typeof raw.settings.managedSandbox !== 'boolean'
@@ -113,12 +130,41 @@ export class LocalStore {
     this.loaded = true;
   }
 
-  scope(mcpKey = ''): string {
+  scope(mcpKey = '', account?: { userId: string; issuer: string } | null): string {
     const identity =
       this.state.settings.connection === 'local'
         ? 'local'
-        : `remote:${this.state.settings.mcpUrl}:${createHash('sha256').update(mcpKey).digest('hex')}`;
-    return createHash('sha256').update(identity).digest('hex').slice(0, 24);
+        : account
+          ? `account:${JSON.stringify([this.state.settings.mcpUrl, account.issuer, account.userId])}`
+          : `remote:${this.state.settings.mcpUrl}:${createHash('sha256').update(mcpKey).digest('hex')}`;
+    const scope = createHash('sha256').update(identity).digest('hex').slice(0, 24);
+    if (this.state.settings.connection === 'local') return scope;
+    if (account) return this.state.accountScopes?.[scope] ?? scope;
+    const accountScope = this.state.credentialAccounts?.[scope];
+    return accountScope ? (this.state.accountScopes?.[accountScope] ?? accountScope) : scope;
+  }
+
+  bindAccount(mcpKey: string, account: { userId: string; issuer: string }): string {
+    const settings = this.state.settings;
+    if (settings.connection !== 'remote') throw new Error('An account needs a remote connection');
+    const digest = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 24);
+    const legacy = digest(
+      `remote:${settings.mcpUrl}:${createHash('sha256').update(mcpKey).digest('hex')}`,
+    );
+    const stable = digest(
+      `account:${JSON.stringify([settings.mcpUrl, account.issuer, account.userId])}`,
+    );
+    const accounts = (this.state.accountScopes ??= {});
+    const credentials = (this.state.credentialAccounts ??= {});
+    // Keep earlier files in place. Never combine two account workspaces.
+    accounts[stable] ??=
+      credentials[legacy] === undefined &&
+      this.state.workspaces[legacy] &&
+      !Object.values(accounts).includes(legacy)
+        ? legacy
+        : stable;
+    credentials[legacy] = stable;
+    return accounts[stable];
   }
 
   workspace(scope: string): Workspace {
