@@ -563,3 +563,80 @@ The composition test sends browser events to the app renderer.
 It does not test input methods from the operating system.
 The history tests include write failures, retry, restart, and code edits during a history clear.
 Service tests also include design notes and recall drafts during a history clear.
+
+### Settings and account tests
+
+The settings correction changes failure behavior, not the saved data format.
+Draft paths, saved attempts, and account ownership stay the same.
+Settings and credentials in memory change only after the settings write completes without an error.
+An encryption failure or disk write failure keeps the previous settings, credentials, and connection.
+The settings dialog keeps its form values for a retry.
+
+The desktop bridge method `updateSettings(input)` returns `Promise<void>`.
+The `input` parameter supplies settings and optional credential changes.
+If the input has no credential or an empty credential, the app keeps the saved credential.
+The `clearApiKey` and `clearMcpKey` flags remove their credentials, including when the input also supplies new credentials.
+Without a credential store from the operating system, credentials stay in memory only.
+
+The method rejects invalid settings, a busy service, encryption failures, and settings write failures.
+It also rejects a draft write failure that occurs before the settings write.
+A connection failure after the settings write does not undo the saved settings.
+The snapshot shows the disconnected state and its error.
+The app closes that connection and clears its catalogs and progress display.
+It does not select a different account's workspace.
+
+Settings saves and reconnections wait for draft writes in progress.
+New code, design, and recall writes wait for the operation to complete.
+After an account change, a queued draft write rejects without a write to the new account's workspace.
+A settings write failure releases queued drafts to the same workspace.
+These operations use the same draft sequence control as history clear.
+
+When you disable the managed sandbox, the app saves that selection before it stops the container.
+A settings write failure does not stop the container.
+If the stop returns an error, the app keeps the saved settings and completes its connection request.
+The settings method then rejects with a message that identifies the saved settings and stop failure.
+The sandbox consent requirement does not change.
+
+A workspace contains local drafts, attempts, and chat history.
+Local mode uses one workspace without an account.
+A remote server can supply an account identity.
+For these servers, each account has one workspace for each MCP URL.
+Each such workspace is for one account.
+
+Without an account identity, the remote workspace uses the server URL and credential.
+Without this identity, a credential change can select a different workspace.
+A new account can have an empty workspace.
+For a server that supplies identity, a credential replacement for the same account keeps its workspace.
+
+The `Snapshot.workspaceId` field identifies the selected local workspace.
+This ID is not an account credential.
+An editor model contains code and undo history.
+The code editor uses the workspace ID and problem ID for its model.
+Undo can restore text from the same account, but cannot insert a different account's text.
+
+Unsent coding chat text stays with its workspace in memory until the app closes.
+After an account change, the new account's composer cannot show unsent text from the previous account.
+
+`LocalStore.bindAccount(mcpKey, account, state)` is an internal storage method.
+The `mcpKey` parameter supplies the credential that the remote server accepted.
+The `account` parameter supplies `userId` and `issuer` values from the authenticated remote server.
+The `userId` identifies the account, and `issuer` identifies its authentication service.
+The optional `state` parameter supplies the state to change.
+Without this parameter, the method changes the active store state.
+
+The method returns the workspace ID and updates the credential and account maps in that state.
+It rejects local connection settings and does not write files.
+Connection setup writes staged maps before it changes the maps in memory.
+A map write failure keeps the previous maps and closes the new connection.
+The app does not move saved workspace files.
+
+After the build, run these tests from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/settings-recovery.spec.ts tests/e2e/account-settings.spec.ts
+```
+
+The native tests use a local protocol fixture and temporary workspaces.
+They include write failure, retry, token replacement, account changes, undo, unsent text, credential removal, and restart.
+They do not test Supabase token verification or send model requests.
+Service tests also include encryption failures, queued drafts, account map failures, and sandbox stop failures.

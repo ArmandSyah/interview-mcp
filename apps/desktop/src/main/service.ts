@@ -90,10 +90,10 @@ export class WorkbenchService {
   private agentId: string | null = null;
   private approvals = new Map<string, (allow: boolean) => void>();
   private practiceOwned = new Set<string>();
-  /** Pending draft operations, including writes that wait for a history clear. */
+  /** Pending draft operations, including writes that wait for a state change. */
   private draftWrites = new Set<Promise<unknown>>();
-  /** Resolves after a history clear, including failure. New drafts wait for this promise. */
-  private historyWrite: Promise<void> | null = null;
+  /** Resolves after a state change, including failure. New drafts wait for this promise. */
+  private stateWrite: Promise<void> | null = null;
 
   constructor(
     readonly store: LocalStore,
@@ -141,6 +141,7 @@ export class WorkbenchService {
   snapshot(): Snapshot {
     const workspace = this.store.workspace(this.scope);
     return structuredClone({
+      workspaceId: this.scope,
       mode: workspace.mode,
       installedPacks: this.installedPacks,
       designProblems: this.designProblems,
@@ -183,20 +184,29 @@ export class WorkbenchService {
   }
 
   async reconnect(): Promise<void> {
-    await this.practiceAction(() => this.connect());
+    await this.practiceAction(() => this.withDraftBarrier(() => this.connect()));
   }
 
   private async connect(): Promise<void> {
     this.practiceOwned.clear();
+    this.scope = this.store.scope(this.mcpKey);
+    this.problems = [];
+    this.designProblems = [];
+    this.installedPacks = [];
+    this.progress = '';
     this.connection = 'connecting';
     this.error = null;
     this.publish();
     try {
       await this.mcp.connect(this.store.state.settings, this.mcpKey);
-      this.scope = this.mcp.accountIdentity
-        ? this.store.bindAccount(this.mcpKey, this.mcp.accountIdentity)
-        : this.store.scope(this.mcpKey);
-      if (this.mcp.accountIdentity) await this.store.persist();
+      if (this.mcp.accountIdentity) {
+        const next = structuredClone(this.store.state);
+        const scope = this.store.bindAccount(this.mcpKey, this.mcp.accountIdentity, next);
+        await this.store.persist(next);
+        this.store.state.accountScopes = next.accountScopes;
+        this.store.state.credentialAccounts = next.credentialAccounts;
+        this.scope = scope;
+      }
       this.problems = await this.mcp.call<Problem[]>('list_problems', {});
       this.progress = await this.mcp.call<string>('get_progress', {});
       this.designProblems = this.mcp.tools.some((tool) => tool.name === 'list_design_problems')
@@ -207,9 +217,12 @@ export class WorkbenchService {
         : [];
       this.connection = 'connected';
     } catch (error) {
+      await this.mcp.close();
       this.connection = 'disconnected';
       this.problems = [];
       this.designProblems = [];
+      this.installedPacks = [];
+      this.progress = '';
       this.error = this.sanitize(error);
     }
   }
@@ -243,23 +256,37 @@ export class WorkbenchService {
       )
         throw new Error('Use HTTPS for a remote MCP connection');
     }
-    await this.practiceAction(async () => {
-      if (this.store.state.settings.managedSandbox && !settings.managedSandbox)
-        await this.sandbox?.stop();
-      this.store.state.settings = settings;
-      if (clearApiKey) this.apiKey = '';
-      else if (apiKey) this.apiKey = apiKey;
-      if (clearMcpKey) this.mcpKey = '';
-      else if (mcpKey) this.mcpKey = mcpKey;
-      this.store.state.credentials = this.vault.available()
-        ? {
-            ...(this.apiKey ? { apiKey: this.vault.encrypt(this.apiKey) } : {}),
-            ...(this.mcpKey ? { mcpKey: this.vault.encrypt(this.mcpKey) } : {}),
+    await this.practiceAction(() =>
+      this.withDraftBarrier(async () => {
+        const nextApiKey = clearApiKey ? '' : apiKey || this.apiKey;
+        const nextMcpKey = clearMcpKey ? '' : mcpKey || this.mcpKey;
+        const next = structuredClone(this.store.state);
+        next.settings = settings;
+        next.credentials = this.vault.available()
+          ? {
+              ...(nextApiKey ? { apiKey: this.vault.encrypt(nextApiKey) } : {}),
+              ...(nextMcpKey ? { mcpKey: this.vault.encrypt(nextMcpKey) } : {}),
+            }
+          : {};
+        await this.store.persist(next);
+        const stopSandbox = this.store.state.settings.managedSandbox && !settings.managedSandbox;
+        this.store.state.settings = next.settings;
+        this.store.state.credentials = next.credentials;
+        this.apiKey = nextApiKey;
+        this.mcpKey = nextMcpKey;
+        let stopError: string | null = null;
+        if (stopSandbox) {
+          try {
+            await this.sandbox?.stop();
+          } catch (error) {
+            stopError = this.sanitize(error);
           }
-        : {};
-      await this.store.persist();
-      await this.connect();
-    });
+        }
+        await this.connect();
+        if (stopError !== null)
+          throw new Error(`Settings saved. Cannot stop the local sandbox: ${stopError}`);
+      }),
+    );
   }
 
   sandboxInfo(): SandboxStatus {
@@ -328,14 +355,32 @@ export class WorkbenchService {
     }
   }
 
-  /** Keep draft writes outside the shared action lock, except during a history clear. */
+  /** Wait for drafts received before the operation. The caller must hold the action lock. */
+  private async withDraftBarrier<T>(operation: () => Promise<T>): Promise<T> {
+    const earlierWrites = [...this.draftWrites];
+    let release!: () => void;
+    this.stateWrite = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
+      const results = await Promise.allSettled(earlierWrites);
+      const failure = results.find((result) => result.status === 'rejected');
+      if (failure?.status === 'rejected') throw failure.reason;
+      return await operation();
+    } finally {
+      this.stateWrite = null;
+      release();
+    }
+  }
+
+  /** Keep draft writes outside the action lock, except during a state change. */
   private draftWrite<T>(operation: () => Promise<T>): Promise<T> {
     const scope = this.scope;
     const invoke = () => {
       if (this.scope !== scope) throw new Error('Workspace changed. Retry the draft save.');
       return operation();
     };
-    const pending = this.historyWrite ? this.historyWrite.then(invoke) : invoke();
+    const pending = this.stateWrite ? this.stateWrite.then(invoke) : invoke();
     this.draftWrites.add(pending);
     return pending.finally(() => this.draftWrites.delete(pending));
   }
@@ -1092,17 +1137,8 @@ export class WorkbenchService {
    * Queued drafts continue after either result.
    */
   async clearChat(): Promise<void> {
-    await this.practiceAction(async () => {
-      const earlierWrites = [...this.draftWrites];
-      let release!: () => void;
-      this.historyWrite = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      try {
-        // Include earlier edits. New draft writes wait until the clear succeeds or fails.
-        const results = await Promise.allSettled(earlierWrites);
-        const failure = results.find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
+    await this.practiceAction(() =>
+      this.withDraftBarrier(async () => {
         const next = structuredClone(this.store.state);
         const workspace = next.workspaces[this.scope];
         let target: { chat: ChatItem[] };
@@ -1121,11 +1157,8 @@ export class WorkbenchService {
         staged.chat = [];
         await this.store.persist(next);
         target.chat = [];
-      } finally {
-        this.historyWrite = null;
-        release();
-      }
-    });
+      }),
+    );
   }
   /**
    * Save drafts and workspace state before the window closes. Reject on a write failure.

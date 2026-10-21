@@ -77,7 +77,16 @@ function Workbench() {
   const [queueOpen, setQueueOpen] = useState(false);
   const queueOpener = useRef<HTMLElement | null>(null);
   const [approval, setApproval] = useState<Approval | null>(null);
-  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<Record<string, string>>({});
+  const message = snapshot ? (messages[snapshot.workspaceId] ?? '') : '';
+  function setMessage(value: string | ((previous: string) => string)) {
+    const id = snapshot?.workspaceId;
+    if (!id) return;
+    setMessages((previous) => ({
+      ...previous,
+      [id]: typeof value === 'function' ? value(previous[id] ?? '') : value,
+    }));
+  }
   const [error, setError] = useState('');
   const [closeError, setCloseError] = useState('');
   const chatStop = useChatStop(snapshot?.chatId ?? null, setError);
@@ -657,7 +666,7 @@ function Workbench() {
               <div className="editor-area">
                 {tab === 'solution' ? (
                   <CodeEditor
-                    id={active.problem.id}
+                    id={`${snapshot.workspaceId}/${active.problem.id}`}
                     code={active.code}
                     onChange={edit}
                     onRun={run}

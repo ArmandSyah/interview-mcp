@@ -8,9 +8,13 @@ import { WorkbenchService } from '../src/main/service';
 import { emptyDesignDraft } from '../src/shared/design';
 import type { Model } from '../src/main/providers';
 
-it.each([false, true])(
-  'design history clear keeps concurrent notes and handles a write failure=%s',
-  async (failure) => {
+it.each(
+  ['history', 'settings'].flatMap((operation) =>
+    [false, true].map((failure) => ({ operation, failure })),
+  ),
+)(
+  'design notes wait for $operation and handle a write failure=$failure',
+  async ({ operation, failure }) => {
     const root = await mkdtemp(join(tmpdir(), 'interview-design-clear-'));
     const store = new LocalStore(root);
     const service = new WorkbenchService(
@@ -39,20 +43,24 @@ it.each([false, true])(
         await gate;
         await original(...args);
       });
-      clear = service.clearChat().then(
+      clear = (
+        operation === 'history'
+          ? service.clearChat()
+          : service.updateSettings({ ...defaultSettings, provider: 'ollama' })
+      ).then(
         () => null,
         (error: Error) => error.message,
       );
       await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
       const draft = emptyDesignDraft();
-      draft.notes.requirements = 'Notes entered during history clear';
+      draft.notes.requirements = `Notes entered during ${operation}`;
       save = service.saveDesignDraft(before.id, draft);
       await Promise.resolve();
       expect(service.snapshot().designSessions[0].chat).toEqual(before.chat);
       expect(persist).toHaveBeenCalledTimes(1);
-      if (failure) reject(new Error('Design history write failed'));
+      if (failure) reject(new Error('Design state write failed'));
       else release();
-      expect(await clear).toBe(failure ? 'Design history write failed' : null);
+      expect(await clear).toBe(failure ? 'Design state write failed' : null);
       await save;
       expect((await service.loadDesignDraft(before.id)).notes.requirements).toBe(
         draft.notes.requirements,
@@ -60,7 +68,13 @@ it.each([false, true])(
       const restored = new LocalStore(root);
       await restored.load();
       expect(restored.workspace(store.scope()).designSessions[0].chat).toEqual(
-        failure ? before.chat : [],
+        failure || operation === 'settings' ? before.chat : [],
+      );
+      expect(restored.state.settings.provider).toBe(
+        operation === 'settings' && !failure ? 'ollama' : 'disabled',
+      );
+      expect(restored.workspace(store.scope()).designSessions[0].draftDigest).toBe(
+        service.snapshot().designSessions[0].draftDigest,
       );
     } finally {
       release();

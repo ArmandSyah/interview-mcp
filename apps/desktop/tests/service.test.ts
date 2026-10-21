@@ -63,6 +63,7 @@ async function fixture(
     throw new Error(`Unexpected fixture call ${name}`);
   });
   const mcp = {
+    accountIdentity: null as { userId: string; issuer: string } | null,
     connect: vi.fn(async () => {}),
     close: vi.fn(async () => {}),
     call,
@@ -95,6 +96,275 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+for (const failure of ['disk-replace', 'disk-remove', 'vault'] as const) {
+  it(`settings ${failure} preserves settings, credentials, workspace, and connection`, async () => {
+    const vault: Vault = {
+      available: () => true,
+      encrypt: (value) => Buffer.from(value).toString('base64'),
+      decrypt: (value) => Buffer.from(value, 'base64').toString(),
+    };
+    const { service, store, mcp } = await fixture(undefined, vault);
+    try {
+      await service.updateSettings({
+        ...defaultSettings,
+        apiKey: 'fixture-old-api',
+        mcpKey: 'fixture-old-mcp',
+      });
+      await service.startProblem(problem.id);
+      const before = service.snapshot();
+      const stored = structuredClone(store.state);
+      const disk = await readFile(join(store.root, 'workspace.json'), 'utf8');
+      const connections = mcp.connect.mock.calls.length;
+      if (failure === 'vault') {
+        vi.spyOn(vault, 'encrypt')
+          .mockImplementationOnce(() => 'fixture-first-encrypted-value')
+          .mockImplementationOnce(() => {
+            throw new Error('Fixture encryption failure');
+          });
+      } else
+        vi.spyOn(store, 'persist').mockRejectedValueOnce(
+          new Error('Fixture settings write failure'),
+        );
+      const changes =
+        failure === 'disk-remove'
+          ? { clearApiKey: true, clearMcpKey: true }
+          : { apiKey: 'fixture-new-api', mcpKey: 'fixture-new-mcp' };
+      await expect(
+        service.updateSettings({ ...defaultSettings, provider: 'ollama', ...changes }),
+      ).rejects.toThrow(
+        failure === 'vault' ? 'Fixture encryption failure' : 'Fixture settings write failure',
+      );
+      expect(
+        service.snapshot(),
+        'A rejected settings save must not change the active configuration',
+      ).toEqual(before);
+      expect(store.state).toEqual(stored);
+      expect(await readFile(join(store.root, 'workspace.json'), 'utf8')).toBe(disk);
+      expect(mcp.connect).toHaveBeenCalledTimes(connections);
+      await service.reconnect();
+      expect(mcp.connect).toHaveBeenLastCalledWith(defaultSettings, 'fixture-old-mcp');
+      await service.updateSettings({ ...defaultSettings, provider: 'ollama', ...changes });
+      expect(service.settings().provider).toBe('ollama');
+      expect(service.settings().hasApiKey).toBe(failure !== 'disk-remove');
+      expect(service.settings().hasMcpKey).toBe(failure !== 'disk-remove');
+      expect(service.snapshot().sessions).toEqual(before.sessions);
+    } finally {
+      await service.close();
+    }
+  });
+}
+
+it.each([false, true])(
+  'settings order earlier and queued code saves (failure=%s)',
+  async (failure) => {
+    const { service, store, mcp } = await fixture();
+    await service.startProblem(problem.id);
+    const earlier = deferred();
+    const writing = deferred();
+    const originalSave = store.saveCode.bind(store);
+    const save = vi.spyOn(store, 'saveCode').mockImplementationOnce(async (...args) => {
+      await earlier.promise;
+      await originalSave(...args);
+    });
+    const originalPersist = store.persist.bind(store);
+    const persist = vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
+      await writing.promise;
+      await originalPersist(...args);
+    });
+    const first = service.saveCode(problem.id, '# before settings');
+    const change = service.updateSettings({ ...defaultSettings, provider: 'ollama' }).then(
+      () => null,
+      (error: Error) => error.message,
+    );
+    const next = service.saveCode(problem.id, '# during settings');
+    try {
+      expect(persist).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledTimes(1);
+      earlier.resolve();
+      await first;
+      await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+      expect(service.settings().provider).toBe('disabled');
+      expect(service.snapshot().sessions[0].code).toBe('# before settings');
+      expect(mcp.connect).toHaveBeenCalledTimes(1);
+      if (failure) writing.reject(new Error('Fixture settings write failure'));
+      else writing.resolve();
+      expect(await change).toBe(failure ? 'Fixture settings write failure' : null);
+      await next;
+      const restored = new LocalStore(store.root);
+      await restored.load();
+      expect(restored.state.settings.provider).toBe(failure ? 'disabled' : 'ollama');
+      expect(restored.workspace(store.scope()).sessions[0].code).toBe('# during settings');
+      expect(await readFile(store.path(store.scope(), problem.id), 'utf8')).toBe(
+        '# during settings',
+      );
+    } finally {
+      earlier.resolve();
+      writing.resolve();
+      await Promise.allSettled([first, change, next]);
+      await service.close();
+    }
+  },
+);
+
+it('an earlier draft failure cancels settings changes and releases a later save', async () => {
+  const { service, store, mcp } = await fixture();
+  await service.startProblem(problem.id);
+  const earlier = deferred();
+  vi.spyOn(store, 'saveCode').mockReturnValueOnce(earlier.promise);
+  const first = service
+    .saveCode(problem.id, '# earlier failure')
+    .catch((error: Error) => error.message);
+  const change = service
+    .updateSettings({ ...defaultSettings, provider: 'ollama' })
+    .catch((error: Error) => error.message);
+  const next = service.saveCode(problem.id, '# recovered draft');
+  earlier.reject(new Error('Earlier draft failed'));
+  expect(await first).toBe('Earlier draft failed');
+  expect(await change).toBe('Earlier draft failed');
+  await next;
+  expect(service.settings().provider).toBe('disabled');
+  expect(service.snapshot().sessions[0].code).toBe('# recovered draft');
+  expect(mcp.connect).toHaveBeenCalledTimes(1);
+  await service.close();
+});
+
+it.each([false, true])(
+  'a queued draft cannot cross an account change (same account=%s)',
+  async (sameAccount) => {
+    const { service, store, mcp } = await fixture();
+    const alice = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      issuer: 'https://fixture.invalid/auth/v1',
+    };
+    mcp.accountIdentity = alice;
+    const settings = {
+      ...defaultSettings,
+      connection: 'remote' as const,
+      mcpUrl: 'https://fixture.invalid/mcp',
+    };
+    await service.updateSettings({ ...settings, mcpKey: 'fixture-alice-old' });
+    await service.startProblem(problem.id);
+    await service.saveCode(problem.id, '# Alice saved draft');
+    const aliceScope = store.scope('fixture-alice-old');
+    const writing = deferred();
+    const original = store.persist.bind(store);
+    const persist = vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
+      await writing.promise;
+      await original(...args);
+    });
+    mcp.connect.mockImplementationOnce(async () => {
+      mcp.accountIdentity = sameAccount
+        ? alice
+        : { ...alice, userId: '22222222-2222-4222-8222-222222222222' };
+    });
+    const key = sameAccount ? 'fixture-alice-new' : 'fixture-bob';
+    const change = service.updateSettings({ ...settings, mcpKey: key });
+    await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+    const next = service.saveCode(problem.id, '# Alice queued draft').then(
+      () => null,
+      (error: Error) => error.message,
+    );
+    try {
+      writing.resolve();
+      await change;
+      expect(await next).toBe(sameAccount ? null : 'Workspace changed. Retry the draft save.');
+      const expected = sameAccount ? '# Alice queued draft' : '# Alice saved draft';
+      expect(store.workspace(aliceScope).sessions[0].code).toBe(expected);
+      expect(service.snapshot().sessions).toHaveLength(sameAccount ? 1 : 0);
+      const restored = new LocalStore(store.root);
+      await restored.load();
+      expect(restored.workspace(aliceScope).sessions[0].code).toBe(expected);
+      expect(await readFile(store.path(aliceScope, problem.id), 'utf8')).toBe(expected);
+      expect(restored.scope(key) === aliceScope).toBe(sameAccount);
+    } finally {
+      writing.resolve();
+      await Promise.allSettled([change, next]);
+      await service.close();
+    }
+  },
+);
+
+it('an account mapping write failure preserves the stored mappings and closes the new connection', async () => {
+  const { service, store, mcp } = await fixture();
+  await service.startProblem(problem.id);
+  const previous = service.snapshot().sessions;
+  mcp.accountIdentity = {
+    userId: '11111111-1111-4111-8111-111111111111',
+    issuer: 'https://fixture.invalid/auth/v1',
+  };
+  const original = store.persist.bind(store);
+  vi.spyOn(store, 'persist')
+    .mockImplementationOnce(original)
+    .mockRejectedValueOnce(new Error('Fixture account mapping failure'));
+  await service.updateSettings({
+    ...defaultSettings,
+    connection: 'remote',
+    mcpUrl: 'https://fixture.invalid/mcp',
+    mcpKey: 'fixture-new-account',
+  });
+  expect(service.snapshot()).toMatchObject({
+    connection: 'disconnected',
+    sessions: [],
+    problems: [],
+    installedPacks: [],
+    progress: '',
+    error: 'Fixture account mapping failure',
+  });
+  expect(store.state.accountScopes).toBeUndefined();
+  expect(store.state.credentialAccounts).toBeUndefined();
+  expect(mcp.close).toHaveBeenCalledTimes(1);
+  expect(
+    Object.values(store.state.workspaces).some(
+      (workspace) => JSON.stringify(workspace.sessions) === JSON.stringify(previous),
+    ),
+  ).toBe(true);
+  await service.reconnect();
+  expect(service.snapshot().connection).toBe('connected');
+  expect(store.state.accountScopes).toBeDefined();
+  const restored = new LocalStore(store.root);
+  await restored.load();
+  expect(restored.state.accountScopes).toEqual(store.state.accountScopes);
+  await service.close();
+});
+
+it.each(['disk', 'stop', 'none'])(
+  'sandbox disable commits settings before its stop operation (failure=%s)',
+  async (failure) => {
+    const sandbox = { stop: vi.fn(async () => {}), close: vi.fn(async () => {}) };
+    const { service, store, mcp } = await fixture(
+      undefined,
+      memoryVault,
+      sandbox as unknown as ManagedSandbox,
+    );
+    store.state.settings.managedSandbox = true;
+    await store.persist();
+    if (failure === 'disk')
+      vi.spyOn(store, 'persist').mockRejectedValueOnce(new Error('Fixture disk failure'));
+    if (failure === 'stop') sandbox.stop.mockRejectedValueOnce(new Error('Fixture stop failure'));
+    try {
+      const result = await service.updateSettings(defaultSettings).then(
+        () => null,
+        (error: Error) => error.message,
+      );
+      expect(result).toBe(
+        failure === 'disk'
+          ? 'Fixture disk failure'
+          : failure === 'stop'
+            ? 'Settings saved. Cannot stop the local sandbox: Fixture stop failure'
+            : null,
+      );
+      expect(sandbox.stop).toHaveBeenCalledTimes(failure === 'disk' ? 0 : 1);
+      expect(mcp.connect).toHaveBeenCalledTimes(failure === 'disk' ? 1 : 2);
+      const restored = new LocalStore(store.root);
+      await restored.load();
+      expect(restored.state.settings.managedSandbox).toBe(failure === 'disk');
+      expect(service.settings().managedSandbox).toBe(failure === 'disk');
+    } finally {
+      await service.close();
+    }
+  },
+);
 
 for (const owner of ['welcome', 'coding'] as const) {
   it.each([false, true])(
@@ -201,9 +471,13 @@ it('an earlier draft failure cancels history deletion and releases later draft s
   await service.close();
 });
 
-it.each([false, true])(
-  'a recall draft waits for history clear and retains its result (failure=%s)',
-  async (failure) => {
+it.each(
+  ['history', 'settings'].flatMap((operation) =>
+    [false, true].map((failure) => ({ operation, failure })),
+  ),
+)(
+  'a recall draft waits for $operation and retains its result (failure=$failure)',
+  async ({ operation, failure }) => {
     const { service, store } = await fixture();
     await service.startProblem(problem.id);
     await service.hint();
@@ -214,7 +488,11 @@ it.each([false, true])(
       await disk.promise;
       await original(...args);
     });
-    const clear = service.clearChat().then(
+    const clear = (
+      operation === 'history'
+        ? service.clearChat()
+        : service.updateSettings({ ...defaultSettings, provider: 'ollama' })
+    ).then(
       () => null,
       (error: Error) => error.message,
     );
@@ -222,7 +500,7 @@ it.each([false, true])(
     const draft = {
       reflection_id: randomUUID(),
       expected_version: 1,
-      answer: 'Recall during history clear',
+      answer: `Recall during ${operation}`,
       takeaway: '',
       next_action: '',
       self_rating: 'needs_work' as const,
@@ -231,14 +509,19 @@ it.each([false, true])(
     try {
       await Promise.resolve();
       expect(store.workspace(store.scope()).reflectionDrafts[id]).toBeUndefined();
-      if (failure) disk.reject(new Error('History write failed'));
+      if (failure) disk.reject(new Error('State write failed'));
       else disk.resolve();
-      expect(await clear).toBe(failure ? 'History write failed' : null);
+      expect(await clear).toBe(failure ? 'State write failed' : null);
       await save;
       const restored = new LocalStore(store.root);
       await restored.load();
       expect(restored.workspace(store.scope()).reflectionDrafts[id]).toEqual(draft);
-      expect(restored.workspace(store.scope()).sessions[0].chat).toEqual(failure ? history : []);
+      expect(restored.workspace(store.scope()).sessions[0].chat).toEqual(
+        failure || operation === 'settings' ? history : [],
+      );
+      expect(restored.state.settings.provider).toBe(
+        operation === 'settings' && !failure ? 'ollama' : 'disabled',
+      );
     } finally {
       disk.resolve();
       await Promise.allSettled([clear, save]);

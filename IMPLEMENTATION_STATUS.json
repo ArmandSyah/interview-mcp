@@ -262,13 +262,50 @@
         "build_types_format": "Passed.",
         "documentation": "Issue 9 rules and dictionary review completed for the new README section. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "input_method_scope": "The composition test sends browser events to the real renderer. Operating system input methods remain unverified.",
-        "packages_and_ci": "Checks for this batch remain pending. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39650092020 passed for a2ee5bd. The Linux job in Desktop workflow 39650092349 passed. Windows standalone app tests are in progress. Local release packages predate these changes."
+      }
+    },
+    "settings_and_account_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/settings-recovery.spec.ts",
+        "apps/desktop/tests/e2e/account-settings.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/design-service.test.ts"
+      ],
+      "corrected_defects": [
+        "A settings write or encryption failure changed settings and credentials in memory before the disk write completed.",
+        "A connection failure during an account change could leave the previous account workspace selected.",
+        "The editor undo history could insert code from a different account. Autosave then wrote that code to the selected account.",
+        "Unsent coding chat text appeared in a different account's composer."
+      ],
+      "verified_behaviors": [
+        "A rejected settings write keeps the settings, credentials, workspace, and connection. The form keeps its values for retry.",
+        "Settings saves wait for draft writes in progress. Queued drafts wait for the settings result and cannot pass to a different account.",
+        "Code, design, and recall drafts received during a settings write keep the correct settings and history after write success or failure.",
+        "A failed account map write keeps the previous maps and closes the new connection. A retry can save the maps.",
+        "Account identity and catalog errors clear catalogs and progress. The previous account's drafts do not appear in the new workspace.",
+        "Token replacement keeps one account's drafts. Different accounts retain different files after restart.",
+        "Workspace-specific editor models prevent undo from inserting a different account's code. Undo can restore text from the same account.",
+        "Unsent coding chat text stays with its workspace in memory through account changes and token replacement.",
+        "Credential removal disconnects without deleting the saved account draft. Reconnection restores that draft.",
+        "Sandbox disable saves settings before the stop request. A write failure does not stop the sandbox. A stop failure reports that settings were saved."
+      ],
+      "verification": {
+        "native_regression_stories": "6 passed.",
+        "desktop_unit_and_process": "123 passed, 2 opt-in tests skipped. This includes 16 new service cases.",
+        "native_source_ui": "87 passed with real local Piston. This run includes all 6 new settings and account stories.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "Account tests use a local protocol fixture, not live Supabase token verification. Encryption failures use a test vault. These checks do not prove that every race condition is absent.",
+        "packages_and_ci": "Checks for this batch are pending. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
       "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
       "Catalog filters, file navigation, editor shortcuts, and result states",
-      "Settings disk-write failures and account changes",
+      "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
       "Recall filters, schedule conflicts, repeated requests, and unavailable saved attempts",

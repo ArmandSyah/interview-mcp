@@ -72,6 +72,8 @@ export type SettingsUpdate = Omit<Settings, 'hasApiKey' | 'hasMcpKey' | 'secureS
   clearMcpKey?: boolean;
 };
 export type Snapshot = {
+  /** Opaque local workspace ID. Token replacement for one account keeps this ID. */
+  workspaceId: string;
   installedPacks: {
     pack_id: string;
     title: string;

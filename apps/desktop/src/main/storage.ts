@@ -144,8 +144,13 @@ export class LocalStore {
     return accountScope ? (this.state.accountScopes?.[accountScope] ?? accountScope) : scope;
   }
 
-  bindAccount(mcpKey: string, account: { userId: string; issuer: string }): string {
-    const settings = this.state.settings;
+  /** Bind a credential to its account in the supplied state. The default is the active state. */
+  bindAccount(
+    mcpKey: string,
+    account: { userId: string; issuer: string },
+    state: StoredState = this.state,
+  ): string {
+    const settings = state.settings;
     if (settings.connection !== 'remote') throw new Error('An account needs a remote connection');
     const digest = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 24);
     const legacy = digest(
@@ -154,12 +159,12 @@ export class LocalStore {
     const stable = digest(
       `account:${JSON.stringify([settings.mcpUrl, account.issuer, account.userId])}`,
     );
-    const accounts = (this.state.accountScopes ??= {});
-    const credentials = (this.state.credentialAccounts ??= {});
+    const accounts = (state.accountScopes ??= {});
+    const credentials = (state.credentialAccounts ??= {});
     // Keep earlier files in place. Never combine two account workspaces.
     accounts[stable] ??=
       credentials[legacy] === undefined &&
-      this.state.workspaces[legacy] &&
+      state.workspaces[legacy] &&
       !Object.values(accounts).includes(legacy)
         ? legacy
         : stable;
