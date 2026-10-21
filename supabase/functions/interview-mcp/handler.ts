@@ -1,6 +1,7 @@
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { type Authenticate, validIdentity } from './auth.ts';
+import { type PracticeFactory, registerPracticeTools } from './practice.ts';
 
 export const MAX_REQUEST_BYTES = 1_000_000;
 
@@ -44,7 +45,10 @@ async function boundedRequest(request: Request): Promise<Request | null> {
   });
 }
 
-export function createHandler(authenticate: Authenticate): (request: Request) => Promise<Response> {
+export function createHandler(
+  authenticate: Authenticate,
+  practice?: PracticeFactory,
+): (request: Request) => Promise<Response> {
   return async (request) => {
     // The desktop and editor clients do not need cross-origin browser access.
     if (request.headers.has('Origin')) return jsonError(403, 'Browser origin is not permitted');
@@ -82,8 +86,7 @@ export function createHandler(authenticate: Authenticate): (request: Request) =>
     }
     if (!bounded) return jsonError(413, 'MCP request is too large');
 
-    // This first deployment is an authenticated runtime probe, not a port of
-    // the practice engine. Do not advertise unimplemented practice tools.
+    // A fresh server and database client keep credentials request-scoped.
     const handler = createMcpHandler(() => {
       const server = new McpServer({ name: 'interview-workbench-cloud', version: '0.3.0-alpha.1' });
       server.registerTool('ping', {
@@ -103,15 +106,19 @@ export function createHandler(authenticate: Authenticate): (request: Request) =>
           user_id: identity.userId,
           issuer: identity.issuer,
           backend: 'supabase',
-          status: 'runtime_probe_only',
-          practice_tools_available: false,
+          status: practice ? 'practice_preview' : 'runtime_probe_only',
+          practice_tools_available: !!practice,
           hosted_code_execution: false,
+          capabilities: practice
+            ? ['coding_catalog', 'coding_attempts', 'curated_hints', 'system_design']
+            : [],
         };
         return {
           content: [{ type: 'text', text: JSON.stringify(result) }],
           structuredContent: result,
         };
       });
+      if (practice) registerPracticeTools(server, practice(request, match[1]));
       return server;
     });
     const response = await handler.fetch(bounded);

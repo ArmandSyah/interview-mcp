@@ -5,6 +5,7 @@ Product names, file names, command names, and UI labels keep their specified for
 
 | Term | Meaning |
 | --- | --- |
+| practice preview | An incomplete remote service for development. It is not a public release. |
 | account | A hosted identity for optional sign-in and purchase recovery. No account is necessary for local practice. |
 | AI coach | The optional app component that sends practice text to a model and displays its response. |
 | API key | A credential that permits requests to a service. |

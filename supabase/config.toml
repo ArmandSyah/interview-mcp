@@ -5,3 +5,4 @@ project_id = "interview-workbench"
 # The legacy gateway JWT check does not support every project signing algorithm.
 verify_jwt = false
 entrypoint = "./functions/interview-mcp/index.ts"
+import_map = "./deno.json"

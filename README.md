@@ -14,7 +14,8 @@ See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
 See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
 Accounts and checkout are proposals, not available app features.
 
-The [Supabase connection test](docs/supabase-hosting.md) is not the complete remote practice engine.
+The [Supabase preview](docs/supabase-hosting.md) supplies remote hints and system-design tools.
+Desktop account access and remote code execution are not available.
 The [term list](docs/terminology.md) gives the meanings of app terms in this guide.
 
 ## Agent workflow demo

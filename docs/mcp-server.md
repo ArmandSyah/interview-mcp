@@ -133,9 +133,13 @@ The desktop app uses a different data directory and a different SQLite database.
 It does not share the default stdio database automatically.
 The active catalog does not include removed questions. Historical attempts keep their content snapshots.
 
-## Optional public hosting
+## Optional hosting
 
-No public endpoint is available from this project.
+The [Supabase preview](supabase-hosting.md) has a protected HTTPS endpoint.
+It does not provide desktop sign-in or hosted code execution.
+Use its guide for the deployed tools and remaining work.
+
+The Python HTTP server remains an alternative for a trusted Docker host.
 HTTPS, user keys, Host restrictions, backups, and a security inspection are necessary before a public deployment.
 Use one server replica with SQLite.
 Do not expose the Piston port to the internet.

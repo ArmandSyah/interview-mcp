@@ -1,7 +1,9 @@
 # Public release plan
 
-Status: proposal. Accounts, checkout, and a public service are not configured.
-The desktop app is the first release. A hosted practice service is a possible subsequent release.
+Status: release proposal with a private Supabase practice preview.
+Accounts, checkout, and a complete public service are not available.
+The desktop app is the first release.
+The [Supabase guide](supabase-hosting.md) identifies the deployed tools and remaining work.
 
 ## App and cost limits
 
@@ -30,7 +32,7 @@ An account must not cause an automatic upload of practice data.
 | Public desktop release | Signed installers, release notes, checksums, license notices, and installation instructions. | Clean-machine installation and upgrade tests pass on each supported platform. |
 | First paid pack | Reviewed questions, a stated price, checkout, and signed pack licenses. | A test purchase, duplicate notification, refund, and download recovery pass. |
 | Optional accounts | Sign-up, sign-in, purchase recovery, and account deletion. | Identity isolation and session revocation tests pass. |
-| Optional hosted practice | Remote storage or code execution that users explicitly request. | Demand, a cost limit, isolation tests, and recovery procedures justify the service. |
+| Optional hosted practice | Supabase practice storage and MCP tools, with local code execution. | Account access, cost limits, isolation tests, and recovery procedures pass. |
 
 The table gives release requirements, not test results.
 
@@ -41,11 +43,13 @@ The first account feature is purchase recovery, not practice synchronization.
 The app must keep a **Continue locally** button.
 Sign-out must not erase local drafts or purchased packs.
 
-The HTTP MCP server uses database-issued bearer keys. It does not accept Supabase session tokens.
-Token validation and a verified account-to-user mapping are necessary before account sessions can access hosted MCP tools.
+The Python HTTP server uses database-issued bearer keys. It does not accept Supabase session tokens.
+The Supabase Edge Function accepts verified Supabase account tokens.
+These are different servers. The desktop account connection is not implemented.
 
 An identity provider identifies the user and supplies a session token.
-Supabase Auth is the proposed provider, not an installed dependency.
+The private Edge Function uses Supabase Auth for token verification.
+Desktop sign-in with that provider remains a proposal.
 GitHub sign-in is the proposed first method. A configured mail service is necessary for email recovery.
 Before provider selection, examine supported regions, service limits, email costs, and mail delivery.
 
