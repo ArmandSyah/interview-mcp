@@ -1,7 +1,50 @@
 {
-  "status": "in_progress",
+  "status": "verified_preview",
   "goal": "Desktop coding and system-design practice, public release preparation, and Supabase remote MCP development",
-  "database": "SQLAlchemy 2.x with local SQLite; schema version 4",
+  "database": "SQLAlchemy 2.x with local SQLite. Schema version 4.",
+  "delivery_scope": "The working desktop and private Supabase preview are verified. Public sign-up, payments, and trusted installer publication remain release work.",
+  "delivery_audit": [
+    {
+      "requirement": "Coding practice with an editor, hints, tests, submission, and saved drafts",
+      "result": "verified",
+      "evidence": "Native source and packaged workflows passed. The Linux CI job passed with real Piston. Desktop tests cover draft ownership and submission approval."
+    },
+    {
+      "requirement": "Coding/System design switch with a built-in whiteboard",
+      "result": "verified",
+      "evidence": "Native tests cover offline Excalidraw, notes, images, checkpoints, reviews, exports, and saved work after restart."
+    },
+    {
+      "requirement": "MCP access from VS Code",
+      "result": "verified",
+      "evidence": "tests/test_vscode_setup.py executes the saved launch command and verifies catalogs, scaffold results, hints, and unchanged solution files."
+    },
+    {
+      "requirement": "Use the Supabase Free project without a VPS",
+      "result": "verified_private_preview",
+      "evidence": "Function version 4 is ACTIVE. Live tests verified two accounts, access controls, token replacement, remote practice, and local Piston execution. Both temporary accounts were deleted."
+    },
+    {
+      "requirement": "Plans for sign-up, revenue, deployment, and public packages",
+      "result": "documented",
+      "evidence": "docs/public-release-plan.md defines the proposed account flow, ownership, payment operations, cost limits, package targets, and public release checks. These are plans, not active services."
+    },
+    {
+      "requirement": "A working desktop package",
+      "result": "verified_development_build",
+      "evidence": "Local AppImage and Deb files are available in apps/desktop/release. Windows and Linux packaged tests passed in Desktop workflow 39623646553. Installers are unsigned."
+    },
+    {
+      "requirement": "Slow demos that show the app and agent workflow",
+      "result": "verified",
+      "evidence": "The GIF files contain 185 frames over 30.84 seconds and 207 frames over 34.5 seconds. Captions identify each step. The model is a local fixture, not live inference."
+    },
+    {
+      "requirement": "Current READMEs with ASD-STE100 checks",
+      "result": "reviewed",
+      "evidence": "The review used Issue 9 Part 1 and Part 2 dictionary entries for meanings, parts of speech, and forms. Computer terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed their checks."
+    }
+  ],
   "implemented": [
     "Revision-pinned coding attempts and owned design sessions",
     "Five original development system-design briefs",
@@ -42,7 +85,6 @@
     "Public account registration and automatic desktop sign-in remain proposed release work",
     "Coordinated signed app/engine release artifact workflow and macOS CI",
     "Review published dependency notice inventory before a production release",
-    "Complete the Part 2 contextual vocabulary check for public documentation",
     "Clean-machine installation and upgrade checks on each public release platform"
   ],
   "external_prerequisites_not_provisioned": [
@@ -50,6 +92,12 @@
     "Windows/macOS signing and notarization credentials for trusted public releases",
     "Optional hosted checkout and reviewed paid-pack publication"
   ],
+  "queued_follow_up": {
+    "branch": "feat/subscription-plans",
+    "requested_price": "USD 10 each month",
+    "status": "not_started",
+    "condition": "Finish and hand off the current desktop and Supabase work first. No billing is active."
+  },
   "last_verified": {
     "python": "229 passed, 30 skipped in the default run, including 20 opt-in PostgreSQL tests. All 23 catalog/PostgreSQL tests passed separately. 30 existing datetime deprecation warnings.",
     "desktop_unit_and_process": "74 passed, 2 opt-in tests skipped in the default run. The remote MCP suite passed all 3 tests separately with real Piston. Real managed Docker integration passed earlier.",
@@ -60,6 +108,8 @@
     "packaged_linux": "Latest AppImage and Deb rebuilt. Six native workflows passed against the latest unpacked app, including actual Piston execution. The actual AppImage passed the offline design save/reopen workflow. Development-server test is intentionally inapplicable to packaged builds.",
     "supabase_local": "14 MCP/auth/adapter tests passed. 23 catalog/PostgreSQL tests passed with real isolated PostgreSQL. Deno types, format, and lint passed.",
     "supabase_remote": "Function version 4 and three migrations deployed. Live tests passed for two real temporary accounts: identity, catalogs, attempts, hints, cross-account rejection, immutable checkpoints/reviews, token refresh, and the desktop service with real local Piston. Both accounts and their data in five practice tables were removed. Public registration and a desktop login page were not tested.",
-    "desktop_notices": "Collector handles absent platform-specific optional packages; project/font/dependency notices packaged; 44 package entries lack published notice files and still need release review"
+    "desktop_notices": "Collector handles absent platform-specific optional packages; project/font/dependency notices packaged; 44 package entries lack published notice files and still need release review",
+    "ci": "Desktop workflow 39623646553 passed Windows and Linux native package checks. Supabase workflow 39623646495 passed Edge Function and PostgreSQL checks. Both runs verified code commit e46fabf.",
+    "documentation": "README setup selects feat/interview-desktop. The sandbox guide has current links and commands. Demo dimensions agree with the files. No application behavior or saved data changed in this documentation pass."
   }
 }

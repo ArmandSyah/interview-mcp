@@ -17,8 +17,8 @@ These two Model Context Protocol (MCP) tools identify the connection:
 
 The authentication issuer identifies the Supabase authentication service.
 The identity result identifies one account. It contains only that account's identity.
-A request without valid account credentials cannot execute tools.
-The status result lists the available capabilities.
+A request without verified account credentials cannot execute tools.
+The status result contains the available capabilities.
 The function does not advertise unavailable execution, payment, or recall tools.
 
 Account registration and desktop sign-in are not implemented.
@@ -48,23 +48,23 @@ The desktop does not decode a token to establish identity.
 When you replace an expired token, the same account keeps its workspace.
 Different accounts and server URLs have different workspaces.
 
-Earlier bearer-key workspaces keep their files and paths.
-The first verified account connection can keep that credential's earlier workspace.
-It does not combine two account workspaces.
+Saved bearer-key workspaces keep their files and paths.
+The first verified account connection can keep that credential's initial workspace.
+It does not merge two account workspaces.
 With a saved credential, the app can identify that workspace when the connection is unavailable.
 Without OS secure storage, the token stays in memory until app exit.
 
 ## Hosted records
 
 An account can have zero or more coding attempts and design sessions.
-Each attempt or design session belongs to one account.
+Each attempt or design session identifies one owner account.
 Each record identifies one immutable content revision.
 A content revision can have zero or more attempts or design sessions.
-New catalog releases do not change earlier records.
+New catalog releases do not change saved records.
 
 A design session can have zero or more checkpoints.
-Each checkpoint belongs to one session and the same account.
-A checkpoint can have zero or more reviews. Each review belongs to one checkpoint.
+Each checkpoint identifies one session and the same account.
+A checkpoint can have zero or more reviews. Each review identifies one checkpoint.
 
 If a checkpoint retry has the same data, the function returns the saved record.
 It does not create a new record.
@@ -94,13 +94,13 @@ It sends the user's code and one test input to local Piston for each test case.
 Piston receives no MCP account token or model key.
 The desktop does not execute this code in its host Python process.
 
-After execution, `record_local_execution` stores the report under the same account and attempt.
-An attempt can have zero or more reports. Each report belongs to one attempt.
+After execution, `record_local_execution` stores the report with the same account and attempt IDs.
+An attempt can have zero or more reports. Each report identifies one attempt.
 The report contains results, output, errors, and a code fingerprint.
 It does not include a source-code field. Output or errors can contain text from the code.
 
 The function compares reported results with the saved test cases.
-It cannot prove which code executed. Reports state `verification: not_server_verified`.
+It cannot show which code executed. Reports contain `verification: not_server_verified`.
 **Run tests** does not finish an attempt.
 **Submit** finishes an attempt only if all reported results pass.
 The UI identifies these results as local reports, not server-verified grades.
@@ -108,10 +108,10 @@ The UI identifies these results as local reports, not server-verified grades.
 A repeated report ID returns the saved result if its data stays the same.
 Different data with the same ID causes an error. Earlier reports do not change.
 
-The desktop supports plans with 1 to 100 Python test cases.
+The desktop accepts plans with 1 to 100 Python test cases.
 Code can contain at most 100,000 UTF-8 bytes.
 The runtime gives each test three seconds and 256 MiB of execution memory.
-The report limits standard output and standard error to 4,000 characters each per test.
+For each test, the report limits standard output and standard error to 4,000 characters each.
 The desktop identifies shortened output.
 
 The desktop rejects integers below -9007199254740991 or above 9007199254740991.
@@ -122,16 +122,17 @@ The full report must fit 850,000 bytes in its PostgreSQL JSON representation.
 The desktop supplies **Run tests** and **Submit** through this local adapter.
 The Edge Function does not expose remote `run_tests` or `submit_solution` tools.
 The coach cannot call the internal plan or report tools directly.
-An external MCP client needs its own local execution adapter for these tools.
+A local execution adapter is necessary for an external MCP client to use these tools.
 
 ### Report parameters and results
 
-`get_local_execution_plan` takes one `attempt_id`, the UUID of an owned coding attempt.
+`get_local_execution_plan` accepts one `attempt_id`, the UUID of an owned coding attempt.
 It returns that attempt's ID, problem ID, content revision, Python function name, runtime version, and test cases.
 Each test case has positional `input` arguments and an `expected` JSON result.
-An absent or unowned attempt causes an error. A plan must have 1 to 100 test cases.
+An attempt that is not in the account's records causes an error.
+A plan must have 1 to 100 test cases.
 
-`record_local_execution` takes these parameters:
+`record_local_execution` accepts these parameters:
 
 | Parameter | Meaning |
 | --- | --- |
@@ -152,16 +153,17 @@ The caller cannot supply a `passed` flag, different expected results, or a diffe
 The return value is a test run when `submitted` is `false`.
 When `submitted` is `true`, the return value contains completion status, the test run, a message, and optional follow-up questions.
 
-The test run includes every plan case, the total count, the passed count, and `all_passed`.
+The test run includes each plan case, the total count, the passed count, and `all_passed`.
 A case passes only if its reported value equals the expected JSON value and its error is `null`.
-An error case remains in the total count. It does not increase the passed count.
-Both return forms identify their source as `local_report` and their verification as `not_server_verified`.
+The total count includes error cases. Those cases do not increase the passed count.
+The two result types identify their source as `local_report` and their verification as `not_server_verified`.
 
-Malformed data, incorrect case counts, and changed retries cause errors without a partial report.
+Malformed data, incorrect case counts, and changed retries cause errors.
+The function creates no report for those requests. Saved reports do not change.
 The function does not change completion status after a failed submission.
 
-`completed` describes the current submission, not an earlier successful submission.
-A failed submission returns `completed: false`. It does not reopen an attempt that was already completed.
+`completed` identifies the result of this submission, not a submission before this request.
+A failed submission returns `completed: false`. It does not reopen a completed attempt.
 
 The report protocol uses JSON equality. It distinguishes Boolean values from numbers.
 These report rules do not change the local Python engine's comparison rules.
@@ -176,14 +178,15 @@ An invalid token returns HTTP 401.
 
 The function accepts POST requests with bodies of at most 1,000,000 bytes.
 It rejects browser requests that contain an `Origin` header.
-The desktop and editor clients do not need browser access.
+Browser access is not necessary for desktop and editor clients.
 Responses have `Cache-Control: no-store`.
 
 The function uses the environment variables `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 Do not put account tokens or service-role keys in source files.
-The function verifies account tokens itself because the legacy gateway check does not support all token algorithms.
+The function verifies account tokens itself.
+It does not use the gateway's JSON Web Token (JWT) check.
 Thus, `verify_jwt` is `false` in the function configuration.
-This setting does not permit unauthenticated tool access.
+Unauthenticated clients cannot execute tools.
 
 ## Local checks
 
@@ -199,7 +202,7 @@ deno task lint
 The tests use a local HTTP server and the MCP client library.
 They examine request limits, token verification, identity isolation, and error responses.
 They use test responses for the Supabase authentication endpoint.
-They do not prove that remote account registration works.
+They do not show that remote account registration operates correctly.
 
 From the repository root, examine catalog parity:
 
@@ -221,7 +224,7 @@ INTERVIEW_TEST_CLOUD_POSTGRES=1 uv run pytest -q tests/test_cloud_store.py
 ```
 
 This test creates a disposable PostgreSQL container without a host port or external network access.
-It uses test account records, not real Supabase accounts.
+It uses test account records, not accounts from Supabase Auth.
 It examines ownership, row policies, content revisions, concurrent saves, and immutable evidence.
 The test removes its container and temporary database after completion.
 
@@ -238,7 +241,7 @@ https://<project-ref>.supabase.co/functions/v1/interview-mcp
 ```
 
 The repository migration versions are the same as the recorded remote versions.
-After Supabase CLI authentication, link the intended project:
+After Supabase CLI authentication, link the selected project:
 
 ```bash
 supabase link --project-ref <project-ref>
@@ -260,21 +263,21 @@ Do not send management credentials to the app function.
 
 ## Work before general use
 
-The Python engine cannot run unchanged in a Supabase Edge Function.
+The Python engine cannot run in a Supabase Edge Function without changes.
 Edge Functions use TypeScript and Deno.
 Local SQLite records must stay available without an account.
 
 A configured sign-in client and end-to-end tests are necessary for account registration and automatic token refresh.
 Rate limits, account storage limits, data exports, and recovery procedures are also necessary before public access.
 
-The Supabase security advisor identifies two intentional permission conditions:
+The Supabase security advisor identifies two permission conditions in this preview:
 
-- `iwb_content` has row-level security without a read policy. App accounts must not read future hints directly.
+- `iwb_content` has row-level security without a read policy. App accounts must not read subsequent hints directly.
 - Authenticated accounts can execute the `SECURITY DEFINER` function `iwb_practice`.
 
 That database function operates with its owner's permissions.
-Thus, its account checks are mandatory, even with row-level security on the tables.
-Its access controls include a defined schema path, strict arguments, permission grants, and ownership tests.
+Thus, its account checks are mandatory with row-level security on the tables.
+Its access controls include a specified schema path, argument validation, permission grants, and ownership tests.
 A security review is necessary before public access.
 
 The Edge Function must not execute user code.

@@ -26,10 +26,11 @@ npm run dev
 
 The app starts the MCP engine automatically.
 Do not start a second Python server for the desktop app.
-The app uses curated hints when your shell contains a paid provider key.
+A provider key in your shell does not enable AI automatically.
 
 Close the window to stop the development process.
-After changes to main-process code, stop the app. Start the app again.
+After changes to code in the Electron main process, stop the app.
+Start the app again.
 Vite reloads renderer changes during development.
 
 ### Linux requirements
@@ -44,10 +45,10 @@ sudo apt-get install libnss3 libasound2t64
 
 For headless UI tests, also install `xvfb`.
 WSLg is necessary to show an app window in WSL.
-Use a native Windows build if WSLg is unavailable.
+If WSLg is not available, use a native Windows build.
 
 Linux packages use Ubuntu 24.04 as the build host.
-The tests do not include earlier glibc versions.
+Tests use that host's glibc version.
 
 ### Troubleshooting
 
@@ -57,9 +58,9 @@ The tests do not include earlier glibc versions.
 | Electron reports a missing executable. | Enter `npm run install:electron` from `apps/desktop`. |
 | Electron reports a missing shared library. | Install the Linux libraries in the requirements section. |
 | Linux has no display. | Start a graphical desktop. Use Xvfb only for headless tests. |
-| Code tests fail to connect to Piston. | Complete the optional sandbox setup below. |
+| Code tests cannot connect to Piston. | Complete the optional sandbox setup below. |
 | The coach panel is disabled. | Select a provider in Settings, or use curated hints with AI off. |
-| A saved design or database reports damage. | Keep the existing files. Restore from a different backup before you continue. |
+| A saved design or database reports damage. | Keep the files. Restore from a different backup before you continue. |
 
 Do not disable the Electron sandbox to bypass a setup error.
 
@@ -79,13 +80,13 @@ chmod +x "release/Interview Workbench-0.2.0.AppImage"
 "./release/Interview Workbench-0.2.0.AppImage"
 ```
 
-If FUSE is unavailable, start the AppImage with `--appimage-extract-and-run`:
+If FUSE is not available, start the AppImage with `--appimage-extract-and-run`:
 
 ```bash
 "./release/Interview Workbench-0.2.0.AppImage" --appimage-extract-and-run
 ```
 
-This option extracts the package to a temporary directory before startup.
+This method extracts the package to a temporary directory before startup.
 It does not disable the Electron sandbox.
 See the [AppImage FUSE guide](https://docs.appimage.org/user-guide/troubleshooting/fuse.html) for the runtime's requirements.
 
@@ -104,7 +105,7 @@ Tests use Piston in a local Docker container.
 Internet access is necessary for setup to download the image and Python runtime.
 The app uses a digest-pinned image.
 It examines the Docker connection, container platform, and cgroup version.
-The bundled image does not support ARM64 Docker engines.
+The bundled image cannot operate on ARM64 Docker engines.
 
 A privileged container can change its host system.
 CAUTION: Use local execution only on a trusted workstation or an isolated Docker virtual machine (VM).
@@ -144,7 +145,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:2000/api/v2/packages -Conte
 ```
 
 The sandbox listens on `127.0.0.1:2000`.
-Do not expose this port to the internet.
+Do not make this port available to internet clients.
 The execution configuration disables solution networking and limits memory, output, and concurrent runs.
 
 Stop the manual container from the repository root:
@@ -163,18 +164,18 @@ Select **Run tests** to do tests of the saved draft.
 Select **Submit** to complete the attempt only if all tests pass.
 
 After an edit, the app marks the previous test results stale.
-It saves drafts automatically and requests a save before exit.
+It saves drafts automatically and sends a save request before exit.
 Use `Ctrl/Cmd+S` to save immediately.
 Use `Ctrl/Cmd+Enter` to start tests.
 
 The app records the problem revision for each attempt.
-A catalog update does not replace the problem text of an existing attempt.
+A catalog update does not replace the problem text of a saved attempt.
 
 ## System-design practice
 
 Select **System design**. Open one of the five development briefs.
 Use Excalidraw or the component palette to draw your design.
-Enter your explanation in the six note sections.
+Enter your design notes in the six sections.
 
 The app bundles fonts and canvas assets.
 It disables remote embeds and external canvas links.
@@ -184,7 +185,8 @@ Guided mode includes curated hints. Mock mode disables those hint controls.
 The timer can start and pause. The draft keeps the elapsed time.
 
 **Checkpoint** captures immutable evidence.
-**Review** shows discussion coverage, not architectural correctness or hiring readiness.
+**Review** shows discussion coverage.
+It does not show that a design is correct or that you can complete an interview task.
 Edits after a design review can make that design review stale.
 **History** first saves the draft, then restores a saved checkpoint.
 
@@ -197,13 +199,13 @@ Open **Settings**. Select a provider in the **AI coach** section.
 
 - **Off:** the app makes no model calls. Curated hints stay available.
 - **Ollama:** use a local, tool-capable model. Install the model. Start the model.
-- **Claude API:** use your Anthropic API key. Each chat request has an API charge.
+- **Claude API:** use your Anthropic API key. Each chat request uses your paid API account.
 
 The app does not install a model or make background chat requests.
 A paid provider receives your message, applicable practice text, and tool results when you send a chat.
 Model responses can contain errors.
 
-The coding coach can request hints, tests, descriptions, and progress with permitted MCP tools.
+The coding coach can get hints, test results, descriptions, and progress with permitted MCP tools.
 The app supplies the saved draft and attempt ID.
 User approval is mandatory for submission. The coach cannot edit the code or use a shell.
 Select **Stop** to cancel a turn.
@@ -212,12 +214,12 @@ The system-design coach receives an immutable checkpoint of notes and diagram la
 It cannot change the canvas, notes, reminders, or session status.
 It does not receive image files and cannot read text in those images.
 
-Diagram summaries support up to 3,000 elements.
-Labels longer than 2,000 characters have an explicit shortened-label marker.
+Diagram summaries can contain up to 3,000 elements.
+Labels longer than 2,000 characters have a shortened-label marker.
 The full text stays in the canvas and exports.
 A summary of more than 700 KB causes an error before checkpoint creation. The saved draft does not change.
 
-The main process stores credentials with OS secure storage when available.
+The Electron main process stores credentials with OS secure storage when available.
 Snapshots and the Python process do not receive API keys.
 Without secure storage, keys stay in memory until exit. Enter the keys again after you start the app.
 Practice files are not encrypted.
@@ -230,16 +232,17 @@ The app does not add reminders automatically.
 
 Use **Due now**, **Upcoming**, or **Paused** to see reminders.
 Select a reminder interval from 0 to 365 days.
-Move, pause, or resume a reminder without removing its history.
+Move a reminder or change its pause status. Its history does not change.
 
 Use **Recall & reflect** to answer plain-English prompts.
 Record your answer, the help you received, and your next step.
-The app saves reflection drafts automatically and requests a save before exit.
+The app saves reflection drafts automatically and sends a save request before exit.
 
-The **Save reflection & next review** action creates an immutable history record.
-Self-ratings suggest reminder intervals of 1, 3, 7, 14, or 30 days.
-You can change the suggested reminder.
-These ratings do not measure correctness or complete the initial attempt.
+The **Save reflection & next review** button creates an immutable history record.
+After a self-rating, the app shows an interval of 1, 3, 7, 14, or 30 days.
+You can change that interval.
+These ratings do not show that an answer is correct.
+They do not complete the initial attempt.
 
 AI, Docker, and a hosted service are not necessary for the queue.
 The coach cannot read queue history or change reminders.
@@ -252,7 +255,7 @@ It stores attempts, content revisions, design checkpoints, reviews, reflections,
 Canvas documents and image assets use app-owned local files.
 
 Database upgrades create a backup before migration.
-The app refuses a database from a newer schema version.
+The app rejects a database from a newer schema version.
 Desktop state uses versioned atomic writes.
 
 Settings can export a private practice archive.
@@ -262,16 +265,16 @@ Keep the archive private because it contains personal data.
 
 The app uses different workspaces for different remote servers and account identities.
 Supabase accounts keep the same workspace when an operator replaces an expired token.
-Other remote servers keep the earlier bearer-key workspace behavior.
+Servers without account identity tools use bearer-key workspaces.
 See the [Supabase preview guide](../../docs/supabase-hosting.md#desktop-connection) for manual account access and local execution reports.
 
 The default public catalog has five coding examples and five design briefs.
 To use a larger corpus, select an accepted runtime JSON export in Settings.
 Do not select a private authoring repository.
 
-Signed pack and update verification exists, but production trust keys are not configured.
+The app verifies signed packs and updates, but production trust keys are not configured.
 No checkout or public update service is configured.
-These features refuse untrusted input.
+These features reject untrusted input.
 The [content guide](../../docs/content-authoring.md) gives the owner's content release procedure.
 
 ## Build and check
@@ -288,7 +291,7 @@ npm run test:desktop
 npm run dist -- --publish never
 ```
 
-Installers appear in `apps/desktop/release`.
+The build puts installers in `apps/desktop/release`.
 Use `npm run package` for an unpacked build.
 These commands prepare packages for the host operating system.
 
@@ -299,14 +302,14 @@ xvfb-run -a npm run test:desktop
 ```
 
 Set `INTERVIEW_DESKTOP_EXECUTABLE` to an unpacked executable to do packaged tests.
-Copy the unpacked app outside the checkout before the source independence tests.
+Copy the unpacked app to a different directory before the source independence tests.
 
 Model tests use fixtures and make no paid API calls.
 Native tests include editor drafts, MCP tools, canvas images, exports, checkpoint restore, and recall.
 For code execution UI tests, set `INTERVIEW_DESKTOP_TEST_PISTON=1` after manual sandbox setup.
 
 For managed sandbox tests, set `INTERVIEW_DESKTOP_TEST_MANAGED_SANDBOX=1`.
-Use a trusted Docker host with port 2000 free.
+Use a trusted Docker host with port 2000 available.
 This test downloads the runtime and keeps its volume.
 The default unit tests do not include this integration.
 

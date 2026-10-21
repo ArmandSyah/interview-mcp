@@ -1,7 +1,7 @@
 # Public release plan
 
 Status: release proposal with a private Supabase practice preview.
-Accounts, checkout, and a complete public service are not available.
+Public accounts and checkout are not available.
 The desktop app is the first release.
 The [Supabase guide](supabase-hosting.md) identifies the deployed tools and remaining work.
 
@@ -9,7 +9,7 @@ The [Supabase guide](supabase-hosting.md) identifies the deployed tools and rema
 
 The app has a coding workspace and a system-design workspace.
 Select **System design** to open the built-in Excalidraw whiteboard.
-Select **Coding** to return to the code editor.
+Select **Coding** to open the code editor.
 The MCP engine can also supply practice tools to VS Code.
 There is no VS Code whiteboard extension.
 
@@ -20,7 +20,7 @@ The user supplies a local model or a personal API key.
 Code execution uses local Docker, not a shared public execution server.
 A virtual private server (VPS) and a hosted model are not necessary for the first release.
 
-This plan does not change existing attempts, checkpoints, or reflections.
+This plan does not change saved attempts, checkpoints, or reflections.
 Those records keep their content revisions and local ownership.
 An account must not cause an automatic upload of practice data.
 
@@ -51,7 +51,7 @@ Automatic sign-in and token refresh are not implemented.
 
 An identity provider identifies the user and supplies a session token.
 The private Edge Function uses Supabase Auth for token verification.
-Desktop sign-in with that provider remains a proposal.
+Desktop sign-in with that provider is a proposal.
 GitHub sign-in is the proposed first method. A configured mail service is necessary for email recovery.
 Before provider selection, examine supported regions, service limits, email costs, and mail delivery.
 
@@ -68,11 +68,11 @@ Proposed sign-in procedure:
 1. Create a random state value and a PKCE verifier in the Electron main process.
 2. Start a temporary callback listener on `127.0.0.1`.
 3. Open the configured authorization URL in the system browser.
-4. Accept only the configured callback path and the matching state value.
+4. Accept only the configured callback path and the initial state value.
 5. Exchange the code with the verifier.
 6. Close the listener after success, cancellation, or timeout.
 7. Keep the refresh token in OS secure storage.
-8. Keep the access token in main-process memory.
+8. Keep the access token in memory in the Electron main process.
 
 If secure storage is unavailable, the account session must end when the app exits.
 The renderer must not receive tokens. The Python practice engine must not receive account credentials.
@@ -99,7 +99,7 @@ An entitlement is a record that gives access to a purchased pack.
 
 An email address is contact information, not an account ID or proof of purchase ownership.
 The service must validate a purchase claim with the payment provider or a single-use claim token.
-The service must not merge accounts only because email addresses match.
+The service must not merge accounts only because their email addresses are the same.
 
 Account deletion removes hosted identity and recovery records according to the stated retention policy.
 The deletion operation must identify financial records that the service cannot immediately remove.
@@ -122,7 +122,7 @@ First record the count of users that complete the free examples and request more
 Then record purchases, refunds, support time, and the count of users with more than one practice session.
 Select a price after you collect this data. Collect usage data only with user consent.
 
-The pack format supports continued offline access to purchased releases.
+The pack format gives continued offline access to purchased releases.
 Its date limit controls new pack releases, not use of installed content.
 The format cannot immediately cancel an offline license after a refund.
 The refund policy must give that information. A different license contract is necessary for a subscription.
@@ -134,7 +134,7 @@ It is the merchant of record for its transactions.
 Provider approval and supported seller countries are prerequisites.
 
 Its published base fee is 5% plus USD 0.50 for each sale. The provider can add other fees.
-See the [pricing page](https://www.lemonsqueezy.com/pricing) and [fee details](https://docs.lemonsqueezy.com/help/getting-started/fees).
+See the [pricing page](https://www.lemonsqueezy.com/pricing) and [fee terms](https://docs.lemonsqueezy.com/help/getting-started/fees).
 Examine these terms again before launch. This plan is not tax advice.
 
 For a USD 29 sale, the base fee alone is USD 1.95.
@@ -142,7 +142,7 @@ The remaining USD 27.05 does not include taxes, other fees, refunds, support, or
 This example is not a revenue forecast.
 
 The first preview can use manual fulfillment after payment verification.
-The owner signs a license outside the repository and supplies the pack and license files.
+The owner signs a license in a different directory and supplies the pack and license files.
 The app validates signatures locally. A license server is not necessary during practice.
 
 Automatic fulfillment adds a small HTTPS service, not a public Piston server.
@@ -151,14 +151,14 @@ A webhook is a payment notification that the checkout provider sends to that ser
 The service must validate the webhook signature before it changes purchase records.
 It must process duplicates, retries, and refunds. Notifications can have a different time sequence from payments.
 The service must reconcile order status before it issues a license.
-The service must not trust a checkout success page as proof of payment.
-Keep signing keys and payment API secrets outside the app and source repository.
+The service must not accept a checkout success page as payment verification.
+Do not put signing keys or payment API secrets in the app or source repository.
 
 ## Deployment without a practice server
 
 The first public release consists of installer downloads and documentation.
 Use GitHub Releases for installer assets. See [GitHub release documentation](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
-The existing update verifier accepts assets from this repository's GitHub Releases only.
+The update verifier accepts assets from this repository's GitHub Releases only.
 A verifier change and new tests are necessary before the app can use a different download host.
 
 Local SQLite is the practice database.
@@ -167,7 +167,7 @@ An always-on license service is not necessary for manual pack fulfillment.
 Thus, a VPS is not a prerequisite for the first users.
 
 If automatic fulfillment becomes necessary, compare a small managed function with a small server.
-Set a monthly cost limit before provisioning either service.
+Before you configure a service, set a monthly cost limit.
 Store only identity, purchase, entitlement, and notification records in the hosted database.
 Keep user code and diagram images out of the payment service.
 Use a durable queue for license requests and retry failed deliveries.
@@ -177,7 +177,7 @@ An optional hosted practice service has different design requirements.
 Piston must operate on isolated execution workers, not on a server with payment credentials or an account database.
 The local privileged-container setup is not a public multi-user isolation boundary.
 Per-user limits, abuse controls, monitoring, and recovery procedures are necessary for the hosted service.
-Do not expose port 2000 to the internet.
+Do not make port 2000 available to internet clients.
 
 ## Packaging and public release
 
@@ -196,7 +196,7 @@ Before a public release:
 1. Set one version for the app, engine, and release manifest.
 2. Do the backend, desktop, Docker integration, and native UI tests.
 3. Prepare each supported package on its target operating system.
-4. Do packaged tests outside the source checkout.
+4. Do packaged tests in a different directory from the source checkout.
 5. Do installation, upgrade, backup, and uninstall tests on clean machines.
 6. Examine the dependency and font license inventory.
 7. Add platform signatures and macOS notarization where applicable.
@@ -214,10 +214,10 @@ Older installers must not open a newer incompatible database.
 Recovery uses the pre-upgrade backup, not an unsupported database downgrade.
 
 The release must keep practice records when the user uninstalls or upgrades the app.
-Data removal must be a different explicit action.
+Data removal must be a different user-requested operation.
 An installer must not start Docker, download a model, or send practice data without the user's request.
 
-## Work that is not authorized by this plan
+## Work that is not part of this plan
 
 This document does not provision accounts, buy a domain, select a paid plan, or publish an installer.
 Owner approval is mandatory for provider costs, pack terms, production keys, and the public release.

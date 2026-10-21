@@ -6,11 +6,11 @@ The sample code is a draft, not a solution.
 
 The agent demo uses a scripted HTTP model on `127.0.0.1`.
 It uses the Ollama message format. It does not do model inference.
-The model requests `get_hint`. The app supplies the saved attempt and calls the project's MCP tool.
+The model sends a `get_hint` request. The app supplies the saved attempt and calls the project's MCP tool.
 The model then returns sample coach text.
 
 The system-design demo uses AI off. Its checkpoints and design reviews use the project's backend.
-The capture script rejects renderer errors and unexpected HTTP requests.
+The capture script rejects renderer errors and HTTP requests that are not on its permitted list.
 It also compares the draft before and after the model response.
 See [capture-manifest.json](capture-manifest.json) for the capture results.
 
@@ -27,17 +27,17 @@ npm run build
 npm run demo -- --force
 ```
 
-The `--force` option replaces only the six named demo assets in this directory.
-Without that option, the script refuses to replace existing assets.
-The script keeps temporary frames and its temporary workspace outside the checkout.
+The `--force` flag replaces only the six named demo assets in this directory.
+Without that flag, the script does not replace saved assets.
+The script keeps temporary frames and its temporary workspace in a different directory from the checkout.
 It does not make paid model calls. Docker is not necessary for demo capture.
 
-The script captures PNG frames from UI actions. FFmpeg encodes those frames as looping GIFs.
-The PNG screenshots use a 1440 by 900 pixel window.
-The GIFs use a 1280 by 800 pixel window at six frames each second.
+The script captures PNG frames from UI operations. FFmpeg encodes those frames as GIFs with automatic playback cycles.
+The current PNG screenshots contain 1480 by 893 pixels.
+The current GIFs contain 1280 by 772 pixels. The script captures six frames each second.
 
-Each demo has a playback time of approximately 30 to 40 seconds. Pauses give you time to examine each result.
-The recordings show step captions and a pointer. The screenshots show the app without these additions.
+Each demo has a playback time of 30 to 40 seconds. Pauses give you time to examine each result.
+The recordings show step captions and a pointer. The screenshots show the app without captions or a pointer.
 
 The capture script updates public assets only after all capture checks pass.
 Examine each image before you publish it.

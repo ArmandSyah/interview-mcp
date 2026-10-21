@@ -2,14 +2,16 @@
 
 A desktop app for coding and system-design practice, with an optional artificial intelligence (AI) coach.
 
-Write Python code in Monaco. Draw a system design in Excalidraw. Save your work on your computer.
+Write Python code in the Monaco editor.
+Draw a system design with the Excalidraw whiteboard. Save your work on your computer.
 The coach gets hints and test results with Model Context Protocol (MCP) tools.
 The app controls which tools the coach can use and which draft each tool receives.
 
 AI is off at first startup. The app keeps the provider that you select.
-No model, API key, Docker, or hosting account is necessary for curated hints and system-design practice.
+Local curated hints and system-design practice do not use a model or an application programming interface (API) key.
+Docker and a hosting account are not necessary for these features.
 
-Select **System design** to open the built-in whiteboard. Select **Coding** to return to the editor.
+Select **System design** to open the built-in whiteboard. Select **Coding** to open the editor.
 See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
 See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
 Account registration and checkout are proposals, not available app features.
@@ -24,7 +26,7 @@ The [term list](docs/terminology.md) gives the meanings of app terms in this gui
 ![The desktop app opens a coding problem, saves a draft, calls an MCP hint tool, and shows a coach response.](docs/media/agent-workflow.gif)
 
 This recording uses the desktop app and the Python MCP engine.
-A scripted local model requests a tool and supplies sample text. No model inference occurs in this demo.
+A scripted local model sends a tool request and supplies sample text. No model inference occurs in this demo.
 The app executes the MCP tool and keeps the user's draft.
 See [the capture guide](docs/media/README.md) for the script and checks.
 
@@ -38,7 +40,7 @@ The app does not let the model change the user's code.
 3. The model returns a response or a tool request.
 4. The app examines the tool request and supplies the correct attempt ID and draft.
 5. The Python MCP engine executes the tool. The coach loop returns the result to the model.
-6. The app displays the response and tool activity. The user selects the next action.
+6. The app displays the response and tool results. The user selects the next step.
 
 For system design, the app captures an immutable checkpoint before each coach turn.
 The coach reads that checkpoint, not canvas edits after the request.
@@ -46,7 +48,7 @@ It receives notes and diagram labels. It does not receive image files.
 
 The workflow has these limits:
 
-- A turn can request one hint. Hint depth can increase by one, to a maximum of three.
+- The app accepts one hint request in each turn. Hint depth can increase by one, to a maximum of three.
 - Coding tools receive the user's saved draft. The model cannot replace the code or select a different attempt.
 - User approval is mandatory for a submission. The model cannot finish a system-design session.
 - The coach cannot use a shell, edit files, change reminders, or redraw the canvas.
@@ -55,9 +57,9 @@ The workflow has these limits:
 
 The prompt does not control access. The desktop service controls tool permissions.
 
-The [coach loop](apps/desktop/src/main/agent.ts) handles model responses and tool requests.
+The [coach loop](apps/desktop/src/main/agent.ts) processes model responses and tool requests.
 The [desktop service](apps/desktop/src/main/service.ts) supplies the saved draft and controls tool permissions.
-The [provider adapters](apps/desktop/src/main/providers.ts) support Ollama and the Claude API.
+The [provider adapters](apps/desktop/src/main/providers.ts) connect to Ollama and the Claude API.
 The [Python backend](server/main.py) supplies the MCP tools.
 
 ## Offline system-design demo
@@ -73,7 +75,7 @@ A design review shows discussion coverage. It does not show that a design is cor
 
 ### Coding workspace
 
-![Python editor, problem description, MCP tool activity, and coach response.](docs/media/coding-workbench.png)
+![Python editor, problem description, MCP tool results, and coach response.](docs/media/coding-workbench.png)
 
 ### System-design workspace
 
@@ -103,7 +105,7 @@ Docker and an AI model are optional. Do not install them for your first session.
 Enter these commands in a terminal or Windows PowerShell.
 
 ```bash
-git clone https://github.com/ArmandSyah/interview-mcp.git
+git clone --branch feat/interview-desktop https://github.com/ArmandSyah/interview-mcp.git
 cd interview-mcp
 uv sync --frozen --dev --python 3.12
 cd apps/desktop
@@ -121,15 +123,16 @@ For a first check:
 2. Select **Hint** to get a curated hint.
 3. Select **System design**.
 4. Open a brief.
-5. Add a component and enter a note.
-6. Select **Checkpoint** to save the evidence.
-7. Select **Review** to see discussion coverage.
+5. Add a component.
+6. Enter a note.
+7. Select **Checkpoint** to save the evidence.
+8. Select **Review** to see discussion coverage.
 
 Close the app to stop the development process. Drafts stay in the local app data directory.
 
 If `libnss3` and `libasound2t64` are not installed on Ubuntu 24.04, install them.
 GTK and X11 libraries are also necessary for Linux. WSLg is necessary for an app window in WSL.
-See [desktop setup and troubleshooting](apps/desktop/README.md) for details.
+See [desktop setup and troubleshooting](apps/desktop/README.md) for instructions.
 
 ### Enable the AI coach
 
@@ -184,15 +187,16 @@ Linux and Windows have build workflows. The installers are unsigned development 
 | Component | Responsibility |
 | --- | --- |
 | Electron main process | Connect to MCP, operate the coach loop, control permissions, and save local files. |
-| React desktop UI | Display the editor, canvas, notes, tool activity, and practice queue. |
+| React desktop UI | Display the editor, canvas, notes, tool results, and practice queue. |
 | Python MCP engine | Supply practice tools and store owned attempts, checkpoints, and reflections. |
 | SQLAlchemy and SQLite | Keep local records and the content revision for each attempt. |
 | Piston | Execute submitted Python code in the optional local container. |
 
-The renderer has no Node.js access. An IPC interface connects it to the main process.
+The renderer has no Node.js access.
+An inter-process communication (IPC) interface connects it to the Electron main process.
 
-The main process stores API keys. Snapshots and the Python process do not receive them.
-The app uses OS secure storage when available.
+The Electron main process stores API keys. Snapshots and the Python process do not receive them.
+The app uses operating system (OS) secure storage when available.
 Without secure storage, keys stay in memory until exit. Practice text is not encrypted.
 
 Do the Python checks from the repository root:
@@ -213,15 +217,15 @@ npm test
 npm run test:desktop
 ```
 
-Tests include model tool requests, forged IDs, saved draft selection, one-hint limits, cancellation, and submission approval.
+Tests include model tool requests, incorrect IDs, saved draft selection, one-hint limits, cancellation, and submission approval.
 Native tests include coding, design checkpoints, image exports, saved work, and recall.
 Model tests use local fixtures. They do not make paid API calls.
-Docker tests start only with an explicit opt-in. See [the desktop test guide](apps/desktop/README.md#build-and-check).
+Docker tests start only with a user opt-in. See [the desktop test guide](apps/desktop/README.md#build-and-check).
 
 ## Project status
 
 This is a development project. It does not give a validated interview grade.
-The public catalog is small. There is no hosted service or checkout.
+The public catalog is small. Supabase hosts the private MCP preview. Checkout is not configured.
 Production trust keys, signed releases, and an archive restore UI are not configured.
 
 See [the desktop guide](apps/desktop/README.md), [MCP server setup](docs/mcp-server.md), and [demo capture](docs/media/README.md).

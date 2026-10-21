@@ -24,7 +24,7 @@ The [workspace configuration](../.vscode/mcp.json) starts the engine with uv.
 In the agent chat, tell the agent to get a problem list with `list_problems`.
 Open the tool result to see the returned catalog.
 The editor must have an enabled agent and a model provider.
-The editor's model provider can charge for chat requests.
+The editor's model provider can collect payments for chat requests.
 The MCP engine uses curated hints without model calls.
 
 The configuration starts `server.desktop` with stdio.
@@ -48,7 +48,7 @@ Install uv and Python 3.12. Enter these commands from the repository root:
 uv sync --frozen --dev --python 3.12
 ```
 
-Use this configuration in an MCP client that supports stdio.
+Use this configuration in an MCP client that accepts stdio connections.
 Replace the example path with the absolute path to your checkout.
 
 ```json
@@ -85,7 +85,7 @@ The [local sandbox](../apps/desktop/README.md#enable-code-execution) is necessar
 
 The HTTP mode uses a bearer key to identify each user ID.
 Each user ID has isolated attempts and progress records.
-It does not provide an interactive OAuth login.
+It has no interactive OAuth sign-in.
 
 Use a trusted Docker host. A privileged container is necessary for Piston.
 Enter these commands from the repository root:
@@ -116,7 +116,7 @@ Its default address is `127.0.0.1:8000`. A Piston instance is necessary for code
 Remote mode returns scaffold contents as data. It does not write solution files on a user's computer.
 The client must create the scaffold from `files_to_create`.
 Requests must use a permitted Host header. Browser clients must also use a permitted Origin.
-The server limits request size, request rate, and concurrent expensive tools.
+The server limits request size, request rate, and concurrent tools with large workloads.
 
 `/health` returns the server status. `/ready` also returns the corpus and Python execution status.
 
@@ -135,14 +135,14 @@ The active catalog does not include removed questions. Historical attempts keep 
 
 ## Optional hosting
 
-The [Supabase preview](supabase-hosting.md) has a protected HTTPS endpoint.
-It does not provide desktop sign-in or hosted code execution.
+The [Supabase preview](supabase-hosting.md) has an authenticated HTTPS endpoint.
+It has no desktop sign-in or hosted code execution.
 Use its guide for the deployed tools and remaining work.
 
-The Python HTTP server remains an alternative for a trusted Docker host.
+The Python HTTP server is an alternative for a trusted Docker host.
 HTTPS, user keys, Host restrictions, backups, and a security inspection are necessary before a public deployment.
 Use one server replica with SQLite.
-Do not expose the Piston port to the internet.
+Do not make the Piston port available to internet clients.
 
 The [remote CI workflow](../.github/workflows/remote.yml) includes HTTP and Piston tests.
 The [image workflow](../.github/workflows/image.yml) builds the container image.

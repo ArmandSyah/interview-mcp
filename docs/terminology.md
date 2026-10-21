@@ -10,7 +10,7 @@ Product names, file names, command names, and UI labels keep their specified for
 | practice preview | An incomplete remote service for development. It is not a public release. |
 | account | A hosted identity for optional sign-in and purchase recovery. No account is necessary for local practice. |
 | AI coach | The optional app component that sends practice text to a model and displays its response. |
-| API key | A credential that permits requests to a service. |
+| API key | A credential that gives access to a service. |
 | attempt | A coding practice record for one user and one content revision. |
 | backend | The Python process that supplies practice tools with MCP. |
 | checkpoint | A saved copy of design notes and diagram evidence that does not change after creation. |
@@ -20,14 +20,14 @@ Product names, file names, command names, and UI labels keep their specified for
 | content revision | The specified version of a question that a practice record keeps. |
 | curated hint | A hint from the question's stored text, without a model request. |
 | design brief | A system-design question with requirements, constraints, and discussion topics. |
-| design review | The report from the **Review** action. It identifies discussion coverage, not design correctness. |
+| design review | The report from the **Review** button. It identifies discussion coverage. It does not show that a design is correct. |
 | design session | A practice record for one user and one design brief. |
 | draft | The user's saved code, or saved diagram and notes, before submission or completion. |
-| evidence | Saved code, notes, or diagram data for a practice operation. Evidence is not proof that a solution is correct. |
-| entitlement | A proposed hosted record that permits access to a purchased product. |
+| evidence | Saved code, notes, or diagram data for a practice operation. Evidence does not show that a solution is correct. |
+| entitlement | A proposed hosted record that gives access to a purchased product. |
 | fixture | A controlled test input or response. A model fixture does not do model inference. |
 | installer | A package that installs the desktop app on the target operating system. |
-| main process | The Electron process that controls files, credentials, MCP requests, and the app window. |
+| Electron main process | The Electron process that controls files, credentials, MCP requests, and the app window. |
 | MCP | Model Context Protocol, the interface between a client and tools from a server. |
 | model | The local or remote language model that supplies coach responses and tool requests. |
 | Piston | The optional local service that executes code in a container. |
