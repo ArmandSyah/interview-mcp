@@ -93,6 +93,7 @@ export type Snapshot = {
   connection: 'connected' | 'disconnected' | 'connecting';
   error: string | null;
   busy: boolean;
+  chatId: string | null;
   workspacePath: string;
 };
 export type Approval = { id: string; tool: string; description: string };
@@ -165,7 +166,7 @@ export type DesktopAPI = {
   runTests(submit: boolean): Promise<void>;
   hint(): Promise<void>;
   chat(text: string): Promise<void>;
-  cancelChat(): Promise<void>;
+  cancelChat(chatId?: string): Promise<void>;
   approve(id: string, allow: boolean): Promise<void>;
   updateSettings(settings: SettingsUpdate): Promise<void>;
   chooseCorpus(): Promise<string | null>;

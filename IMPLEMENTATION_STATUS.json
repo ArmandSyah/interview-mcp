@@ -173,14 +173,40 @@
         "native_source_ui": "39 passed, 1 opt-in Piston execution test skipped. This run includes all 14 dialog and startup stories.",
         "build_types_format": "Passed.",
         "documentation": "The new README section was checked against Issue 9 writing rules and dictionary entries. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Desktop workflow 39640354351 passed Linux and Windows checks for eb934f0. Supabase workflow 39640354356 passed. Local release packages predate these changes."
+      }
+    },
+    "close_and_chat_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/close-races.spec.ts",
+        "apps/desktop/tests/e2e/chat-cancellation.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/service.test.ts",
+      "verified_behaviors": [
+        "Window close waits for an active hint, preserves code edits during that wait, and restores both after restart.",
+        "The last workspace write occurs before window destruction. Write errors preserve the old file and permit a new close request.",
+        "Close recovery works from coding, design, settings, and recall. Unsaved settings stay in the form until the user closes it.",
+        "A close cancellation failure releases the interface. A later hint and close request work.",
+        "The design timer stops during close. The last close check prevents new editor focus and draft changes.",
+        "Window close cancels streaming chat and submission approval. A queued chat does not start a model request after close begins.",
+        "Stop permits one pending cancellation request for each chat and handles transport errors without an unhandled rejection.",
+        "A cancellation request carries the selected chat ID. An old request or error cannot cancel or replace the error state of a different chat.",
+        "Provider construction failures release chat state and the service lock. Chat cancellation is unavailable during the last state write, while the service stays busy."
+      ],
+      "verification": {
+        "native_regression_stories": "16 passed.",
+        "desktop_unit_and_process": "96 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "55 passed, 1 opt-in Piston execution test skipped. This run includes all 16 close and chat cancellation stories.",
+        "build_types_format": "Passed.",
+        "documentation": "README rules and dictionary review completed. Local links, sentence lengths, paragraph lengths, and punctuation passed. The close recovery screenshot was inspected.",
         "packages_and_ci": "Checks for this batch remain pending. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
-      "Additional repeated actions, workspace changes during edits, and window close during active operations",
+      "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
       "Catalog filters, file navigation, editor shortcuts, and result states",
       "Settings disk-write failures and account changes",
-      "Chat keyboard behavior, repeated sends, cancellation, and submission approval",
+      "Chat keyboard behavior, repeated sends, submission approval expiry, and approval error recovery",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
       "Recall filters, schedule conflicts, repeated requests, and unavailable saved attempts",
       "Update, archive, content pack, and license dialogs",

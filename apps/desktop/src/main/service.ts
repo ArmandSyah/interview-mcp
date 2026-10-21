@@ -87,6 +87,7 @@ export class WorkbenchService {
   private readonly designs: DesignStore;
   private progress = '';
   private agent: AbortController | null = null;
+  private agentId: string | null = null;
   private approvals = new Map<string, (allow: boolean) => void>();
   private practiceOwned = new Set<string>();
 
@@ -150,6 +151,7 @@ export class WorkbenchService {
       connection: this.connection,
       error: this.error,
       busy: this.busy,
+      chatId: this.agentId,
       workspacePath: this.store.root,
     });
   }
@@ -981,18 +983,19 @@ export class WorkbenchService {
     this.busy = true;
     this.error = null;
     this.agent = new AbortController();
+    this.agentId = randomUUID();
     this.publish();
-    const model =
-      this.modelFactory?.(settings, this.apiKey) ??
-      (settings.provider === 'anthropic'
-        ? new AnthropicModel(this.apiKey, settings.model)
-        : new OllamaModel(settings.ollamaUrl, settings.model));
     const context = design
       ? `Pinned system-design brief:\n${JSON.stringify(design.brief)}\nImmutable checkpoint evidence:\n${JSON.stringify(checkpoint)}\nThis is not a correctness grade. Only refer to this checkpoint, even if the live canvas changes.`
       : session
         ? `Problem: ${session.problem.title}\nAttempt ID: ${session.attemptId}\nDescription:\n${session.description}\nSaved editor draft:\n${code}\nLast tests: ${session.result ? `${session.result.tests_passed}/${session.result.tests_total} passed${session.resultStale ? ' (older draft)' : ''}` : 'Not run'}`
         : 'No selected problem. You may browse the catalog and suggest a problem; the user opens it from the sidebar.';
     try {
+      const model =
+        this.modelFactory?.(settings, this.apiKey) ??
+        (settings.provider === 'anthropic'
+          ? new AnthropicModel(this.apiKey, settings.model)
+          : new OllamaModel(settings.ollamaUrl, settings.model));
       await this.store.persist();
       await runAgent({
         model,
@@ -1039,6 +1042,8 @@ export class WorkbenchService {
       if (!this.agent.signal.aborted) this.error = message;
     } finally {
       this.agent = null;
+      this.agentId = null;
+      this.publish();
       try {
         await this.store.persist();
       } finally {
@@ -1049,8 +1054,12 @@ export class WorkbenchService {
     }
   }
 
-  cancelChat(): void {
-    this.agent?.abort();
+  /**
+   * Abort the chat with this ID. An old ID has no effect on a different chat.
+   * Without an ID, abort the active chat for window close. Do not change saved drafts.
+   */
+  cancelChat(chatId?: string): void {
+    if (chatId === undefined || chatId === this.agentId) this.agent?.abort();
   }
   async clearChat(): Promise<void> {
     await this.practiceAction(async () => {
@@ -1064,12 +1073,24 @@ export class WorkbenchService {
       await this.store.persist();
     });
   }
-  async close(): Promise<void> {
+  /**
+   * Save drafts and workspace state before the window closes. Reject on a write failure.
+   * The caller must prevent new work and wait for active calls. Connections stay open.
+   */
+  async prepareClose(): Promise<void> {
+    await this.designs.flush();
+    if (this.store.isLoaded) await this.store.persist();
+  }
+  /**
+   * Cancel chat and release connections. Save pending data by default.
+   * Set save to false only after prepareClose succeeds and further writes are disabled.
+   * Reject on a write or cleanup failure.
+   */
+  async close({ save = true }: { save?: boolean } = {}): Promise<void> {
     this.cancelChat();
     for (const approve of this.approvals.values()) approve(false);
     try {
-      await this.designs.flush();
-      if (this.store.isLoaded) await this.store.persist();
+      if (save) await this.prepareClose();
     } finally {
       try {
         await this.mcp.close();

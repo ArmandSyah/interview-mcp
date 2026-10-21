@@ -397,3 +397,54 @@ These tests include focus, Tab, Shift+Tab, Escape, save failures, backdrop click
 The layout test sets the renderer viewport, which is the content area on the screen, to 1040 × 633.
 It does not test native window resize controls.
 The full UI audit continues.
+
+### Window close and chat cancellation tests
+
+A window close request prevents new workspace actions.
+The app cancels active chat and waits for active interface actions.
+It then saves all drafts.
+The code editor accepts edits while a previous action or save is in progress.
+Before its last save, the app prevents more input.
+The app closes the window only after the last workspace write completes without an error.
+
+The design timer stops while the close request is in progress.
+After a close failure, it continues if it was active before the request.
+A close error dialog keeps the workspace available.
+The Continue practice button restores access after the error.
+Saved data formats and record ownership do not change.
+
+The service snapshot has a `busy` flag and a `chatId` field.
+The `busy` flag prevents new practice actions and stays `true` through the last state write.
+Draft saves do not use this flag.
+
+Each active chat has a temporary universally unique identifier (UUID) in `chatId`.
+The app keeps this ID in memory, not in practice files.
+When no chat can accept cancellation, `chatId` is `null`.
+Stop shows only when `chatId` is not `null`.
+
+The desktop bridge method `cancelChat(chatId)` returns `Promise<void>`.
+With an ID, it cancels only the chat with that ID.
+After ID validation, the method returns without cancellation if no active chat has that ID.
+Window close calls `cancelChat()` to cancel the active chat.
+The method rejects invalid IDs and transport failures.
+It does not change saved drafts.
+
+The promise resolves after the cancellation request.
+It does not wait for the last chat write.
+
+Each Stop request uses the ID from its selected chat.
+An ID from a completed chat cannot cancel a different chat.
+A cancellation error keeps Stop available for a retry while that chat is active.
+An error from a completed chat does not replace the error state of a different chat.
+More clicks do not start a different Stop request for the same chat while cancellation is in progress.
+
+After the build, enter this command from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/close-races.spec.ts tests/e2e/chat-cancellation.spec.ts
+```
+
+These tests include close during hints, chat, and submission approval.
+They also include write failures, recovery from dialogs, timer state, and cancellation response sequence.
+A local response fixture supplies the chat messages.
+The tests do not run a model.

@@ -20,6 +20,7 @@ import { SettingsDialog } from './Settings';
 import { DraftWriter } from './draft-writer';
 import { useActions } from './actions';
 import { Modal } from './Modal';
+import { useChatStop } from './chat-stop';
 import { ChatMessage } from './App';
 import {
   MAX_DIAGRAM_LABEL_CHARACTERS,
@@ -81,12 +82,17 @@ export function DesignWorkbench({
   clearError,
 }: Props) {
   const actions = useActions();
+  const { draftsFrozen } = actions;
   const busy = actions.busy || snapshot.busy;
   const session = snapshot.designSessions.find(
     (item) => item.id === snapshot.activeDesignSessionId,
   );
   const [draft, setDraft] = useState<DesignDraft | null>(null);
   const [error, setError] = useState('');
+  const chatStop = useChatStop(snapshot.chatId, (message) => {
+    clearError();
+    setError(message);
+  });
   const [saved, setSaved] = useState('Saved locally');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<'notes' | 'review' | 'coach'>('notes');
@@ -147,6 +153,7 @@ export function DesignWorkbench({
   }, [session?.id]);
   const change = useCallback(
     (value: DesignDraft) => {
+      if (draftsFrozen()) return;
       const id = activeId.current;
       if (!id) return;
       if (latest.current && designEvidenceChanged(latest.current, value)) setDirty(true);
@@ -159,16 +166,16 @@ export function DesignWorkbench({
         void flush().catch(() => {});
       }, 600);
     },
-    [flush],
+    [flush, draftsFrozen],
   );
   useEffect(() => {
-    if (!running) return;
+    if (!running || actions.closing) return;
     const tick = setInterval(() => {
       if (latest.current)
         change({ ...latest.current, elapsedSeconds: latest.current.elapsedSeconds + 1 });
     }, 1000);
     return () => clearInterval(tick);
-  }, [running, change]);
+  }, [running, change, actions.closing]);
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session?.chat.at(-1)?.text]);
@@ -369,7 +376,7 @@ export function DesignWorkbench({
                 </select>
                 <button
                   className="secondary small"
-                  disabled={locked}
+                  disabled={locked || actions.closing}
                   aria-label={running ? 'Pause timer' : 'Start timer'}
                   onClick={() => setRunning(!running)}
                 >
@@ -610,12 +617,13 @@ export function DesignWorkbench({
                   />
                   <div className="composer-footer">
                     <span>Checkpoint attached on send</span>
-                    {snapshot.busy ? (
+                    {snapshot.chatId ? (
                       <button
                         type="button"
                         className="send-button stop"
                         aria-label="Stop coach"
-                        onClick={() => void window.interview.cancelChat()}
+                        disabled={chatStop.stopping || actions.closing}
+                        onClick={() => void chatStop.stop()}
                       >
                         <Square size={13} />
                       </button>

@@ -27,7 +27,11 @@ const memoryVault: Vault = {
     throw new Error('Not available');
   },
 };
-async function fixture(model?: Model, vault = memoryVault, sandbox?: ManagedSandbox) {
+async function fixture(
+  model?: Model | (() => Model),
+  vault = memoryVault,
+  sandbox?: ManagedSandbox,
+) {
   const store = new LocalStore(await mkdtemp(join(tmpdir(), 'interview-service-')));
   const events: AppEvent[] = [];
   const call = vi.fn(async (name: string, _args: Record<string, unknown>): Promise<unknown> => {
@@ -70,7 +74,7 @@ async function fixture(model?: Model, vault = memoryVault, sandbox?: ManagedSand
     mcp as unknown as McpConnection,
     vault,
     (event) => events.push(event),
-    model ? () => model : undefined,
+    typeof model === 'function' ? model : model ? () => model : undefined,
     sandbox,
   );
   await service.initialize();
@@ -266,6 +270,74 @@ it.each([false, true])('agent submission requires explicit approval (allow=%s)',
       expect.any(AbortSignal),
     );
   await service.close();
+});
+
+it('a failed final close check keeps the service connected and permits a retry', async () => {
+  const { service, store, mcp } = await fixture();
+  await service.startProblem(problem.id);
+  const closeCalls = mcp.close.mock.calls.length;
+  const write = vi.spyOn(store, 'persist').mockRejectedValueOnce(new Error('Final write failure'));
+  await expect(service.prepareClose()).rejects.toThrow('Final write failure');
+  expect(mcp.close).toHaveBeenCalledTimes(closeCalls);
+  expect(service.snapshot().connection).toBe('connected');
+  await service.hint();
+  await service.prepareClose();
+  const writes = write.mock.calls.length;
+  await service.close({ save: false });
+  expect(
+    write,
+    'The close after a successful check must not write the state again',
+  ).toHaveBeenCalledTimes(writes);
+  expect(mcp.close).toHaveBeenCalledTimes(closeCalls + 1);
+});
+
+it('a provider construction failure releases chat state and the service action lock', async () => {
+  const { service } = await fixture(() => {
+    throw new Error('Provider construction failed');
+  });
+  await service.startProblem(problem.id);
+  await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+  await service.chat('Start the coach.');
+  expect(service.snapshot()).toMatchObject({
+    busy: false,
+    chatId: null,
+    error: 'Provider construction failed',
+  });
+  await service.hint();
+  expect(service.snapshot().sessions[0].hintDepth).toBe(1);
+  await service.close();
+});
+
+it('chat cancellation is unavailable during the final write but the service remains busy', async () => {
+  const { service, store, events } = await fixture({
+    complete: async () => ({ text: 'Fixture response', calls: [] }),
+  });
+  await service.startProblem(problem.id);
+  await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+  const finalWrite = deferred();
+  const persist = store.persist.bind(store);
+  let calls = 0;
+  vi.spyOn(store, 'persist').mockImplementation(() =>
+    ++calls === 2 ? finalWrite.promise.then(persist) : persist(),
+  );
+  const turn = service.chat('Start the coach.');
+  try {
+    await vi.waitFor(() => expect(calls).toBe(2));
+    expect(service.snapshot()).toMatchObject({ busy: true, chatId: null });
+    const last = events.filter((event) => event.type === 'snapshot').at(-1);
+    expect(last?.snapshot).toMatchObject({ busy: true, chatId: null });
+    service.cancelChat();
+    expect(service.snapshot().sessions[0].chat.some((item) => item.text === 'Coach stopped.')).toBe(
+      false,
+    );
+    finalWrite.resolve();
+    await turn;
+    expect(service.snapshot()).toMatchObject({ busy: false, chatId: null });
+  } finally {
+    finalWrite.resolve();
+    await turn;
+    await service.close();
+  }
 });
 
 it('closing after a failed load preserves the damaged workspace', async () => {

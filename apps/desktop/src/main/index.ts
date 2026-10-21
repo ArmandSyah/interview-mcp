@@ -42,6 +42,10 @@ let service: WorkbenchService;
 let closing = false;
 let closeRequested = false;
 let draftFlushed = false;
+let finalizingClose = false;
+let closeCommit: Promise<void> | null = null;
+let initialization: Promise<void> = Promise.resolve();
+const pendingRequests = new Set<Promise<unknown>>();
 const devUrl = process.env.INTERVIEW_DESKTOP_DEV_URL;
 
 app.on('second-instance', () => {
@@ -52,7 +56,8 @@ async function finishQuit() {
   if (closing) return;
   closing = true;
   try {
-    await service?.close();
+    await initialization;
+    await service?.close({ save: !draftFlushed });
   } finally {
     app.quit();
   }
@@ -135,10 +140,8 @@ void app.whenReady().then(async () => {
   window.on('close', (event) => {
     if (draftFlushed || !service) return;
     event.preventDefault();
-    if (!closeRequested) {
-      closeRequested = true;
-      window?.webContents.send('workbench:event', { type: 'flush-before-close' });
-    }
+    closeRequested = true;
+    window?.webContents.send('workbench:event', { type: 'flush-before-close' });
   });
   const vault = {
     available: () =>
@@ -179,7 +182,7 @@ void app.whenReady().then(async () => {
     sandbox,
   );
   function handler(channel: string, action: (...args: unknown[]) => unknown) {
-    ipcMain.handle(`workbench:${channel}`, (event, ...args: unknown[]) => {
+    ipcMain.handle(`workbench:${channel}`, async (event, ...args: unknown[]) => {
       const senderUrl = event.senderFrame?.url;
       if (
         !window ||
@@ -191,11 +194,24 @@ void app.whenReady().then(async () => {
         )
       )
         throw new Error('Untrusted IPC sender');
-      return action(...args);
+      if (finalizingClose && !['close-ready', 'cancel', 'snapshot'].includes(channel))
+        throw new Error('The window is closing.');
+      if (closeRequested && channel === 'chat') throw new Error('The window is closing.');
+      const operation = Promise.resolve().then(() => action(...args));
+      if (['close-ready', 'cancel', 'snapshot'].includes(channel)) return operation;
+      pendingRequests.add(operation);
+      try {
+        return await operation;
+      } finally {
+        pendingRequests.delete(operation);
+      }
     });
   }
   const id = z.string().regex(/^[a-z0-9][a-z0-9-]{0,60}$/);
-  handler('snapshot', () => service.snapshot());
+  handler('snapshot', () => {
+    if (closeRequested) window?.webContents.send('workbench:event', { type: 'flush-before-close' });
+    return service.snapshot();
+  });
   handler('practice-queue', () => service.practiceQueue());
   handler('practice-add', (kind, id, days) =>
     service.addPracticeReview(
@@ -403,7 +419,7 @@ void app.whenReady().then(async () => {
   handler('run', (submit) => service.runTests(z.boolean().parse(submit)));
   handler('hint', () => service.hint());
   handler('chat', (text) => service.chat(z.string().min(1).max(8000).parse(text)));
-  handler('cancel', () => service.cancelChat());
+  handler('cancel', (chatId) => service.cancelChat(z.string().uuid().optional().parse(chatId)));
   handler('approve', (value, allow) =>
     service.approve(z.string().uuid().parse(value), z.boolean().parse(allow)),
   );
@@ -417,8 +433,24 @@ void app.whenReady().then(async () => {
       closeRequested = false;
       return;
     }
-    draftFlushed = true;
-    window?.close();
+    if (closeCommit) return closeCommit;
+    finalizingClose = true;
+    closeCommit = (async () => {
+      try {
+        await initialization;
+        while (pendingRequests.size) await Promise.allSettled([...pendingRequests]);
+        await service.prepareClose();
+        draftFlushed = true;
+        window?.close();
+      } catch (error) {
+        finalizingClose = false;
+        closeRequested = false;
+        throw error;
+      } finally {
+        closeCommit = null;
+      }
+    })();
+    return closeCommit;
   });
   handler('corpus', async () => {
     const result = await dialog.showOpenDialog(window!, {
@@ -440,9 +472,13 @@ void app.whenReady().then(async () => {
     await writeFile(result.filePath, session.code, { encoding: 'utf8', mode: 0o600 });
     return result.filePath;
   });
-  await window.loadURL(devUrl || 'interview://workbench/index.html');
-  window.show();
+  let initialized!: () => void;
+  initialization = new Promise<void>((resolve) => {
+    initialized = resolve;
+  });
   try {
+    await window.loadURL(devUrl || 'interview://workbench/index.html');
+    window.show();
     await service.initialize();
   } catch (error) {
     await dialog.showMessageBox(window, {
@@ -453,5 +489,7 @@ void app.whenReady().then(async () => {
           ? error.message
           : 'Startup failed. Your saved workspace was not overwritten.',
     });
+  } finally {
+    initialized();
   }
 });

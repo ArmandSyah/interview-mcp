@@ -35,6 +35,7 @@ import { PracticeQueueDialog } from './PracticeQueue';
 import { DraftWriter } from './draft-writer';
 import { ActionProvider, useActions } from './actions';
 import { Modal } from './Modal';
+import { useChatStop } from './chat-stop';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 
 function cleanError(error: unknown): string {
@@ -60,6 +61,8 @@ export function App() {
 
 function Workbench() {
   const actions = useActions();
+  const { beginClose, cancelClose, freezeDrafts, draftsFrozen } = actions;
+  const closePending = useRef(false);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [bootError, setBootError] = useState('');
   const [bootLoading, setBootLoading] = useState(true);
@@ -75,6 +78,8 @@ function Workbench() {
   const [approval, setApproval] = useState<Approval | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [closeError, setCloseError] = useState('');
+  const chatStop = useChatStop(snapshot?.chatId ?? null, setError);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved');
   const [sidebar, setSidebar] = useState<'problems' | 'files'>('problems');
   const [chatWidth, setChatWidth] = useState(360);
@@ -180,9 +185,42 @@ function Workbench() {
         );
       if (event.type === 'agent-done') setApproval(null);
       if (event.type === 'flush-before-close') {
-        void flush()
-          .then(() => window.interview.closeReady(true))
-          .catch(() => window.interview.closeReady(false));
+        if (closePending.current) return;
+        closePending.current = true;
+        setCloseError('');
+        const settled = beginClose();
+        void (async () => {
+          let restoreInput = () => {};
+          try {
+            await window.interview.cancelChat();
+            await settled;
+            // Keep edits available while an earlier operation or save completes.
+            await flush();
+            freezeDrafts();
+            const elements = [
+              document.documentElement,
+              ...document.querySelectorAll<HTMLDialogElement>('dialog'),
+            ];
+            const states = elements.map((element) => element.inert);
+            elements.forEach((element) => {
+              element.inert = true;
+            });
+            restoreInput = () =>
+              elements.forEach((element, index) => {
+                element.inert = states[index];
+              });
+            // A different draft can change while the first flush waits for a write.
+            await flush();
+            await window.interview.closeReady(true);
+          } catch (error) {
+            await window.interview.closeReady(false).catch(() => {});
+            restoreInput();
+            cancelClose();
+            setCloseError(cleanError(error));
+          } finally {
+            closePending.current = false;
+          }
+        })();
       }
     });
     void loadWorkspace();
@@ -192,7 +230,7 @@ function Workbench() {
       unsubscribe();
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [flush, loadWorkspace]);
+  }, [flush, loadWorkspace, beginClose, cancelClose, freezeDrafts]);
 
   const active = snapshot?.sessions.find(
     (session) => session.problem.id === snapshot.activeProblemId,
@@ -221,6 +259,7 @@ function Workbench() {
       await window.interview.runTests(false);
     });
   function edit(code: string) {
+    if (draftsFrozen()) return;
     const id = snapshotRef.current?.activeProblemId;
     if (!id) return;
     drafts.current.set(id, code);
@@ -273,25 +312,47 @@ function Workbench() {
     window.addEventListener('pointerup', stop, { once: true });
   }
 
+  const closeErrorDialog = closeError ? (
+    <Modal
+      className="approval-modal"
+      aria-labelledby="close-error-title"
+      onDismiss={() => setCloseError('')}
+    >
+      <h2 id="close-error-title">Cannot close workspace</h2>
+      <p role="alert">{closeError}</p>
+      <div>
+        <button className="primary" onClick={() => setCloseError('')}>
+          Continue practice
+        </button>
+      </div>
+    </Modal>
+  ) : null;
   if (!snapshot)
     return (
-      <div className="boot">
-        <Code2 size={34} />
-        <h1>Interview Workbench</h1>
-        {bootError ? (
-          <>
-            <p role="alert">{bootError}</p>
-            <button className="primary" disabled={bootLoading} onClick={() => void loadWorkspace()}>
-              Retry workspace load
-            </button>
-          </>
-        ) : (
-          <>
-            <p>Opening your workspace…</p>
-            <LoaderCircle className="spin" size={20} />
-          </>
-        )}
-      </div>
+      <>
+        <div className="boot">
+          <Code2 size={34} />
+          <h1>Interview Workbench</h1>
+          {bootError ? (
+            <>
+              <p role="alert">{bootError}</p>
+              <button
+                className="primary"
+                disabled={bootLoading}
+                onClick={() => void loadWorkspace()}
+              >
+                Retry workspace load
+              </button>
+            </>
+          ) : (
+            <>
+              <p>Opening your workspace…</p>
+              <LoaderCircle className="spin" size={20} />
+            </>
+          )}
+        </div>
+        {closeErrorDialog}
+      </>
     );
   const connected = snapshot.connection === 'connected';
   const busy = actions.busy || snapshot.busy;
@@ -330,6 +391,7 @@ function Workbench() {
           clearError={() => setError('')}
         />
         {queueDialog}
+        {closeErrorDialog}
       </>
     );
 
@@ -809,12 +871,13 @@ function Workbench() {
               />
               <div className="composer-footer">
                 <span>Small hints. Your implementation.</span>
-                {snapshot.busy ? (
+                {snapshot.chatId ? (
                   <button
                     type="button"
                     className="send-button stop"
                     aria-label="Stop coach"
-                    onClick={() => void window.interview.cancelChat()}
+                    disabled={chatStop.stopping || actions.closing}
+                    onClick={() => void chatStop.stop()}
                   >
                     <Square size={13} fill="currentColor" />
                   </button>
@@ -935,6 +998,7 @@ function Workbench() {
           </div>
         </Modal>
       )}
+      {closeErrorDialog}
     </div>
   );
 }

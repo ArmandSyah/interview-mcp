@@ -100,6 +100,7 @@ export function PracticeQueueDialog({
     };
   }, []);
   function change(next: ReflectionDraft) {
+    if (actions.draftsFrozen()) return;
     if (!item) return;
     setDraft(next);
     drafts.current.set(item.id, next);
