@@ -2,7 +2,26 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { LocalStore } from './storage';
 import { McpConnection } from './mcp';
-import { runAgent } from './agent';
+import { ManagedSandbox } from './sandbox';
+import { MANAGED_PISTON_URL, type SandboxStatus } from '../shared/sandbox';
+import type {
+  PracticeKind,
+  PracticeQueueItem,
+  PracticeQueueState,
+  PracticeReflection,
+  ReflectionDraft,
+  ReflectionInput,
+} from '../shared/practice';
+import { runAgent, DESIGN_COACH_PROMPT } from './agent';
+import { DesignStore, designDigest } from './design-storage';
+import {
+  emptyDesignDraft,
+  type DesignCheckpoint,
+  type DesignDraft,
+  type DesignReview,
+  type DesignSession,
+  type DesignSummary,
+} from '../shared/design';
 import { AnthropicModel, OllamaModel, type Model } from './providers';
 import type {
   AppEvent,
@@ -28,6 +47,7 @@ export const settingsSchema = z
     ollamaUrl: z.string().max(500),
     corpusPath: z.string().max(4000),
     pistonUrl: z.string().max(500),
+    managedSandbox: z.boolean().default(false),
     connection: z.enum(['local', 'remote']),
     mcpUrl: z.string().max(1000),
     apiKey: z.string().max(500).optional(),
@@ -43,6 +63,17 @@ type Scaffold = {
   files_to_create: { relative_path: string; contents: string; sha256: string }[];
 };
 
+export const reflectionDraftSchema = z
+  .object({
+    reflection_id: z.string().uuid(),
+    expected_version: z.number().int().min(0),
+    answer: z.string().max(8000),
+    takeaway: z.string().max(2000),
+    next_action: z.string().max(2000),
+    self_rating: z.enum(['needs_work', 'with_effort', 'recalled']),
+  })
+  .strict();
+
 export class WorkbenchService {
   private apiKey = '';
   private mcpKey = '';
@@ -51,9 +82,13 @@ export class WorkbenchService {
   private error: string | null = null;
   private busy = false;
   private problems: Problem[] = [];
+  private designProblems: DesignSummary[] = [];
+  private installedPacks: Snapshot['installedPacks'] = [];
+  private readonly designs: DesignStore;
   private progress = '';
   private agent: AbortController | null = null;
   private approvals = new Map<string, (allow: boolean) => void>();
+  private practiceOwned = new Set<string>();
 
   constructor(
     readonly store: LocalStore,
@@ -61,7 +96,10 @@ export class WorkbenchService {
     private readonly vault: Vault,
     private readonly emit: (event: AppEvent) => void,
     private readonly modelFactory?: (settings: Settings, key: string) => Model,
-  ) {}
+    private readonly sandbox?: ManagedSandbox,
+  ) {
+    this.designs = new DesignStore(store.root);
+  }
 
   async initialize(): Promise<void> {
     await this.store.load();
@@ -98,6 +136,11 @@ export class WorkbenchService {
   snapshot(): Snapshot {
     const workspace = this.store.workspace(this.scope);
     return structuredClone({
+      mode: workspace.mode,
+      installedPacks: this.installedPacks,
+      designProblems: this.designProblems,
+      designSessions: workspace.designSessions,
+      activeDesignSessionId: workspace.activeDesignSessionId,
       settings: this.settings(),
       problems: this.problems,
       sessions: workspace.sessions,
@@ -135,6 +178,7 @@ export class WorkbenchService {
 
   async reconnect(): Promise<void> {
     this.idle();
+    this.practiceOwned.clear();
     this.busy = true;
     this.connection = 'connecting';
     this.error = null;
@@ -144,10 +188,17 @@ export class WorkbenchService {
       this.scope = this.store.scope(this.mcpKey);
       this.problems = await this.mcp.call<Problem[]>('list_problems', {});
       this.progress = await this.mcp.call<string>('get_progress', {});
+      this.designProblems = this.mcp.tools.some((tool) => tool.name === 'list_design_problems')
+        ? await this.mcp.call<DesignSummary[]>('list_design_problems', {})
+        : [];
+      this.installedPacks = this.mcp.tools.some((tool) => tool.name === 'list_content_packs')
+        ? await this.mcp.call('list_content_packs', {})
+        : [];
       this.connection = 'connected';
     } catch (error) {
       this.connection = 'disconnected';
       this.problems = [];
+      this.designProblems = [];
       this.error = this.sanitize(error);
     }
     this.busy = false;
@@ -157,6 +208,10 @@ export class WorkbenchService {
   async updateSettings(input: SettingsUpdate): Promise<void> {
     this.idle();
     const { apiKey, mcpKey, clearApiKey, clearMcpKey, ...settings } = settingsSchema.parse(input);
+    if (settings.managedSandbox && !this.store.state.settings.managedSandbox)
+      throw new Error('Use Enable local execution to opt into the privileged sandbox first.');
+    if (settings.managedSandbox && settings.pistonUrl !== MANAGED_PISTON_URL)
+      throw new Error('The app-managed sandbox uses http://127.0.0.1:2000.');
     for (const value of [settings.ollamaUrl, settings.pistonUrl]) {
       const url = new URL(value);
       if (
@@ -179,6 +234,11 @@ export class WorkbenchService {
       )
         throw new Error('Use HTTPS for a remote MCP connection');
     }
+    if (
+      this.store.state.settings.managedSandbox &&
+      (!settings.managedSandbox || settings.connection !== 'local')
+    )
+      await this.sandbox?.stop();
     this.store.state.settings = settings;
     if (clearApiKey) this.apiKey = '';
     else if (apiKey) this.apiKey = apiKey;
@@ -192,6 +252,185 @@ export class WorkbenchService {
       : {};
     await this.store.persist();
     await this.reconnect();
+  }
+
+  sandboxInfo(): SandboxStatus {
+    return (
+      this.sandbox?.status() ?? {
+        phase: 'unchecked',
+        managed: false,
+        message: 'Sandbox manager is not available in this environment.',
+      }
+    );
+  }
+  async inspectSandbox(): Promise<SandboxStatus> {
+    this.idle();
+    if (!this.sandbox) throw new Error('Sandbox manager is unavailable');
+    this.busy = true;
+    this.publish();
+    try {
+      return await this.sandbox.inspect();
+    } finally {
+      this.busy = false;
+      this.publish();
+    }
+  }
+  async enableSandbox(): Promise<SandboxStatus> {
+    this.idle();
+    if (!this.sandbox) throw new Error('Sandbox manager is unavailable');
+    if (this.store.state.settings.connection !== 'local')
+      throw new Error('Switch to the local engine before enabling local execution.');
+    this.busy = true;
+    this.publish();
+    let status: SandboxStatus;
+    try {
+      status = await this.sandbox.enable();
+      this.store.state.settings.managedSandbox = true;
+      this.store.state.settings.pistonUrl = MANAGED_PISTON_URL;
+      await this.store.persist();
+    } finally {
+      this.busy = false;
+      this.publish();
+    }
+    await this.reconnect();
+    return status;
+  }
+  async stopSandbox(): Promise<SandboxStatus> {
+    this.idle();
+    if (!this.sandbox) throw new Error('Sandbox manager is unavailable');
+    this.busy = true;
+    this.publish();
+    try {
+      return await this.sandbox.stop();
+    } finally {
+      this.busy = false;
+      this.publish();
+    }
+  }
+
+  private async practiceAction<T>(action: () => Promise<T>): Promise<T> {
+    this.idle();
+    this.busy = true;
+    this.publish();
+    try {
+      return await action();
+    } finally {
+      this.busy = false;
+      this.publish();
+    }
+  }
+  async practiceQueue(): Promise<PracticeQueueState> {
+    const names = [
+      'get_practice_queue',
+      'get_practice_review',
+      'list_practice_sources',
+      'add_practice_review',
+      'record_practice_reflection',
+      'list_practice_reflections',
+      'reschedule_practice_review',
+      'pause_practice_review',
+    ];
+    if (!names.every((name) => this.mcp.tools.some((tool) => tool.name === name)))
+      return { supported: false, items: [], sources: [] };
+    return this.practiceAction(async () => ({
+      supported: true,
+      items: await this.mcp.call<PracticeQueueItem[]>('get_practice_queue', { limit: 2000 }),
+      sources: await this.mcp.call('list_practice_sources', { limit: 500 }),
+    }));
+  }
+  async addPracticeReview(
+    kind: PracticeKind,
+    sourceId: string,
+    daysAhead: number,
+  ): Promise<PracticeQueueItem> {
+    return this.practiceAction(() =>
+      this.mcp.call('add_practice_review', {
+        kind,
+        source_id: sourceId,
+        days_ahead: daysAhead,
+      }),
+    );
+  }
+  async reschedulePracticeReview(
+    itemId: string,
+    daysAhead: number,
+    expectedVersion: number,
+  ): Promise<PracticeQueueItem> {
+    return this.practiceAction(() =>
+      this.mcp.call('reschedule_practice_review', {
+        item_id: itemId,
+        days_ahead: daysAhead,
+        expected_version: expectedVersion,
+      }),
+    );
+  }
+  async pausePracticeReview(
+    itemId: string,
+    paused: boolean,
+    expectedVersion: number,
+  ): Promise<PracticeQueueItem> {
+    return this.practiceAction(() =>
+      this.mcp.call('pause_practice_review', {
+        item_id: itemId,
+        paused,
+        expected_version: expectedVersion,
+      }),
+    );
+  }
+  async practiceReflections(itemId: string): Promise<PracticeReflection[]> {
+    return this.practiceAction(() =>
+      this.mcp.call('list_practice_reflections', { item_id: itemId, limit: 500 }),
+    );
+  }
+  async loadReflectionDraft(itemId: string): Promise<ReflectionDraft> {
+    const scope = this.scope;
+    const item = await this.mcp.call<PracticeQueueItem>('get_practice_review', { item_id: itemId });
+    if (this.scope !== scope) throw new Error('Workspace changed; reopen the practice queue.');
+    this.practiceOwned.add(item.id);
+    const stored = this.store.workspace(this.scope).reflectionDrafts[itemId];
+    return stored
+      ? reflectionDraftSchema.parse(stored)
+      : {
+          reflection_id: randomUUID(),
+          expected_version: item.version,
+          answer: '',
+          takeaway: '',
+          next_action: '',
+          self_rating: 'needs_work',
+        };
+  }
+  async saveReflectionDraft(itemId: string, input: ReflectionDraft): Promise<void> {
+    const scope = this.scope;
+    const draft = reflectionDraftSchema.parse(input);
+    // Ownership is immutable through practice APIs. Once checked on load, local
+    // autosave need not consume a remote request on every short typing pause.
+    if (!this.practiceOwned.has(itemId)) {
+      await this.mcp.call('get_practice_review', { item_id: itemId });
+      this.practiceOwned.add(itemId);
+    }
+    if (this.scope !== scope) throw new Error('Workspace changed; reopen the practice queue.');
+    this.store.workspace(scope).reflectionDrafts[itemId] = draft;
+    await this.store.persist();
+  }
+  async recordPracticeReflection(input: ReflectionInput): Promise<PracticeReflection> {
+    const { item_id, ...draft } = input;
+    const validated = reflectionDraftSchema.parse(draft);
+    if (!validated.answer.trim()) throw new Error('Record your own recall answer first.');
+    return this.practiceAction(async () => {
+      const result = await this.mcp.call<PracticeReflection>('record_practice_reflection', {
+        item_id,
+        ...validated,
+      });
+      // Preserve an in-flight/newer local draft; clear only the committed evidence.
+      const drafts = this.store.workspace(this.scope).reflectionDrafts;
+      if (
+        drafts[item_id] &&
+        JSON.stringify(reflectionDraftSchema.parse(drafts[item_id])) === JSON.stringify(validated)
+      )
+        delete drafts[item_id];
+      await this.store.persist();
+      return result;
+    });
   }
 
   async startProblem(id: string): Promise<void> {
@@ -264,6 +503,296 @@ export class WorkbenchService {
     session.updatedAt = Date.now();
     session.resultStale = !!session.result;
     await this.store.saveCode(this.scope, session);
+  }
+
+  async setMode(mode: 'coding' | 'design'): Promise<void> {
+    this.idle();
+    this.store.workspace(this.scope).mode = mode;
+    await this.store.persist();
+    this.publish();
+  }
+
+  async installContentPack(packageJson: string, licenseJson: string): Promise<void> {
+    if (this.store.state.settings.connection !== 'local')
+      throw new Error('Install packs in a local workspace');
+    await this.designAction(async () => {
+      await this.mcp.call('install_content_pack', {
+        package_json: packageJson,
+        license_json: licenseJson,
+      });
+      this.problems = await this.mcp.call('list_problems', {});
+      this.designProblems = await this.mcp.call('list_design_problems', {});
+      this.installedPacks = await this.mcp.call('list_content_packs', {});
+    });
+  }
+
+  private designSession(id?: string): DesignSession {
+    const workspace = this.store.workspace(this.scope);
+    const session = workspace.designSessions.find(
+      (item) => item.id === (id ?? workspace.activeDesignSessionId),
+    );
+    if (!session) throw new Error('Choose a system-design brief first');
+    return session;
+  }
+
+  private async designAction<T>(action: () => Promise<T>): Promise<T> {
+    this.idle();
+    this.busy = true;
+    this.error = null;
+    this.publish();
+    try {
+      return await action();
+    } catch (error) {
+      this.error = this.sanitize(error);
+      throw new Error(this.error);
+    } finally {
+      this.busy = false;
+      await this.store.persist();
+      this.publish();
+    }
+  }
+
+  async startDesign(problemId: string, newAttempt = false): Promise<void> {
+    this.idle();
+    const workspace = this.store.workspace(this.scope);
+    const existing = [...workspace.designSessions]
+      .reverse()
+      .find((item) => item.problem_id === problemId && item.status === 'in_progress');
+    if (existing && !newAttempt) return this.activateDesign(existing.id);
+    if (!this.designProblems.some((item) => item.id === problemId))
+      throw new Error('Brief is not in the connected catalog');
+    await this.designAction(async () => {
+      const record = await this.mcp.call<
+        Pick<
+          DesignSession,
+          'id' | 'problem_id' | 'brief' | 'status' | 'started_at' | 'completed_at'
+        >
+      >('start_design_session', { problem_id: problemId });
+      const session: DesignSession = {
+        ...record,
+        chat: [],
+        hintDepth: 0,
+        latestCheckpointId: null,
+        review: null,
+        draftDigest: '',
+        updatedAt: Date.now(),
+      };
+      session.draftDigest = await this.designs.save(this.scope, session.id, emptyDesignDraft());
+      workspace.designSessions.push(session);
+      workspace.activeDesignSessionId = session.id;
+      workspace.mode = 'design';
+    });
+  }
+
+  async activateDesign(sessionId: string): Promise<void> {
+    this.idle();
+    this.designSession(sessionId);
+    this.store.workspace(this.scope).activeDesignSessionId = sessionId;
+    await this.store.persist();
+    this.publish();
+  }
+
+  async loadDesignDraft(sessionId: string): Promise<DesignDraft> {
+    this.designSession(sessionId);
+    return this.designs.load(this.scope, sessionId);
+  }
+
+  async saveDesignDraft(sessionId: string, draft: DesignDraft): Promise<string> {
+    const session = this.designSession(sessionId);
+    if (session.status === 'completed')
+      throw new Error('This session is finished; start a new attempt to make changes');
+    const digest = await this.designs.save(this.scope, sessionId, draft);
+    session.draftDigest = digest;
+    session.updatedAt = Date.now();
+    await this.store.persist();
+    this.publish();
+    return digest;
+  }
+
+  private async captureDesign(session: DesignSession, label: string): Promise<DesignCheckpoint> {
+    if (session.status === 'completed') throw new Error('This session is finished');
+    const id = randomUUID();
+    const { draft, digest, diagram } = await this.designs.checkpoint(this.scope, session.id, id);
+    const checkpoint = await this.mcp.call<DesignCheckpoint>('save_design_checkpoint', {
+      session_id: session.id,
+      checkpoint_id: id,
+      scene_digest: digest,
+      notes: draft.notes,
+      diagram,
+      label,
+    });
+    session.latestCheckpointId = checkpoint.id;
+    return checkpoint;
+  }
+
+  async checkpointDesign(label = 'Checkpoint'): Promise<DesignCheckpoint> {
+    return this.designAction(() => this.captureDesign(this.designSession(), label));
+  }
+
+  async designCheckpoints(): Promise<DesignCheckpoint[]> {
+    return this.mcp.call('list_design_checkpoints', { session_id: this.designSession().id });
+  }
+
+  async restoreDesignCheckpoint(checkpointId: string): Promise<DesignDraft> {
+    return this.designAction(async () => {
+      const session = this.designSession();
+      if (session.status === 'completed')
+        throw new Error('Start a new attempt to edit a finished session');
+      const checkpoint = await this.mcp.call<DesignCheckpoint>('get_design_snapshot', {
+        session_id: session.id,
+        checkpoint_id: checkpointId,
+      });
+      // Preserve the current draft before restoring older evidence.
+      await this.captureDesign(session, 'Before restore');
+      const draft = await this.designs.restore(
+        this.scope,
+        session.id,
+        checkpointId,
+        checkpoint.scene_digest,
+      );
+      session.draftDigest = designDigest(draft);
+      session.updatedAt = Date.now();
+      return draft;
+    });
+  }
+
+  async reviewDesign(): Promise<void> {
+    await this.designAction(async () => {
+      const session = this.designSession();
+      const checkpoint = await this.captureDesign(session, 'Review');
+      session.review = await this.mcp.call('evaluate_design', {
+        session_id: session.id,
+        checkpoint_id: checkpoint.id,
+      });
+    });
+  }
+
+  private recordDesign(session: DesignSession, item: ChatItem): void {
+    const index = session.chat.findIndex((entry) => entry.id === item.id);
+    if (index >= 0) session.chat[index] = item;
+    else session.chat.push(item);
+    if (session.chat.length > 200) session.chat.splice(0, session.chat.length - 200);
+    this.emit({ type: 'design-chat', item, sessionId: session.id });
+  }
+
+  private async executeDesign(
+    name: string,
+    args: Record<string, unknown>,
+    session: DesignSession,
+    checkpoint: DesignCheckpoint | null,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    const input: Record<string, unknown> = { session_id: session.id };
+    if (name === 'get_design_hint') {
+      const depth = z
+        .number()
+        .int()
+        .min(1)
+        .max(3)
+        .parse(args.depth ?? 1);
+      if (depth > session.hintDepth + 1)
+        throw new Error('Use hints progressively, one level at a time');
+      input.depth = depth;
+    } else if (name === 'get_design_snapshot' || name === 'evaluate_design') {
+      if (!checkpoint) throw new Error('A captured checkpoint is required');
+      input.checkpoint_id = checkpoint.id;
+    } else if (name !== 'get_design_brief')
+      throw new Error('The design coach only has read/review tools');
+    const result = await this.mcp.call(name, input, signal);
+    if (name === 'get_design_hint')
+      session.hintDepth = Math.max(session.hintDepth, input.depth as number);
+    if (name === 'evaluate_design') session.review = result as DesignReview;
+    return result;
+  }
+
+  async designHint(): Promise<void> {
+    await this.designAction(async () => {
+      const session = this.designSession();
+      const result = (await this.executeDesign(
+        'get_design_hint',
+        { depth: Math.min(3, session.hintDepth + 1) },
+        session,
+        null,
+      )) as { hint: string };
+      this.recordDesign(session, {
+        id: randomUUID(),
+        role: 'assistant',
+        text: result.hint,
+        timestamp: Date.now(),
+      });
+    });
+  }
+
+  async finishDesign(): Promise<void> {
+    await this.designAction(async () => {
+      const session = this.designSession();
+      if (!session.review || session.review.scene_digest !== session.draftDigest)
+        throw new Error('Review your current checkpoint before finishing');
+      const record = await this.mcp.call<DesignSession>('finish_design_session', {
+        session_id: session.id,
+        checkpoint_id: session.review.checkpoint_id,
+      });
+      session.status = record.status;
+      session.completed_at = record.completed_at;
+    });
+  }
+
+  async designExport(format: 'excalidraw' | 'workspace'): Promise<string> {
+    const session = this.designSession();
+    const draft = await this.designs.load(this.scope, session.id);
+    return JSON.stringify(
+      format === 'excalidraw'
+        ? { type: 'excalidraw', version: 2, source: 'Interview Workbench', ...draft.scene }
+        : {
+            type: 'interview-design',
+            version: 1,
+            brief: session.brief,
+            draft,
+            review: session.review,
+          },
+      null,
+      2,
+    );
+  }
+
+  async exportWorkspace(): Promise<string> {
+    this.idle();
+    await this.designs.flush();
+    const workspace = structuredClone(this.store.workspace(this.scope));
+    const practice = await this.mcp.call<{ design_checkpoints: DesignCheckpoint[] }>(
+      'export_practice_data',
+      {},
+    );
+    const designs = [];
+    for (const session of workspace.designSessions) {
+      const draft = await this.designs.load(this.scope, session.id);
+      const history = practice.design_checkpoints.filter((item) => item.session_id === session.id);
+      const checkpoints = [];
+      for (const checkpoint of history)
+        checkpoints.push({
+          metadata: checkpoint,
+          draft: await this.designs.readCheckpoint(
+            this.scope,
+            session.id,
+            checkpoint.id,
+            checkpoint.scene_digest,
+          ),
+        });
+      designs.push({ sessionId: session.id, draft, checkpoints });
+    }
+    return JSON.stringify(
+      {
+        type: 'interview-workbench-backup',
+        version: 1,
+        createdAt: new Date().toISOString(),
+        workspace,
+        practice,
+        designs,
+        installedPacks: this.installedPacks,
+      },
+      null,
+      2,
+    );
   }
 
   private record(session: PracticeSession | undefined, item: ChatItem): void {
@@ -346,7 +875,15 @@ export class WorkbenchService {
         throw new Error('Use hints progressively, one level at a time');
       input.depth = depth;
     }
-    const value = await this.mcp.call(name, input, signal);
+    const invoke = () => this.mcp.call(name, input, signal);
+    const value =
+      ['run_tests', 'submit_solution'].includes(name) &&
+      this.store.state.settings.connection === 'local' &&
+      this.store.state.settings.managedSandbox
+        ? await (this.sandbox
+            ? this.sandbox.withExecution(invoke)
+            : Promise.reject(new Error('The app-managed sandbox is unavailable')))
+        : await invoke();
     if (session && (name === 'run_tests' || name === 'submit_solution')) {
       session.result =
         name === 'submit_solution' ? (value as Submission).test_run : (value as TestRun);
@@ -413,10 +950,16 @@ export class WorkbenchService {
       throw new Error('Add your Claude API key in Settings');
     if (this.connection !== 'connected')
       throw new Error('Reconnect to the MCP before starting the coach');
+    const design = this.store.workspace(this.scope).mode === 'design' ? this.designSession() : null;
+    const checkpoint = design
+      ? await this.designAction(() => this.captureDesign(design, 'Coach context'))
+      : null;
     const session = this.active();
     const code = session?.code;
-    const history = [...(session?.chat ?? this.store.workspace(this.scope).chat)];
-    this.record(session, {
+    const history = [...(design?.chat ?? session?.chat ?? this.store.workspace(this.scope).chat)];
+    const record = (item: ChatItem) =>
+      design ? this.recordDesign(design, item) : this.record(session, item);
+    record({
       id: randomUUID(),
       role: 'user',
       text: text.trim(),
@@ -431,32 +974,50 @@ export class WorkbenchService {
       (settings.provider === 'anthropic'
         ? new AnthropicModel(this.apiKey, settings.model)
         : new OllamaModel(settings.ollamaUrl, settings.model));
-    const context = session
-      ? `Problem: ${session.problem.title}\nAttempt ID: ${session.attemptId}\nDescription:\n${session.description}\nSaved editor draft:\n${code}\nLast tests: ${session.result ? `${session.result.tests_passed}/${session.result.tests_total} passed${session.resultStale ? ' (older draft)' : ''}` : 'Not run'}`
-      : 'No selected problem. You may browse the catalog and suggest a problem; the user opens it from the sidebar.';
+    const context = design
+      ? `Pinned system-design brief:\n${JSON.stringify(design.brief)}\nImmutable checkpoint evidence:\n${JSON.stringify(checkpoint)}\nThis is not a correctness grade. Only refer to this checkpoint, even if the live canvas changes.`
+      : session
+        ? `Problem: ${session.problem.title}\nAttempt ID: ${session.attemptId}\nDescription:\n${session.description}\nSaved editor draft:\n${code}\nLast tests: ${session.result ? `${session.result.tests_passed}/${session.result.tests_total} passed${session.resultStale ? ' (older draft)' : ''}` : 'Not run'}`
+        : 'No selected problem. You may browse the catalog and suggest a problem; the user opens it from the sidebar.';
     try {
       await this.store.persist();
       await runAgent({
         model,
-        tools: this.mcp.tools.filter(
-          (tool) => tool.name !== 'start_problem' && tool.name !== 'ping',
+        tools: this.mcp.tools.filter((tool) =>
+          design
+            ? [
+                'get_design_brief',
+                'get_design_snapshot',
+                'get_design_hint',
+                'evaluate_design',
+              ].includes(tool.name)
+            : [
+                'list_problems',
+                'get_problem_description',
+                'get_hint',
+                'run_tests',
+                'submit_solution',
+                'get_progress',
+              ].includes(tool.name),
         ),
+        ...(design ? { prompt: DESIGN_COACH_PROMPT } : {}),
         message: text.trim(),
         history,
         context,
         signal: this.agent.signal,
-        emit: (item) => this.record(session, item),
+        emit: record,
         execute: async (name, args, signal) => {
           if (name === 'start_problem') throw new Error('Open problems from the sidebar');
           if (name === 'submit_solution' && !(await this.requestApproval(name, signal)))
             throw new Error('User declined submission');
           signal.throwIfAborted();
+          if (design) return this.executeDesign(name, args, design, checkpoint, signal);
           return this.execute(name, args, session, code, signal);
         },
       });
     } catch (error) {
       const message = this.agent.signal.aborted ? 'Coach stopped.' : this.sanitize(error);
-      this.record(session, {
+      record({
         id: randomUUID(),
         role: 'system',
         text: message,
@@ -477,6 +1038,12 @@ export class WorkbenchService {
   }
   async clearChat(): Promise<void> {
     this.idle();
+    if (this.store.workspace(this.scope).mode === 'design') {
+      this.designSession().chat = [];
+      await this.store.persist();
+      this.publish();
+      return;
+    }
     const session = this.active();
     if (session) session.chat = [];
     else this.store.workspace(this.scope).chat = [];
@@ -486,7 +1053,15 @@ export class WorkbenchService {
   async close(): Promise<void> {
     this.cancelChat();
     for (const approve of this.approvals.values()) approve(false);
-    if (this.store.isLoaded) await this.store.persist();
-    await this.mcp.close();
+    try {
+      await this.designs.flush();
+      if (this.store.isLoaded) await this.store.persist();
+    } finally {
+      try {
+        await this.mcp.close();
+      } finally {
+        await this.sandbox?.close();
+      }
+    }
   }
 }

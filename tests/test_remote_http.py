@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -137,5 +138,79 @@ def test_http_clients_isolate_attempts_hints_progress_and_revocation(remote_app,
                         "/mcp", json={}, headers={"Authorization": f"Bearer {alice_key}"}
                     )
                 ).status_code == 401
+
+    asyncio.run(scenario())
+
+
+def test_http_practice_queue_is_owned_and_reflections_do_not_complete_attempts(remote_app) -> None:
+    alice_key, bob_key = create_key("queue-alice"), create_key("queue-bob")
+
+    async def scenario() -> None:
+        async with (
+            remote_app.router.lifespan_context(remote_app),
+            _client(remote_app, alice_key) as alice,
+            _client(remote_app, bob_key) as bob,
+        ):
+            started = await alice.call_tool(
+                "start_problem", {"problem_id": "0015-delivery-hold-clusters"}
+            )
+            attempt_id = started.data.attempt_id
+            item = (
+                await alice.call_tool(
+                    "add_practice_review",
+                    {"kind": "coding", "source_id": attempt_id, "days_ahead": 0},
+                )
+            ).data
+            saved = (
+                await alice.call_tool(
+                    "record_practice_reflection",
+                    {
+                        "item_id": item.id,
+                        "reflection_id": str(uuid4()),
+                        "expected_version": item.version,
+                        "answer": "My independent invariant and a boundary case.",
+                        "self_rating": "recalled",
+                    },
+                )
+            ).data
+            assert saved.interval_days == 3
+            assert (
+                len((await alice.call_tool("list_practice_reflections", {"item_id": item.id})).data)
+                == 1
+            )
+            assert (await bob.call_tool("get_practice_queue", {})).data == []
+            assert (await bob.call_tool("list_practice_sources", {})).data == []
+            for tool, arguments in [
+                ("add_practice_review", {"kind": "coding", "source_id": attempt_id}),
+                ("get_practice_review", {"item_id": item.id}),
+                ("list_practice_reflections", {"item_id": item.id}),
+                (
+                    "reschedule_practice_review",
+                    {"item_id": item.id, "days_ahead": 30, "expected_version": 1},
+                ),
+                (
+                    "pause_practice_review",
+                    {"item_id": item.id, "paused": True, "expected_version": 1},
+                ),
+                (
+                    "record_practice_reflection",
+                    {
+                        "item_id": item.id,
+                        "reflection_id": str(uuid4()),
+                        "expected_version": 1,
+                        "answer": "Foreign overwrite",
+                        "self_rating": "recalled",
+                    },
+                ),
+            ]:
+                with pytest.raises(ToolError, match="not found"):
+                    await bob.call_tool(tool, arguments)
+            queue = (await alice.call_tool("get_practice_queue", {})).data
+            assert queue[0].version == 1
+            assert not queue[0].paused
+            sources = (await alice.call_tool("list_practice_sources", {})).data
+            assert sources[0].status == "in_progress"
+            # The actual HTTP serialization retains timezone-aware timestamps.
+            assert queue[0].due_at.utcoffset() is not None
 
     asyncio.run(scenario())

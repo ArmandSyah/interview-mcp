@@ -1,0 +1,60 @@
+{
+  "status": "in_progress",
+  "goal": "Desktop coding and system-design practice, public release preparation, and Supabase remote MCP development",
+  "database": "SQLAlchemy 2.x with local SQLite; schema version 4",
+  "implemented": [
+    "Revision-pinned coding attempts and owned design sessions",
+    "Five original development system-design briefs",
+    "Actual offline Excalidraw canvas with bundled fonts and reusable component palette",
+    "Local raster image assets, autosave, checkpoint history and restore",
+    "Requirements, API, data, capacity, tradeoff and failure-mode notes",
+    "Guided/mock modes and optional timer",
+    "Checkpoint-bound discussion coverage reviews, explicitly not correctness/hiring grades",
+    "AI off by default; optional read-only checkpoint coach with one hint per turn",
+    "Pre-migration SQLite backups and versioned atomic desktop-state migration",
+    "Credential-excluding portable practice archives; no in-app archive restore UI yet",
+    "Signed original content pack/license validation and atomic SQLAlchemy installation",
+    "Perpetual purchased-version use with a bounded licensed update window",
+    "Owner-operated signing CLI; no checkout account provisioned",
+    "Manual signed stable/beta update checks and verified downloads",
+    "Backup before explicit installer opening; no automatic install during practice",
+    "Optional Docker onboarding with explicit privileged-container consent and streamed setup phases",
+    "Digest-pinned bundled Piston config, local Docker/context/platform checks, and ownership-validated management",
+    "Lazy execution startup, five-minute idle/exit stop, retained runtime volume, and read-only reuse of external sandboxes",
+    "Malformed sandbox opt-in preservation and cancellation/cleanup of interrupted setup",
+    "Voluntary coding/design practice queue with pinned attempt metadata, editable/pausable reminders, and plain-English recall",
+    "Candidate-owned self-rating intervals and immutable reflection history; no automatic grading or attempt completion",
+    "Local reflection draft autosave and final-close flush; failed/stale saves preserve evidence",
+    "Owned MCP queue APIs and credential-excluding backups; queue tools are inaccessible to the AI coach",
+    "Complete checkpoint diagram projection up to 3,000 elements, late arrow bindings, and explicit shortened-label markers",
+    "Oversized-summary rejection before checkpoint-file creation, preserving the full saved canvas and exports",
+    "Explicit incomplete tool-result previews and non-streaming final coach response handling",
+    "Native raster image paste/restore/reopen, Excalidraw/notes/PNG exports with image-pixel checks, and export-cancellation preservation",
+    "Native optional design coach loop proves immutable checkpoint binding, no image-byte disclosure, rejected completion, and one hint per turn"
+  ],
+  "engineering_remaining": [
+    "Deploy and verify the Supabase connection test, which is not the remote practice engine",
+    "Implement remote practice contracts, account-owned PostgreSQL records, and row-level security",
+    "Connect desktop accounts with stable workspace identity across token refresh",
+    "Keep arbitrary code execution outside Supabase Edge Functions",
+    "Coordinated signed app/engine release artifact workflow and macOS CI",
+    "Review published dependency notice inventory before a production release",
+    "Final regression of rebuilt packages after the starter-docstring update"
+  ],
+  "external_prerequisites_not_provisioned": [
+    "Production Ed25519 public trust keys; private keys must remain outside the repo",
+    "Windows/macOS signing and notarization credentials for trusted public releases",
+    "Optional hosted checkout and reviewed paid-pack publication"
+  ],
+  "last_verified": {
+    "python": "226 passed, 10 optional model tests skipped, 30 existing datetime deprecation warnings",
+    "desktop_unit_and_process": "60 passed, 1 opt-in Docker test skipped in the default run. Real managed Docker integration passed separately.",
+    "native_source_ui": "7 passed, including development startup, offline design, exports, practice queue, and real Piston",
+    "typescript": "Passed",
+    "python_lint_and_types": "Passed",
+    "dependency_audit": "Zero known npm advisories at the previous audit. This is not a current security guarantee.",
+    "packaged_linux": "6 native workflows passed before the final starter-docstring update. Packages were then rebuilt. Final packaged regression remains necessary.",
+    "supabase_local": "11 passed, with Deno type checks, format checks, and lint checks. No remote deployment yet.",
+    "desktop_notices": "Collector handles absent platform-specific optional packages; project/font/dependency notices packaged; 44 package entries lack published notice files and still need release review"
+  }
+}

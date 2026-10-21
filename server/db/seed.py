@@ -5,58 +5,16 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Literal, cast
-
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from typing import cast
 
 from server.db import repo
+from server.db.content import ProblemContent as ProblemContent
 from server.db.write_types import ProblemWrite
 
 PROBLEMS_DIR = Path(
     os.getenv("INTERVIEW_MCP_PROBLEMS_DIR")
     or Path(__file__).resolve().parents[2] / "problems" / "examples"
 )
-
-
-class TestCaseContent(BaseModel):
-    model_config = ConfigDict(strict=True)
-
-    input: list[JsonValue]
-    expected: JsonValue
-
-
-class ExampleContent(BaseModel):
-    input: str
-    output: str
-    explanation: str = ""
-
-
-class SuboptimalContent(BaseModel):
-    name: str
-    complexity: str
-    description: str
-
-
-class ProblemContent(BaseModel):
-    """Runtime fields only; authoring and review metadata never enters the database."""
-
-    model_config = ConfigDict(strict=True)
-
-    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,60}$")
-    title: str = Field(min_length=1)
-    difficulty: Literal["easy", "medium", "hard"]
-    description_md: str
-    canonical_solution_md: str
-    tags: list[str]
-    pattern_tags: list[str] = Field(default_factory=list)
-    examples: list[ExampleContent] = Field(default_factory=list)
-    constraints: list[str] = Field(default_factory=list)
-    starter_code: dict[str, str]
-    test_cases: dict[str, list[TestCaseContent]]
-    fallback_hints: list[str]
-    common_mistakes: list[str] = Field(default_factory=list)
-    follow_up_questions: list[str] = Field(default_factory=list)
-    suboptimal_solutions: list[SuboptimalContent] = Field(default_factory=list)
 
 
 REQUIRED_FIELDS = {
@@ -173,4 +131,7 @@ def seed_problems(*, strict: bool = False) -> None:
 
     print(f"[seed] {succeeded}/{len(problems)} problems loaded", file=sys.stderr)
     if strict:
-        repo.hide_removed_problems([problem["id"] for problem in problems])
+        from server.distribution.packs import active_manifests
+
+        pack_ids = [problem.id for pack in active_manifests() for problem in pack.coding]
+        repo.hide_removed_problems([problem["id"] for problem in problems] + pack_ids)

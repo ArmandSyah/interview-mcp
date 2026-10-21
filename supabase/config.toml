@@ -1,0 +1,7 @@
+project_id = "interview-workbench"
+
+[functions.interview-mcp]
+# The function validates each user token with Supabase Auth before MCP dispatch.
+# The legacy gateway JWT check does not support every project signing algorithm.
+verify_jwt = false
+entrypoint = "./functions/interview-mcp/index.ts"

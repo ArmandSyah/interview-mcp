@@ -77,6 +77,8 @@ class AttemptRead(BaseModel):
     problem_id: str
     language: str
     status: str
+    problem_revision: str | None = None
+    revision_origin: str = "pinned"
     started_at: datetime
     completed_at: datetime | None
 

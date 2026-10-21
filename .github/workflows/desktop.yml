@@ -37,6 +37,10 @@ jobs:
       - run: npm run backend
       - run: npm run build
       - run: npm test
+      - name: Managed sandbox onboarding and lifecycle
+        run: npm test -- --run tests/managed-sandbox.integration.test.ts
+        env:
+          INTERVIEW_DESKTOP_TEST_MANAGED_SANDBOX: '1'
       - name: Start the local sandbox
         working-directory: .
         run: docker compose -f compose.desktop.yml up -d --wait --wait-timeout 180

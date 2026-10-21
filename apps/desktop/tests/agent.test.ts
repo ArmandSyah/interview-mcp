@@ -6,6 +6,23 @@ import type { Tool } from '@modelcontextprotocol/client';
 
 const tools: Tool[] = [{ name: 'get_hint', inputSchema: { type: 'object' } }];
 describe('bounded MCP agent harness', () => {
+  it('accepts a complete final response when the provider emits no streaming deltas', async () => {
+    const events: ChatItem[] = [];
+    await runAgent({
+      model: {
+        complete: async () => ({ text: 'Explain your first important assumption.', calls: [] }),
+      },
+      tools,
+      message: 'Help',
+      history: [],
+      context: '',
+      signal: new AbortController().signal,
+      emit: (item) => events.push(item),
+      execute: async () => ({}),
+    });
+    expect(events.filter((item) => item.role === 'assistant')).toHaveLength(1);
+    expect(events[0].text).toBe('Explain your first important assumption.');
+  });
   it('routes model tool calls and sends actual results back to the model', async () => {
     let round = 0;
     const events: ChatItem[] = [];
@@ -69,6 +86,35 @@ describe('bounded MCP agent harness', () => {
       execute,
     });
     expect(execute).toHaveBeenCalledTimes(1);
+  });
+  it('labels oversized tool results as incomplete valid-JSON previews for both model and activity UI', async () => {
+    let round = 0;
+    const events: ChatItem[] = [];
+    const model: Model = {
+      complete: async (_system, messages, _tools, _signal, delta) => {
+        if (++round === 1)
+          return { text: '', calls: [{ id: 'large', name: 'get_hint', args: {} }] };
+        const text = messages.at(-1)!.text;
+        expect(text.length).toBeLessThanOrEqual(30_000);
+        expect(JSON.parse(text)).toMatchObject({ truncated: true });
+        expect(JSON.parse(text).notice).toContain('Do not infer omitted evidence');
+        delta('I can only discuss the visible evidence.');
+        return { text: 'I can only discuss the visible evidence.', calls: [] };
+      },
+    };
+    await runAgent({
+      model,
+      tools,
+      message: 'Help',
+      history: [],
+      context: '',
+      signal: new AbortController().signal,
+      emit: (item) => events.push(item),
+      execute: async () => ({ evidence: '"\\\n'.repeat(20_000) }),
+    });
+    const activity = events.find((item) => item.role === 'tool' && item.status === 'done')!;
+    expect(activity.text.length).toBeLessThanOrEqual(18_000);
+    expect(JSON.parse(activity.text).truncated).toBe(true);
   });
   it('stops an infinite tool loop and respects cancellation', async () => {
     const model: Model = {

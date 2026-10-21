@@ -1,8 +1,12 @@
-# Example Problems
+# Coding examples
 
-These public-safe example problems ship with the open-source MCP server so a fresh
-clone can seed a working problem catalog.
+This directory contains five public coding examples for the desktop app and MCP engine.
+It is not a full practice library. The examples contain starter code, hints, and test cases.
 
-This directory is not the full production practice library. For a larger or
-private problem set, point `INTERVIEW_MCP_PROBLEMS_DIR` at your own problem JSON
-directory when starting the server.
+The five built-in system-design briefs are in `server/design/catalog.py`.
+They are not JSON files in this directory.
+
+For a different coding catalog, set `INTERVIEW_MCP_PROBLEMS_DIR` to an accepted runtime JSON directory before startup.
+In the desktop app, select the catalog in **Settings**.
+Do not select a private authoring repository.
+Existing attempts keep their content snapshots after a catalog change.

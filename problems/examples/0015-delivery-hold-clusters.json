@@ -25,7 +25,7 @@
     "For non-overlapping holds [a, b] and [c, d] with b < c, the gap is c - b."
   ],
   "starter_code": {
-    "python": "def merge_delivery_holds(holds: list[list[int]], grace_days: int) -> list[list[int]]:\n    pass\n"
+    "python": "def merge_delivery_holds(holds: list[list[int]], grace_days: int) -> list[list[int]]:\n    \"\"\"Example call and expected return.\n\n    >>> merge_delivery_holds([[1, 3], [5, 6], [11, 12]], 2)\n    [[1, 6], [11, 12]]\n    \"\"\"\n    pass\n"
   },
   "test_cases": {
     "python": [

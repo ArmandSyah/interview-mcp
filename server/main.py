@@ -23,9 +23,29 @@ from server.db.base import get_session, initialize_database
 from server.db.models import Problem
 from server.db.schemas import ProblemCatalogRead, ProblemRead, ProblemSummaryRead
 from server.db.seed import seed_problems
+from server.design import catalog as design_catalog
+from server.design import repo as design_repo
+from server.design.schemas import (
+    DesignBrief,
+    DesignCheckpointRead,
+    DesignReview,
+    DesignSessionRead,
+    DesignSummary,
+    DiagramElement,
+)
+from server.distribution import packs
+from server.distribution.backup import export_data
 from server.hints.engine import HintEngine
 from server.hints.jailbreak import check_jailbreak, get_refusal
 from server.llm_provider import get_provider
+from server.practice import repo as practice_repo
+from server.practice.schemas import (
+    PracticeKind,
+    PracticeQueueRead,
+    PracticeReflectionRead,
+    PracticeSourceRead,
+    SelfRating,
+)
 from server.sandbox.client import PistonClient
 from server.sandbox.result_models import SubmissionResult, TestCaseResult, TestRunResult
 from server.sandbox.runner import build_wrapper, extract_function_name, parse_result
@@ -164,6 +184,153 @@ def ping() -> str:
 
 
 @mcp.tool
+def list_content_packs() -> list[dict[str, object]]:
+    """Inspect installed original packs; purchased versions remain usable offline."""
+    return packs.installed()
+
+
+@mcp.tool
+def export_practice_data() -> dict[str, object]:
+    """Export only the authenticated user's practice records, without credentials."""
+    return export_data()
+
+
+@mcp.tool
+def install_content_pack(package_json: str, license_json: str) -> dict[str, object]:
+    """Install a signature-verified original pack atomically in a local workspace."""
+    return packs.install(package_json, license_json)
+
+
+@mcp.tool
+def list_design_problems() -> list[DesignSummary]:
+    """Browse the original offline system-design curriculum."""
+    return design_catalog.summaries()
+
+
+@mcp.tool
+def start_design_session(problem_id: str) -> DesignSessionRead:
+    """Start an owned design session, pinning the brief and rubric revision."""
+    return design_repo.start(problem_id)
+
+
+@mcp.tool
+def get_design_brief(session_id: str) -> DesignBrief:
+    """Read this session's pinned requirements; does not reveal future hints."""
+    return design_repo.get(session_id).brief
+
+
+@mcp.tool
+def save_design_checkpoint(
+    session_id: str,
+    checkpoint_id: str,
+    scene_digest: str,
+    notes: dict[str, str],
+    diagram: list[DiagramElement],
+    label: str = "Checkpoint",
+) -> DesignCheckpointRead:
+    """Record immutable evidence after the desktop has saved its local scene."""
+    return design_repo.save_checkpoint(
+        session_id, checkpoint_id, scene_digest, notes, diagram, label
+    )
+
+
+@mcp.tool
+def list_design_checkpoints(session_id: str, limit: int = 100) -> list[DesignCheckpointRead]:
+    """List owned immutable design checkpoints, newest first."""
+    return design_repo.checkpoints(session_id, limit)
+
+
+@mcp.tool
+def get_design_snapshot(session_id: str, checkpoint_id: str) -> DesignCheckpointRead:
+    """Read the exact notes and diagram summary of a saved checkpoint."""
+    return design_repo.checkpoint(session_id, checkpoint_id)
+
+
+@mcp.tool
+def get_design_hint(session_id: str, depth: int = 1) -> dict[str, object]:
+    """Return one curated progressive hint, depth 1-3, without a full architecture."""
+    return design_repo.hint(session_id, depth)
+
+
+@mcp.tool
+def evaluate_design(session_id: str, checkpoint_id: str) -> DesignReview:
+    """Review discussion coverage against the pinned rubric, not correctness."""
+    return design_repo.evaluate(session_id, checkpoint_id)
+
+
+@mcp.tool
+def finish_design_session(session_id: str, checkpoint_id: str) -> DesignSessionRead:
+    """Finish a reviewed practice session; this is not an objective pass/fail grade."""
+    return design_repo.finish(session_id, checkpoint_id)
+
+
+@mcp.tool
+def list_practice_sources(limit: int = 100) -> list[PracticeSourceRead]:
+    """List your pinned coding/design attempts available for voluntary recall scheduling."""
+    return practice_repo.sources(limit)
+
+
+@mcp.tool
+def get_practice_queue(include_paused: bool = True, limit: int = 500) -> list[PracticeQueueRead]:
+    """Read owned recall reminders; dates/self-ratings do not assert mastery or correctness."""
+    return practice_repo.list_queue(include_paused, limit)
+
+
+@mcp.tool
+def add_practice_review(
+    kind: PracticeKind, source_id: str, days_ahead: int = 1
+) -> PracticeQueueRead:
+    """Add one owned attempt to your queue. Repeated addition does not duplicate or reset it."""
+    return practice_repo.add(kind, source_id, days_ahead)
+
+
+@mcp.tool
+def get_practice_review(item_id: str) -> PracticeQueueRead:
+    """Read one owned reminder, pinned prompts and current optimistic-lock version."""
+    return practice_repo.get(item_id)
+
+
+@mcp.tool
+def reschedule_practice_review(
+    item_id: str, days_ahead: int, expected_version: int
+) -> PracticeQueueRead:
+    """Explicitly move your next reminder without changing reflection history."""
+    return practice_repo.reschedule(item_id, days_ahead, expected_version)
+
+
+@mcp.tool
+def pause_practice_review(item_id: str, paused: bool, expected_version: int) -> PracticeQueueRead:
+    """Pause/resume your reminder; never delete the attempt or its evidence."""
+    return practice_repo.pause(item_id, paused, expected_version)
+
+
+@mcp.tool
+def list_practice_reflections(item_id: str, limit: int = 50) -> list[PracticeReflectionRead]:
+    """Read your immutable plain-English recall answers and reflections."""
+    return practice_repo.reflections(item_id, limit)
+
+
+@mcp.tool
+def record_practice_reflection(
+    item_id: str,
+    reflection_id: str,
+    expected_version: int,
+    answer: str,
+    self_rating: SelfRating,
+    takeaway: str = "",
+    next_action: str = "",
+) -> PracticeReflectionRead:
+    """Save candidate-owned reflection and a suggested next date based on their self-rating.
+
+    This is not an objective grade. The candidate can reschedule/pause afterward.
+    The caller-supplied UUID makes an identical retry safe without duplicating history.
+    """
+    return practice_repo.reflect(
+        item_id, reflection_id, expected_version, answer, self_rating, takeaway, next_action
+    )
+
+
+@mcp.tool
 def get_problem_catalog() -> ProblemCatalogRead:
     """Return all available difficulties, tags, and pattern_tags.
 
@@ -295,7 +462,7 @@ def get_problem_description(attempt_id: str) -> str:
     if attempt is None:
         return f"Attempt {attempt_id!r} not found. Call start_problem first."
 
-    problem = repo.get_problem(attempt.problem_id)
+    problem = repo.get_attempt_problem(attempt.id)
     if problem is None:
         return "Problem for this attempt could not be found."
 
@@ -331,7 +498,7 @@ def run_tests(attempt_id: str, code: str) -> TestRunResult:
     if attempt is None:
         raise ValueError(f"Attempt {attempt_id!r} not found. Call start_problem first.")
 
-    problem = repo.get_problem(attempt.problem_id)
+    problem = repo.get_attempt_problem(attempt.id)
     if problem is None:
         raise ValueError(f"Problem {attempt.problem_id!r} not found in database.")
 
@@ -494,7 +661,7 @@ def submit_solution(attempt_id: str, code: str) -> SubmissionResult:
     if attempt is None:
         raise ValueError(f"Attempt {attempt_id!r} not found. Call start_problem first.")
 
-    problem = repo.get_problem(attempt.problem_id)
+    problem = repo.get_attempt_problem(attempt.id)
     if problem is None:
         raise ValueError(f"Problem {attempt.problem_id!r} not found in database.")
 
@@ -593,7 +760,7 @@ def get_hint(current_code: str, depth: int = 1, attempt_id: str | None = None) -
         )
         return HintResult(hint=get_refusal(), depth=depth, used_fallback=False)
 
-    problem = repo.get_problem(attempt.problem_id)
+    problem = repo.get_attempt_problem(attempt.id)
     if problem is None:
         raise ValueError(f"Problem '{attempt.problem_id}' not found in database.")
 

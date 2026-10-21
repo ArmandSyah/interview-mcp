@@ -1,0 +1,204 @@
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { expect, it } from 'vitest';
+import { McpConnection } from '../src/main/mcp';
+import { LocalStore, defaultSettings } from '../src/main/storage';
+import { WorkbenchService } from '../src/main/service';
+import { emptyDesignDraft } from '../src/shared/design';
+import type { Model } from '../src/main/providers';
+
+it('real SQLAlchemy engine: design checkpoints, reviews, ownership, coach binding, and reopening', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'interview-design-service-'));
+  const mcp = new McpConnection(resolve('../..'), root);
+  const vault = { available: () => false, encrypt: () => '', decrypt: () => '' };
+  let captured = '';
+  let round = 0;
+  const model: Model = {
+    complete: async (_prompt, messages, tools) => {
+      expect(tools.map((tool) => tool.name).sort()).toEqual([
+        'evaluate_design',
+        'get_design_brief',
+        'get_design_hint',
+        'get_design_snapshot',
+      ]);
+      if (++round === 1) {
+        const context = messages.at(-1)?.text ?? '';
+        expect(context).toContain('candidate requirements');
+        captured = /"checkpoint_id":"([^"]+)"/.exec(context)?.[1] ?? '';
+        return {
+          text: '',
+          calls: [
+            {
+              id: 'read',
+              name: 'get_design_snapshot',
+              args: { session_id: 'forged', checkpoint_id: 'forged' },
+            },
+            { id: 'write', name: 'finish_design_session', args: {} },
+            { id: 'hint1', name: 'get_design_hint', args: { depth: 1 } },
+            { id: 'hint2', name: 'get_design_hint', args: { depth: 2 } },
+          ],
+        };
+      }
+      expect(
+        messages.some((item) => item.role === 'tool' && item.text.includes('not available')),
+      ).toBe(true);
+      expect(
+        messages.some((item) => item.role === 'tool' && item.text.includes('Only one hint')),
+      ).toBe(true);
+      return { text: 'Explain the first important failure mode.', calls: [] };
+    },
+  };
+  const service = new WorkbenchService(
+    new LocalStore(root),
+    mcp,
+    vault,
+    () => {},
+    () => model,
+  );
+  try {
+    await service.initialize();
+    expect(service.snapshot().designProblems).toHaveLength(5);
+    await service.setMode('design');
+    await service.startDesign('design-link-aliases');
+    const session = service.snapshot().designSessions[0];
+    const draft = emptyDesignDraft();
+    draft.notes.requirements =
+      'candidate requirements: owners can disable aliases and must remain isolated from other tenants.';
+    await service.saveDesignDraft(session.id, draft);
+    await expect(service.loadDesignDraft('00000000-0000-4000-8000-000000000000')).rejects.toThrow(
+      'Choose',
+    );
+    await service.reviewDesign();
+    const reviewed = service.snapshot().designSessions[0].review!;
+    expect(reviewed.items[0].status).toBe('discussed');
+    expect(reviewed.limitations).toContain('not architectural correctness');
+    draft.notes.data = 'New edit after review';
+    await service.saveDesignDraft(session.id, draft);
+    await expect(service.finishDesign()).rejects.toThrow('current checkpoint');
+    const restored = await service.restoreDesignCheckpoint(reviewed.checkpoint_id);
+    expect(restored.notes.data).toBe('');
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.chat('Help me reason about failures');
+    expect(service.snapshot().error).toBeNull();
+    const after = service.snapshot().designSessions[0];
+    expect(after.status).toBe('in_progress');
+    expect(after.hintDepth).toBe(1);
+    expect(
+      after.chat.some(
+        (item) =>
+          item.tool === 'get_design_snapshot' &&
+          item.status === 'done' &&
+          item.text.includes(after.latestCheckpointId!),
+      ),
+    ).toBe(true);
+    expect((await service.loadDesignDraft(session.id)).notes).toEqual(restored.notes);
+    expect((await service.designCheckpoints()).length).toBeGreaterThanOrEqual(3);
+    const exported = JSON.parse(await service.designExport('workspace'));
+    expect(exported.draft.notes.requirements).toContain('candidate requirements');
+    expect(JSON.stringify(exported)).not.toContain('apiKey');
+    const backup = JSON.parse(await service.exportWorkspace());
+    expect(backup.practice.schema_version).toBe(4);
+    expect(backup.designs[0].checkpoints.length).toBeGreaterThanOrEqual(3);
+    expect(JSON.stringify(backup)).not.toContain('credentials');
+    await service.reviewDesign();
+    await service.finishDesign();
+    expect(service.snapshot().designSessions[0].status).toBe('completed');
+    await expect(service.saveDesignDraft(session.id, draft)).rejects.toThrow('finished');
+    await service.startDesign('design-link-aliases', true);
+    expect(service.snapshot().designSessions).toHaveLength(2);
+    await service.close();
+    const reopened = new WorkbenchService(
+      new LocalStore(root),
+      new McpConnection(resolve('../..'), root),
+      vault,
+      () => {},
+    );
+    try {
+      await reopened.initialize();
+      expect(reopened.snapshot().designSessions).toHaveLength(2);
+      expect(reopened.snapshot().mode).toBe('design');
+    } finally {
+      await reopened.close();
+    }
+  } finally {
+    await service.close();
+  }
+});
+
+it('the real MCP coach sees all 3,000 diagram elements with explicit shortened-label evidence', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'interview-design-large-'));
+  const model: Model = {
+    complete: async (prompt, messages) => {
+      const context = messages.at(-1)!.text;
+      const checkpoint = JSON.parse(
+        context.split('Immutable checkpoint evidence:\n')[1].split('\nThis is not')[0],
+      );
+      expect(checkpoint.diagram).toHaveLength(3000);
+      expect(checkpoint.diagram.at(-1)).toMatchObject({
+        id: 'late-edge',
+        from_id: 'node-0',
+        to_id: 'node-2997',
+      });
+      expect(checkpoint.diagram[2997]).toMatchObject({ label_truncated: true });
+      expect(prompt).toContain('Never infer their missing text');
+      return { text: 'Explain your first important failure mode.', calls: [] };
+    },
+  };
+  const service = new WorkbenchService(
+    new LocalStore(root),
+    new McpConnection(resolve('../..'), root),
+    { available: () => false, encrypt: () => '', decrypt: () => '' },
+    () => {},
+    () => model,
+  );
+  try {
+    await service.initialize();
+    await service.setMode('design');
+    await service.startDesign('design-link-aliases');
+    const session = service.snapshot().designSessions[0];
+    const draft = emptyDesignDraft();
+    draft.scene.elements = Array.from({ length: 2998 }, (_, index) => ({
+      id: `node-${index}`,
+      type: 'rectangle',
+      x: index,
+      y: 0,
+      width: 20,
+      height: 20,
+    }));
+    draft.scene.elements.push(
+      {
+        id: 'late-label',
+        type: 'text',
+        text: 'x'.repeat(2500),
+        containerId: 'node-2997',
+        x: 0,
+        y: 0,
+        width: 20,
+        height: 20,
+      },
+      {
+        id: 'late-edge',
+        type: 'arrow',
+        startBinding: { elementId: 'node-0' },
+        endBinding: { elementId: 'node-2997' },
+        x: 0,
+        y: 0,
+        width: 20,
+        height: 20,
+      },
+    );
+    await service.saveDesignDraft(session.id, draft);
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.chat('Ask about my diagram.');
+    expect(service.snapshot().error).toBeNull();
+    expect(service.snapshot().designSessions[0].chat.at(-1)?.text).toContain(
+      'first important failure mode',
+    );
+    const exported = JSON.parse(await service.designExport('excalidraw'));
+    expect(exported.elements).toHaveLength(3000);
+    expect(exported.elements[2998].text).toHaveLength(2500);
+  } finally {
+    await service.close();
+  }
+});

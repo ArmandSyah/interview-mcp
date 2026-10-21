@@ -56,6 +56,7 @@ export type Settings = {
   ollamaUrl: string;
   corpusPath: string;
   pistonUrl: string;
+  managedSandbox: boolean;
   connection: 'local' | 'remote';
   mcpUrl: string;
   hasApiKey: boolean;
@@ -69,6 +70,18 @@ export type SettingsUpdate = Omit<Settings, 'hasApiKey' | 'hasMcpKey' | 'secureS
   clearMcpKey?: boolean;
 };
 export type Snapshot = {
+  installedPacks: {
+    pack_id: string;
+    title: string;
+    version: string;
+    revision: string;
+    updates_until: string;
+    perpetual: true;
+  }[];
+  mode: 'coding' | 'design';
+  designProblems: import('./design').DesignSummary[];
+  designSessions: import('./design').DesignSession[];
+  activeDesignSessionId: string | null;
   settings: Settings;
   problems: Problem[];
   sessions: PracticeSession[];
@@ -84,10 +97,64 @@ export type Approval = { id: string; tool: string; description: string };
 export type AppEvent =
   | { type: 'snapshot'; snapshot: Snapshot }
   | { type: 'chat'; item: ChatItem; problemId: string }
+  | { type: 'design-chat'; item: ChatItem; sessionId: string }
   | { type: 'approval'; approval: Approval }
+  | { type: 'sandbox'; status: import('./sandbox').SandboxStatus }
   | { type: 'agent-done'; error?: string }
   | { type: 'flush-before-close' };
 export type DesktopAPI = {
+  practiceQueue(): Promise<import('./practice').PracticeQueueState>;
+  addPracticeReview(
+    kind: import('./practice').PracticeKind,
+    sourceId: string,
+    daysAhead: number,
+  ): Promise<import('./practice').PracticeQueueItem>;
+  reschedulePracticeReview(
+    itemId: string,
+    daysAhead: number,
+    expectedVersion: number,
+  ): Promise<import('./practice').PracticeQueueItem>;
+  pausePracticeReview(
+    itemId: string,
+    paused: boolean,
+    expectedVersion: number,
+  ): Promise<import('./practice').PracticeQueueItem>;
+  practiceReflections(itemId: string): Promise<import('./practice').PracticeReflection[]>;
+  loadReflectionDraft(itemId: string): Promise<import('./practice').ReflectionDraft>;
+  saveReflectionDraft(itemId: string, draft: import('./practice').ReflectionDraft): Promise<void>;
+  recordPracticeReflection(
+    input: import('./practice').ReflectionInput,
+  ): Promise<import('./practice').PracticeReflection>;
+  sandboxInfo(): Promise<import('./sandbox').SandboxStatus>;
+  inspectSandbox(): Promise<import('./sandbox').SandboxStatus>;
+  enableSandbox(): Promise<import('./sandbox').SandboxStatus | null>;
+  stopSandbox(): Promise<import('./sandbox').SandboxStatus>;
+  licenseNotices(): Promise<string>;
+  updateInfo(): Promise<import('./updates').UpdateStatus>;
+  checkUpdates(
+    channel: import('./updates').ReleaseChannel,
+  ): Promise<import('./updates').UpdateStatus>;
+  downloadUpdate(): Promise<import('./updates').UpdateStatus>;
+  openUpdateInstaller(): Promise<void>;
+  exportWorkspace(): Promise<string | null>;
+  installContentPack(): Promise<void>;
+  distributionInfo(): Promise<{ contentSigningConfigured: boolean; checkoutConfigured: boolean }>;
+  openCheckout(): Promise<void>;
+  setMode(mode: 'coding' | 'design'): Promise<void>;
+  startDesign(problemId: string, newAttempt?: boolean): Promise<void>;
+  activateDesign(sessionId: string): Promise<void>;
+  loadDesignDraft(sessionId: string): Promise<import('./design').DesignDraft>;
+  saveDesignDraft(sessionId: string, draft: import('./design').DesignDraft): Promise<string>;
+  checkpointDesign(label?: string): Promise<import('./design').DesignCheckpoint>;
+  designCheckpoints(): Promise<import('./design').DesignCheckpoint[]>;
+  restoreDesignCheckpoint(checkpointId: string): Promise<import('./design').DesignDraft>;
+  reviewDesign(): Promise<void>;
+  designHint(): Promise<void>;
+  finishDesign(): Promise<void>;
+  exportDesign(
+    format: 'excalidraw' | 'workspace' | 'png',
+    png?: Uint8Array,
+  ): Promise<string | null>;
   snapshot(): Promise<Snapshot>;
   reconnect(): Promise<void>;
   startProblem(id: string): Promise<void>;

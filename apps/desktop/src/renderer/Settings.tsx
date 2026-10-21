@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import { FolderOpen, X } from 'lucide-react';
 import type { Settings as SettingsType, SettingsUpdate } from '../shared/types';
+import { DistributionSettings } from './DistributionSettings';
+import { SandboxSettings } from './SandboxSettings';
+import { MANAGED_PISTON_URL } from '../shared/sandbox';
 
 export function SettingsDialog({
   settings,
   onClose,
   onSave,
+  beforeAction,
 }: {
   settings: SettingsType;
   onClose: () => void;
   onSave: (settings: SettingsUpdate) => Promise<void>;
+  beforeAction: () => Promise<void>;
 }) {
   const [values, setValues] = useState<SettingsUpdate>({
     provider: settings.provider,
@@ -17,6 +22,7 @@ export function SettingsDialog({
     ollamaUrl: settings.ollamaUrl,
     corpusPath: settings.corpusPath,
     pistonUrl: settings.pistonUrl,
+    managedSandbox: settings.managedSandbox,
     connection: settings.connection,
     mcpUrl: settings.mcpUrl,
   });
@@ -190,14 +196,29 @@ export function SettingsDialog({
                   Piston sandbox URL
                   <input
                     value={values.pistonUrl}
+                    disabled={values.managedSandbox}
                     onChange={(event) => field('pistonUrl', event.target.value)}
                     required
                   />
                 </label>
-                <p className="form-note">
-                  Code execution requires the local Docker sandbox and Python 3.12 runtime. Editor,
-                  descriptions, and curated hints work without it.
-                </p>
+                <SandboxSettings
+                  enabled={values.managedSandbox}
+                  beforeAction={beforeAction}
+                  onEnabled={() => {
+                    field('managedSandbox', true);
+                    field('pistonUrl', MANAGED_PISTON_URL);
+                  }}
+                />
+                {(settings.managedSandbox || values.managedSandbox) && (
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={values.managedSandbox}
+                      onChange={(event) => field('managedSandbox', event.target.checked)}
+                    />
+                    Automatically start the app-owned sandbox when running code
+                  </label>
+                )}
               </>
             ) : (
               <>
@@ -235,6 +256,7 @@ export function SettingsDialog({
               </>
             )}
           </fieldset>
+          <DistributionSettings beforeAction={beforeAction} />
           {error && (
             <p className="inline-error" role="alert">
               {error}

@@ -30,6 +30,8 @@ import {
 import { CodeEditor } from './Editor';
 import { Markdown } from './Markdown';
 import { SettingsDialog } from './Settings';
+import { DesignWorkbench } from './DesignWorkbench';
+import { PracticeQueueDialog } from './PracticeQueue';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 
 function cleanError(error: unknown): string {
@@ -52,6 +54,7 @@ export function App() {
   const [tab, setTab] = useState<'solution' | 'problem'>('solution');
   const [bottomTab, setBottomTab] = useState<'tests' | 'progress'>('tests');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
   const [approval, setApproval] = useState<Approval | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -64,9 +67,25 @@ export function App() {
   const saveQueue = useRef(Promise.resolve());
   const chatEnd = useRef<HTMLDivElement>(null);
   const snapshotRef = useRef(snapshot);
+  const designFlush = useRef<() => Promise<void>>(async () => {});
+  const queueFlush = useRef<() => Promise<void>>(async () => {});
+  const registerQueueFlush = useCallback((callback: () => Promise<void>) => {
+    queueFlush.current = callback;
+    return () => {
+      queueFlush.current = async () => {};
+    };
+  }, []);
+  const registerDesignFlush = useCallback((callback: () => Promise<void>) => {
+    designFlush.current = callback;
+    return () => {
+      designFlush.current = async () => {};
+    };
+  }, []);
   snapshotRef.current = snapshot;
 
   const flush = useCallback(async () => {
+    await designFlush.current();
+    await queueFlush.current();
     if (saveTimer.current) clearTimeout(saveTimer.current);
     const value = pending.current;
     if (value) {
@@ -119,6 +138,19 @@ export function App() {
             : current,
         );
       if (event.type === 'approval') setApproval(event.approval);
+      if (event.type === 'design-chat')
+        setSnapshot((current) =>
+          current
+            ? {
+                ...current,
+                designSessions: current.designSessions.map((session) =>
+                  session.id === event.sessionId
+                    ? { ...session, chat: updateChat(session.chat, event.item) }
+                    : session,
+                ),
+              }
+            : current,
+        );
       if (event.type === 'agent-done') setApproval(null);
       if (event.type === 'flush-before-close') {
         void flush()
@@ -224,6 +256,27 @@ export function App() {
   const completed = snapshot.sessions.filter((session) => session.submitted).length;
   const currentError = error || snapshot.error;
 
+  const queueDialog = queueOpen ? (
+    <PracticeQueueDialog
+      snapshot={snapshot}
+      beforeAction={flush}
+      registerFlush={registerQueueFlush}
+      onClose={() => setQueueOpen(false)}
+    />
+  ) : null;
+  if (snapshot.mode === 'design')
+    return (
+      <>
+        <DesignWorkbench
+          snapshot={snapshot}
+          registerFlush={registerDesignFlush}
+          switchMode={() => void action(() => window.interview.setMode('coding'))}
+          openQueue={() => void action(async () => setQueueOpen(true))}
+        />
+        {queueDialog}
+      </>
+    );
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -239,6 +292,20 @@ export function App() {
         <div className="topbar-center">
           <Command size={13} />
           <span>Your practice workspace</span>
+          <button
+            className="secondary small"
+            disabled={snapshot.busy}
+            onClick={() => void action(async () => setQueueOpen(true))}
+          >
+            Practice queue
+          </button>
+          <button
+            className="secondary small"
+            disabled={snapshot.busy}
+            onClick={() => void action(() => window.interview.setMode('design'))}
+          >
+            System design
+          </button>
         </div>
         <button
           className="icon-button"
@@ -772,9 +839,11 @@ export function App() {
           </span>
         </div>
       </footer>
+      {queueDialog}
       {settingsOpen && (
         <SettingsDialog
           settings={snapshot.settings}
+          beforeAction={flush}
           onClose={() => setSettingsOpen(false)}
           onSave={async (settings) => {
             await flush();
@@ -820,7 +889,7 @@ export function App() {
   );
 }
 
-function ChatMessage({ item }: { item: ChatItem }) {
+export function ChatMessage({ item }: { item: ChatItem }) {
   if (item.role === 'tool')
     return (
       <details className={`tool-activity ${item.status}`} open={item.status === 'running'}>

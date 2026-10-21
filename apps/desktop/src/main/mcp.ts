@@ -14,6 +14,26 @@ export const allowedTools = new Set([
   'run_tests',
   'submit_solution',
   'get_progress',
+  'list_design_problems',
+  'start_design_session',
+  'get_design_brief',
+  'save_design_checkpoint',
+  'list_design_checkpoints',
+  'get_design_snapshot',
+  'get_design_hint',
+  'evaluate_design',
+  'finish_design_session',
+  'list_content_packs',
+  'install_content_pack',
+  'export_practice_data',
+  'list_practice_sources',
+  'get_practice_queue',
+  'get_practice_review',
+  'add_practice_review',
+  'reschedule_practice_review',
+  'pause_practice_review',
+  'list_practice_reflections',
+  'record_practice_reflection',
 ]);
 
 export class McpConnection {
@@ -27,7 +47,7 @@ export class McpConnection {
 
   async connect(settings: StoredSettings, key: string): Promise<void> {
     await this.close();
-    const client = new Client({ name: 'interview-workbench', version: '0.1.0' });
+    const client = new Client({ name: 'interview-workbench', version: '0.2.0' });
     this.client = client;
     try {
       if (settings.connection === 'remote') {

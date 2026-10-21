@@ -1,127 +1,313 @@
-# Interview Workbench
+# Interview Workbench desktop guide
 
-A standalone, local-first interview practice app: problems on the left, a Monaco
-Python editor in the middle, tests/progress below, and a coach panel on the right.
-The desktop process connects to the actual Interview MCP engine over a private
-stdio pipe. This is an interview workspace, not a VS Code extension host or a
-general-purpose terminal.
+The desktop app has coding and system-design workspaces.
+The Electron main process starts the Python MCP engine with a private stdio connection.
+A virtual private server (VPS), domain, and hosted database are not necessary.
 
-No hosting account, VPS, or domain is needed. AI starts **off**. Browsing, editing,
-autosave, progressive curated hints, and progress do not require an API key or a
-local model. Nothing installs a model or sends a paid request automatically.
+AI is off at first startup. The app keeps the provider that you select.
+Curated hints are available without a model or API key.
+The Docker sandbox is necessary for code execution, but not for canvas practice.
+See the [app terms](../../docs/terminology.md) and [public release plan](../../docs/public-release-plan.md).
 
-## Open the app
+## Run from source
 
-Packaged Windows NSIS installers and Linux AppImage/deb builds are produced by the
-desktop workflow. They bundle Python and the MCP engine; Node, uv, and this source
-checkout are not needed to use them. CI artifacts are unsigned development builds,
-not a published or signed release. Windows may show a SmartScreen warning.
+Install Git, Node.js 24, and uv.
+Use Python 3.12. uv can download Python when necessary.
 
-For development, install Node 24 and uv, then run from the repository root:
+Enter these commands from the repository root:
 
 ```bash
-uv sync --frozen --dev
+uv sync --frozen --dev --python 3.12
 cd apps/desktop
 npm ci
 npm run install:electron
 npm run dev
 ```
 
-Linux needs a graphical desktop plus Electron's native libraries (on Ubuntu:
-`libnss3`, `libasound2t64`, and the usual GTK/X11 desktop libraries). WSL users need
-WSLg; a native Windows build avoids the WSL GUI dependency. Linux bundles are built
-on Ubuntu 24.04 and are not tested against older glibc versions.
+The app starts the MCP engine automatically.
+Do not start a second Python server for the desktop app.
+The app uses curated hints when your shell contains a paid provider key.
 
-## Enable solution tests once
+Close the window to stop the development process.
+After changes to main-process code, stop the app. Start the app again.
+Vite reloads renderer changes during development.
 
-Code does **not** execute inside the editor or with unrestricted access to your
-host Python. Tests use Piston's isolated execution environment. Install Docker
-with Compose (Docker Desktop works on Windows), then from the repository root:
+### Linux requirements
+
+Use a graphical desktop with GTK and X11 libraries.
+On Ubuntu 24.04, install the missing Electron libraries:
+
+```bash
+sudo apt-get update
+sudo apt-get install libnss3 libasound2t64
+```
+
+For headless UI tests, also install `xvfb`.
+WSLg is necessary to show an app window in WSL.
+Use a native Windows build if WSLg is unavailable.
+
+Linux packages use Ubuntu 24.04 as the build host.
+The tests do not include earlier glibc versions.
+
+### Troubleshooting
+
+| Problem | Action |
+| --- | --- |
+| The engine reports a missing Python environment. | Enter `uv sync --frozen --dev --python 3.12` from the repository root. |
+| Electron reports a missing executable. | Enter `npm run install:electron` from `apps/desktop`. |
+| Electron reports a missing shared library. | Install the Linux libraries in the requirements section. |
+| Linux has no display. | Start a graphical desktop. Use Xvfb only for headless tests. |
+| Code tests fail to connect to Piston. | Complete the optional sandbox setup below. |
+| The coach panel is disabled. | Select a provider in Settings, or use curated hints with AI off. |
+| A saved design or database reports damage. | Keep the existing files. Restore from a different backup before you continue. |
+
+Do not disable the Electron sandbox to bypass a setup error.
+
+## Use a packaged app
+
+The desktop workflow creates Windows NSIS installers and Linux AppImage and deb packages.
+These packages include Python, the MCP engine, and the public examples.
+Node.js, uv, and the source checkout are not necessary to start these packages.
+
+The workflow artifacts are unsigned development builds.
+They are not a published, signed release. Windows can display a SmartScreen warning.
+
+For a local Linux preview, enter these commands from `apps/desktop` after the package build:
+
+```bash
+chmod +x "release/Interview Workbench-0.2.0.AppImage"
+"./release/Interview Workbench-0.2.0.AppImage"
+```
+
+If FUSE is unavailable, start the AppImage with `--appimage-extract-and-run`:
+
+```bash
+"./release/Interview Workbench-0.2.0.AppImage" --appimage-extract-and-run
+```
+
+This option extracts the package to a temporary directory before startup.
+It does not disable the Electron sandbox.
+See the [AppImage FUSE guide](https://docs.appimage.org/user-guide/troubleshooting/fuse.html) for the runtime's requirements.
+
+## Enable code execution
+
+The app does not execute solution code in the editor or your host Python.
+Tests use Piston in a local Docker container.
+
+1. Install Docker with Compose.
+2. Start Docker.
+3. Open **Settings**.
+4. Select **Check local sandbox**.
+5. Read the privileged-container warning.
+6. Select **Enable local execution** only on a trusted workstation.
+
+Internet access is necessary for setup to download the image and Python runtime.
+The app uses a digest-pinned image.
+It examines the Docker connection, container platform, and cgroup version.
+The bundled image does not support ARM64 Docker engines.
+
+A privileged container can change its host system.
+CAUTION: Use local execution only on a trusted workstation or an isolated Docker virtual machine (VM).
+Privileged software can change host files. This can cause data loss.
+Do not use a shared production host.
+The app rejects remote Docker contexts and TCP or SSH daemon endpoints.
+
+After setup, each code execution request starts the app-owned sandbox if it is stopped.
+The app stops that container after five idle minutes or on exit.
+The runtime volume stays available for the next practice session.
+Settings can stop the container or disable automatic startup.
+
+The app examines ownership labels before it manages a container.
+It can use an external Piston instance if that instance has Python 3.12 installed.
+It does not stop that external instance or install its runtime.
+
+### Manual sandbox setup
+
+For manual setup, enter these commands from the repository root:
 
 ```bash
 docker compose -f compose.desktop.yml up -d --wait --wait-timeout 180
 uv run python -c "import httpx; r=httpx.post('http://127.0.0.1:2000/api/v2/packages', json={'language':'python','version':'3.12.0'}, timeout=300); r.raise_for_status()"
 ```
 
-For packaged users without uv, the second step can instead use curl:
+Without uv, use curl for runtime installation:
 
 ```bash
 curl --fail --max-time 300 http://127.0.0.1:2000/api/v2/packages -H 'Content-Type: application/json' --data '{"language":"python","version":"3.12.0"}'
 ```
 
-In Windows PowerShell use `curl.exe` rather than the older `curl` alias, or:
+In Windows PowerShell, use `curl.exe`, not `curl`.
+As an alternative, use:
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:2000/api/v2/packages -ContentType application/json -Body '{"language":"python","version":"3.12.0"}' -TimeoutSec 300
 ```
 
-The sandbox listens only on `127.0.0.1:2000`; never expose that port publicly.
-Piston requires a privileged container: use your own trusted workstation or an
-isolated Docker VM, not a shared production host. Networking is disabled for
-executed solutions, and runtime memory/output/concurrency limits are configured.
-Package installation downloads the Python runtime once. Stop the container when
-not practicing with `docker compose -f compose.desktop.yml stop`.
+The sandbox listens on `127.0.0.1:2000`.
+Do not expose this port to the internet.
+The execution configuration disables solution networking and limits memory, output, and concurrent runs.
 
-Open a problem, write your own implementation, then choose **Run tests**
-(`Ctrl/Cmd+Enter`) or **Submit**. Submission marks the attempt complete only when
-all tests pass. Editing after a run marks its results stale. `Ctrl/Cmd+S` saves;
-the app also autosaves and flushes pending edits before closing. Export writes a
-copy only to the location you select.
-
-## Optional coach
-
-Settings → AI coach offers:
-
-- **Off:** no model calls; the Hint button uses the corpus's curated hints.
-- **Ollama:** your already-installed local, tool-capable model. The default model
-  name is `qwen3:4b`; install a suitable model yourself and start Ollama before
-  enabling it. Local inference uses your machine's RAM/CPU/GPU, not a hosting bill.
-- **Claude API:** your own Anthropic API key. This sends your message, selected
-  problem, draft, recent chat, and relevant tool results to Anthropic and incurs
-  their API usage charges when you send a message. There is no background chat.
-
-The coach uses discovered MCP tool schemas, streams its answer, and displays tool
-activity. It can read the problem, request one progressive hint per turn, test the
-draft shared with that turn, and inspect progress. Submission requires your
-approval. It cannot edit your files, run arbitrary shell commands, or substitute
-model-generated code for your editor draft. Stop cancels a turn. These limits
-support mentor-style practice; model answers are not guaranteed correct.
-
-Keys stay out of the Python sidecar and snapshot/log payloads. Stored credentials
-use Electron's OS secure storage when available; without a secure Linux keyring,
-keys are memory-only and must be re-entered after restart. Workspace JSON is not
-encrypted: it contains your drafts, chat, and problem text. Protect your device.
-
-## Your larger question catalog
-
-Packaged builds contain **five public examples only**. In Settings → Practice
-engine, select the accepted runtime-export JSON directory from the private ops
-repo to use your larger catalog. Do not select a whole authoring repo. Private
-questions are never copied into installers. Strict corpus validation is preserved.
-
-An optional remote MCP connection is also supported with HTTPS and a personal
-bearer key; it is not required for local use. Different remote server/key
-identities have separate saved workspaces.
-
-## Build and verify
-
-From `apps/desktop` after the development install:
+Stop the manual container from the repository root:
 
 ```bash
-npm run backend       # bundle the Python MCP engine with PyInstaller
-npm run build
-npm test
-npm run test:desktop  # native graphical display required
-npm run dist          # build an installer for the current OS
+docker compose -f compose.desktop.yml stop
 ```
 
-Linux headless CI uses `xvfb-run -a npm run test:desktop`. Enable the real Piston
-UI test with `INTERVIEW_DESKTOP_TEST_PISTON=1` after sandbox setup. Set
-`INTERVIEW_DESKTOP_EXECUTABLE` to an unpacked binary to test the packaged app.
-Provider tests use wire-format fixtures and make no paid API calls; the UI chat
-test uses a local test model endpoint and real MCP tools, not real model inference.
-Desktop CI additionally checks real failing/passing code against Piston.
+This Compose project is not the app-owned project.
+The app does not stop the manual container for you.
 
-The renderer is isolated/sandboxed with a narrow IPC bridge, restricted navigation,
-no Node integration, and a production CSP. App-owned state is saved in Electron's
-user-data directory, shown in Settings. Source-checkout exercises are not modified.
+## Coding practice
+
+Open a problem. Write your implementation.
+Select **Run tests** to do tests of the saved draft.
+Select **Submit** to complete the attempt only if all tests pass.
+
+After an edit, the app marks the previous test results stale.
+It saves drafts automatically and requests a save before exit.
+Use `Ctrl/Cmd+S` to save immediately.
+Use `Ctrl/Cmd+Enter` to start tests.
+
+The app records the problem revision for each attempt.
+A catalog update does not replace the problem text of an existing attempt.
+
+## System-design practice
+
+Select **System design**. Open one of the five development briefs.
+Use Excalidraw or the component palette to draw your design.
+Enter your explanation in the six note sections.
+
+The app bundles fonts and canvas assets.
+It disables remote embeds and external canvas links.
+It stores imported raster images in local files.
+
+Guided mode includes curated hints. Mock mode disables those hint controls.
+The timer can start and pause. The draft keeps the elapsed time.
+
+**Checkpoint** captures immutable evidence.
+**Review** shows discussion coverage, not architectural correctness or hiring readiness.
+Edits after a design review can make that design review stale.
+**History** first saves the draft, then restores a saved checkpoint.
+
+After you examine the saved evidence, select **Finish practice**.
+Export an Excalidraw file, a PNG image, or a JSON file with the canvas and notes.
+
+## Optional AI coach
+
+Open **Settings**. Select a provider in the **AI coach** section.
+
+- **Off:** the app makes no model calls. Curated hints stay available.
+- **Ollama:** use a local, tool-capable model. Install the model. Start the model.
+- **Claude API:** use your Anthropic API key. Each chat request has an API charge.
+
+The app does not install a model or make background chat requests.
+A paid provider receives your message, applicable practice text, and tool results when you send a chat.
+Model responses can contain errors.
+
+The coding coach can request hints, tests, descriptions, and progress with permitted MCP tools.
+The app supplies the saved draft and attempt ID.
+User approval is mandatory for submission. The coach cannot edit the code or use a shell.
+Select **Stop** to cancel a turn.
+
+The system-design coach receives an immutable checkpoint of notes and diagram labels.
+It cannot change the canvas, notes, reminders, or session status.
+It does not receive image files and cannot read text in those images.
+
+Diagram summaries support up to 3,000 elements.
+Labels longer than 2,000 characters have an explicit shortened-label marker.
+The full text stays in the canvas and exports.
+A summary of more than 700 KB causes an error before checkpoint creation. The saved draft does not change.
+
+The main process stores credentials with OS secure storage when available.
+Snapshots and the Python process do not receive API keys.
+Without secure storage, keys stay in memory until exit. Enter the keys again after you start the app.
+Practice files are not encrypted.
+
+## Recall and reflection
+
+Open **Practice queue** from the coding workspace or the system-design workspace.
+Add a saved coding or design attempt.
+The app does not add reminders automatically.
+
+Use **Due now**, **Upcoming**, or **Paused** to see reminders.
+Select a reminder interval from 0 to 365 days.
+Move, pause, or resume a reminder without removing its history.
+
+Use **Recall & reflect** to answer plain-English prompts.
+Record your answer, the help you received, and your next step.
+The app saves reflection drafts automatically and requests a save before exit.
+
+The **Save reflection & next review** action creates an immutable history record.
+Self-ratings suggest reminder intervals of 1, 3, 7, 14, or 30 days.
+You can change the suggested reminder.
+These ratings do not measure correctness or complete the initial attempt.
+
+AI, Docker, and a hosted service are not necessary for the queue.
+The coach cannot read queue history or change reminders.
+The app has no background reminder notifications.
+
+## Local storage and backups
+
+The engine uses SQLAlchemy 2.x with local SQLite.
+It stores attempts, content revisions, design checkpoints, reviews, reflections, and installed-pack records.
+Canvas documents and image assets use app-owned local files.
+
+Database upgrades create a backup before migration.
+The app refuses a database from a newer schema version.
+Desktop state uses versioned atomic writes.
+
+Settings can export a private practice archive.
+The archive contains practice data, image assets, and installed content, but no credentials.
+There is no archive restore UI.
+Keep the archive private because it contains personal data.
+
+The app uses different workspaces for different remote server and key identities.
+The default public catalog has five coding examples and five design briefs.
+To use a larger corpus, select an accepted runtime JSON export in Settings.
+Do not select a private authoring repository.
+
+Signed pack and update verification exists, but production trust keys are not configured.
+No checkout or public update service is configured.
+These features refuse untrusted input.
+The [content guide](../../docs/content-authoring.md) gives the owner's content release procedure.
+
+## Build and check
+
+After the source setup, enter these commands from `apps/desktop`:
+
+```bash
+npm run backend
+npm run build
+npm run format:check
+npm run typecheck
+npm test
+npm run test:desktop
+npm run dist -- --publish never
+```
+
+Installers appear in `apps/desktop/release`.
+Use `npm run package` for an unpacked build.
+These commands prepare packages for the host operating system.
+
+Linux headless tests can use:
+
+```bash
+xvfb-run -a npm run test:desktop
+```
+
+Set `INTERVIEW_DESKTOP_EXECUTABLE` to an unpacked executable to do packaged tests.
+Copy the unpacked app outside the checkout before the source independence tests.
+
+Model tests use fixtures and make no paid API calls.
+Native tests include editor drafts, MCP tools, canvas images, exports, checkpoint restore, and recall.
+For code execution UI tests, set `INTERVIEW_DESKTOP_TEST_PISTON=1` after manual sandbox setup.
+
+For managed sandbox tests, set `INTERVIEW_DESKTOP_TEST_MANAGED_SANDBOX=1`.
+Use a trusted Docker host with port 2000 free.
+This test downloads the runtime and keeps its volume.
+The default unit tests do not include this integration.
+
+Builds collect project, font, and dependency notices.
+Some packages have no published notice file.
+Examine that inventory before a production release.
+
+See [demo capture](../../docs/media/README.md) to regenerate the public GIFs and screenshots.

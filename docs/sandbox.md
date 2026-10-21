@@ -5,6 +5,11 @@ container. In local development, the server talks to Piston at
 `http://localhost:2000`. In remote mode, the hosted MCP server should use an
 internal service URL through `PISTON_BASE_URL`.
 
+The standalone desktop app offers optional guided setup and an owned-container
+lifecycle; see the [desktop guide](../apps/desktop/README.md#enable-solution-tests-once).
+It does not manage remote Docker daemons or stop someone else's sandbox. The
+instructions below are for manual server development, not the app-owned project.
+
 ## First-time local setup
 
 From the repo root, in your WSL shell:

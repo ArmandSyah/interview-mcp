@@ -1,11 +1,25 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, safeStorage } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  net,
+  protocol,
+  safeStorage,
+  shell,
+} from 'electron';
 import { join, resolve, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { writeFile } from 'node:fs/promises';
+import { chmod, mkdir, open, readFile, stat, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { LocalStore } from './storage';
 import { McpConnection } from './mcp';
-import { WorkbenchService } from './service';
+import { WorkbenchService, reflectionDraftSchema } from './service';
+import trust from '../../../../server/distribution/trust.json';
+import { ReleaseUpdates } from './updates';
+import { ManagedSandbox } from './sandbox';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -134,6 +148,19 @@ void app.whenReady().then(async () => {
     decrypt: (value: string) => safeStorage.decryptString(Buffer.from(value, 'base64')),
   };
   const store = new LocalStore(app.getPath('userData'));
+  const updates = new ReleaseUpdates(store.root, app.getVersion(), trust.releasePublicKey);
+  const sandbox = new ManagedSandbox(
+    store.root,
+    app.isPackaged
+      ? join(process.resourcesPath, 'sandbox', 'compose.sandbox.yml')
+      : join(root, 'apps/desktop/resources/compose.sandbox.yml'),
+    {
+      emit: (status) => {
+        if (window && !window.isDestroyed())
+          window.webContents.send('workbench:event', { type: 'sandbox', status });
+      },
+    },
+  );
   const backend = app.isPackaged
     ? join(
         process.resourcesPath,
@@ -148,6 +175,8 @@ void app.whenReady().then(async () => {
     (event) => {
       if (window && !window.isDestroyed()) window.webContents.send('workbench:event', event);
     },
+    undefined,
+    sandbox,
   );
   function handler(channel: string, action: (...args: unknown[]) => unknown) {
     ipcMain.handle(`workbench:${channel}`, (event, ...args: unknown[]) => {
@@ -167,6 +196,204 @@ void app.whenReady().then(async () => {
   }
   const id = z.string().regex(/^[a-z0-9][a-z0-9-]{0,60}$/);
   handler('snapshot', () => service.snapshot());
+  handler('practice-queue', () => service.practiceQueue());
+  handler('practice-add', (kind, id, days) =>
+    service.addPracticeReview(
+      z.enum(['coding', 'design']).parse(kind),
+      z.string().max(100).parse(id),
+      z.number().int().min(0).max(365).parse(days),
+    ),
+  );
+  handler('practice-reschedule', (id, days, version) =>
+    service.reschedulePracticeReview(
+      z.string().uuid().parse(id),
+      z.number().int().min(0).max(365).parse(days),
+      z.number().int().min(0).parse(version),
+    ),
+  );
+  handler('practice-pause', (id, paused, version) =>
+    service.pausePracticeReview(
+      z.string().uuid().parse(id),
+      z.boolean().parse(paused),
+      z.number().int().min(0).parse(version),
+    ),
+  );
+  handler('practice-history', (id) => service.practiceReflections(z.string().uuid().parse(id)));
+  handler('practice-draft-load', (id) => service.loadReflectionDraft(z.string().uuid().parse(id)));
+  handler('practice-draft-save', (id, draft) =>
+    service.saveReflectionDraft(z.string().uuid().parse(id), reflectionDraftSchema.parse(draft)),
+  );
+  handler('practice-reflect', (input) =>
+    service.recordPracticeReflection(
+      reflectionDraftSchema.extend({ item_id: z.string().uuid() }).parse(input),
+    ),
+  );
+  handler('sandbox-info', () => service.sandboxInfo());
+  handler('sandbox-inspect', () => service.inspectSandbox());
+  handler('sandbox-stop', () => service.stopSandbox());
+  handler('sandbox-enable', async () => {
+    if (service.snapshot().busy) throw new Error('Wait for the current operation');
+    if (!service.settings().managedSandbox) {
+      const result = await dialog.showMessageBox(window!, {
+        type: 'warning',
+        title: 'Enable local code execution?',
+        message: 'Piston needs a privileged Docker container on your computer.',
+        detail:
+          'Use only your own trusted workstation or an isolated local Docker VM. The app downloads a pinned image and Python runtime, binds port 2000 to loopback, and disables networking for solutions. It manages only its own container, stops it when idle or on exit, and keeps runtime data. Existing sandboxes are reused without changes. No model is installed and no paid service is provisioned.',
+        buttons: ['Keep practicing without execution', 'Enable local execution'],
+        defaultId: 0,
+        cancelId: 0,
+      });
+      if (result.response !== 1) return null;
+    }
+    return service.enableSandbox();
+  });
+  handler('license-notices', async () => {
+    const fonts = await readFile(
+      app.isPackaged
+        ? join(renderer, 'third-party/notices.txt')
+        : join(root, 'apps/desktop/licenses/notices.txt'),
+      'utf8',
+    );
+    const additional = await Promise.all(
+      ['PROJECT-LICENSE.txt', 'dependency-notices.txt'].map((name) =>
+        readFile(join(renderer, 'third-party', name), 'utf8').catch(() => ''),
+      ),
+    );
+    return [fonts, ...additional].join('\n\n');
+  });
+  handler('update-info', () => updates.info());
+  handler('update-check', (channel) => updates.check(z.enum(['stable', 'beta']).parse(channel)));
+  handler('update-download', () => updates.download());
+  handler('update-install', async () => {
+    if (service.snapshot().busy)
+      throw new Error('Finish or stop the current practice operation first');
+    const installer = await updates.installerPath();
+    const confirmation = await dialog.showMessageBox(window!, {
+      type: 'question',
+      title: 'Open verified installer?',
+      message:
+        'Your practice data will be backed up first. The installer may close this app. Open it now?',
+      buttons: ['Keep practicing', 'Back up & open installer'],
+      defaultId: 0,
+      cancelId: 0,
+    });
+    if (confirmation.response !== 1) return;
+    const backup = await service.exportWorkspace();
+    const directory = join(store.root, 'backups');
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    const file = await open(join(directory, 'pre-update-' + randomUUID() + '.json'), 'wx', 0o600);
+    try {
+      await file.writeFile(backup, 'utf8');
+      await file.sync();
+    } finally {
+      await file.close();
+    }
+    if (installer.endsWith('.AppImage')) await chmod(installer, 0o700);
+    const error = await shell.openPath(installer);
+    if (error) throw new Error(error);
+  });
+  handler('export-workspace', async () => {
+    const data = await service.exportWorkspace();
+    const result = await dialog.showSaveDialog(window!, {
+      title: 'Export practice backup (without credentials)',
+      defaultPath: 'interview-practice-backup.json',
+      filters: [{ name: 'Practice backup', extensions: ['json'] }],
+    });
+    if (result.canceled || !result.filePath) return null;
+    await writeFile(result.filePath, data, { mode: 0o600 });
+    return result.filePath;
+  });
+  handler('distribution-info', () => ({
+    contentSigningConfigured: !!trust.contentPublicKey,
+    checkoutConfigured: !!trust.checkoutUrl,
+  }));
+  handler('checkout', async () => {
+    const url = new URL(trust.checkoutUrl);
+    if (
+      url.protocol !== 'https:' ||
+      url.username ||
+      url.password ||
+      !(
+        url.hostname.endsWith('.lemonsqueezy.com') ||
+        ['buy.stripe.com', 'checkout.stripe.com'].includes(url.hostname)
+      )
+    )
+      throw new Error('A supported hosted checkout is not configured');
+    await shell.openExternal(url.href);
+  });
+  handler('install-pack', async () => {
+    if (!trust.contentPublicKey)
+      throw new Error('Content signing is not configured in this preview build');
+    if (service.snapshot().busy) throw new Error('Wait for the current operation');
+    const result = await dialog.showOpenDialog(window!, {
+      title: 'Select your signed content pack and license',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Signed JSON', extensions: ['json'] }],
+    });
+    if (result.canceled) return;
+    if (result.filePaths.length !== 2)
+      throw new Error('Select exactly one signed pack file and its signed license file');
+    const selected = [];
+    for (const path of result.filePaths) {
+      if ((await stat(path)).size > 24_000_000) throw new Error('Signed package is too large');
+      const json = await readFile(path, 'utf8');
+      const envelope = JSON.parse(json) as { payload?: unknown };
+      if (typeof envelope.payload !== 'string') throw new Error('Not a signed package or license');
+      const payload = JSON.parse(
+        Buffer.from(envelope.payload, 'base64').toString('utf8'),
+      ) as Record<string, unknown>;
+      selected.push({ json, license: 'license_id' in payload });
+    }
+    const pack = selected.find((item) => !item.license),
+      license = selected.find((item) => item.license);
+    if (!pack || !license) throw new Error('Select one pack and one license');
+    await service.installContentPack(pack.json, license.json);
+  });
+  handler('mode', (mode) => service.setMode(z.enum(['coding', 'design']).parse(mode)));
+  handler('design-start', (value, fresh) =>
+    service.startDesign(id.parse(value), z.boolean().parse(fresh)),
+  );
+  handler('design-activate', (value) => service.activateDesign(z.string().uuid().parse(value)));
+  handler('design-load', (value) => service.loadDesignDraft(z.string().uuid().parse(value)));
+  handler('design-save', (value, draft) =>
+    service.saveDesignDraft(
+      z.string().uuid().parse(value),
+      draft as Parameters<WorkbenchService['saveDesignDraft']>[1],
+    ),
+  );
+  handler('design-checkpoint', (label) =>
+    service.checkpointDesign(z.string().min(1).max(80).parse(label)),
+  );
+  handler('design-history', () => service.designCheckpoints());
+  handler('design-restore', (value) =>
+    service.restoreDesignCheckpoint(z.string().uuid().parse(value)),
+  );
+  handler('design-review', () => service.reviewDesign());
+  handler('design-hint', () => service.designHint());
+  handler('design-finish', () => service.finishDesign());
+  handler('design-export', async (value, bytes) => {
+    const format = z.enum(['excalidraw', 'workspace', 'png']).parse(value);
+    let data: string | Uint8Array;
+    if (format === 'png') {
+      if (
+        !(bytes instanceof Uint8Array) ||
+        bytes.byteLength > 20_000_000 ||
+        !Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      )
+        throw new Error('Invalid PNG export');
+      data = bytes;
+    } else data = await service.designExport(format);
+    const extension = format === 'workspace' ? 'json' : format;
+    const result = await dialog.showSaveDialog(window!, {
+      title: 'Export your design',
+      defaultPath: `my-design.${extension}`,
+      filters: [{ name: 'Design export', extensions: [extension] }],
+    });
+    if (result.canceled || !result.filePath) return null;
+    await writeFile(result.filePath, data, { mode: 0o600 });
+    return result.filePath;
+  });
   handler('reconnect', () => service.reconnect());
   handler('start', (value) => service.startProblem(id.parse(value)));
   handler('activate', (value) => service.activateProblem(id.parse(value)));

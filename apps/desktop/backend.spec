@@ -8,6 +8,7 @@ a = Analysis(
     datas=[
         (str(root / "problems/examples"), "problems/examples"),
         (str(root / "server/hints/*.txt"), "server/hints"),
+        (str(root / "server/distribution/trust.json"), "server/distribution"),
     ],
     hiddenimports=["server.main", "server.db.models"],
     hookspath=[], hooksconfig={}, runtime_hooks=[], excludes=[], noarchive=False,

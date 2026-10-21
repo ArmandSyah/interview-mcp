@@ -7,6 +7,7 @@ import { WorkbenchService, type Vault } from '../src/main/service';
 import { LocalStore, defaultSettings } from '../src/main/storage';
 import type { McpConnection } from '../src/main/mcp';
 import type { Model } from '../src/main/providers';
+import type { ManagedSandbox } from '../src/main/sandbox';
 import type { AppEvent, Problem } from '../src/shared/types';
 
 const problem: Problem = {
@@ -26,7 +27,7 @@ const memoryVault: Vault = {
     throw new Error('Not available');
   },
 };
-async function fixture(model?: Model, vault = memoryVault) {
+async function fixture(model?: Model, vault = memoryVault, sandbox?: ManagedSandbox) {
   const store = new LocalStore(await mkdtemp(join(tmpdir(), 'interview-service-')));
   const events: AppEvent[] = [];
   const call = vi.fn(async (name: string, _args: Record<string, unknown>): Promise<unknown> => {
@@ -51,6 +52,8 @@ async function fixture(model?: Model, vault = memoryVault) {
         completed: true,
         test_run: { all_passed: true, tests_total: 1, tests_passed: 1, results: [] },
       };
+    if (name === 'run_tests')
+      return { all_passed: false, tests_total: 1, tests_passed: 0, tests: [] };
     throw new Error(`Unexpected fixture call ${name}`);
   });
   const mcp = {
@@ -68,6 +71,7 @@ async function fixture(model?: Model, vault = memoryVault) {
     vault,
     (event) => events.push(event),
     model ? () => model : undefined,
+    sandbox,
   );
   await service.initialize();
   return { service, store, mcp, events };
@@ -87,6 +91,19 @@ it('starts with AI off, resumes drafts, and never exposes credentials in snapsho
     'fixture-secret',
   );
   await service.close();
+});
+
+it('an older remote engine can keep practicing without queue support', async () => {
+  const { service, mcp } = await fixture();
+  try {
+    expect(await service.practiceQueue()).toEqual({ supported: false, items: [], sources: [] });
+    expect(service.snapshot().connection).toBe('connected');
+    expect(mcp.call.mock.calls.some(([name]) => name === 'get_practice_queue')).toBe(false);
+    await service.startProblem(problem.id);
+    expect(service.snapshot().sessions[0].code).toBe(code);
+  } finally {
+    await service.close();
+  }
 });
 
 it('binds agent tools to the selected attempt and captured editor draft', async () => {
@@ -186,4 +203,72 @@ it('closing after a failed load preserves the damaged workspace', async () => {
   await expect(fresh.initialize()).rejects.toThrow('not been overwritten');
   await fresh.close();
   expect(await readFile(join(store.root, 'workspace.json'), 'utf8')).toBe('{broken');
+});
+
+it('requires sandbox opt-in, reconnects the engine URL, and wraps only code execution', async () => {
+  const ready = { phase: 'ready' as const, managed: true, message: 'Ready' };
+  const sandbox = {
+    status: vi.fn(() => ready),
+    inspect: vi.fn(async () => ready),
+    enable: vi.fn(async () => ready),
+    stop: vi.fn(async () => ready),
+    withExecution: vi.fn(async (operation: () => Promise<unknown>) => operation()),
+    close: vi.fn(async () => {}),
+  };
+  const { service, mcp, store } = await fixture(
+    undefined,
+    memoryVault,
+    sandbox as unknown as ManagedSandbox,
+  );
+  expect(sandbox.enable).not.toHaveBeenCalled();
+  expect(service.settings().managedSandbox).toBe(false);
+  await expect(
+    service.updateSettings({ ...defaultSettings, managedSandbox: true }),
+  ).rejects.toThrow('opt into');
+  await service.updateSettings({ ...defaultSettings, pistonUrl: 'http://127.0.0.1:2999' });
+  await service.enableSandbox();
+  expect(service.settings().pistonUrl).toBe('http://127.0.0.1:2000');
+  expect(mcp.connect).toHaveBeenLastCalledWith(
+    expect.objectContaining({ pistonUrl: 'http://127.0.0.1:2000', managedSandbox: true }),
+    '',
+  );
+  expect(
+    JSON.parse(await readFile(join(store.root, 'workspace.json'), 'utf8')).settings.managedSandbox,
+  ).toBe(true);
+  await service.startProblem(problem.id);
+  await service.hint();
+  expect(sandbox.withExecution).not.toHaveBeenCalled();
+  await service.runTests(false);
+  expect(sandbox.withExecution).toHaveBeenCalledTimes(1);
+  expect(mcp.call).toHaveBeenCalledWith(
+    'run_tests',
+    { attempt_id: 'owned-attempt', code },
+    undefined,
+  );
+  await service.updateSettings({ ...defaultSettings });
+  expect(sandbox.stop).toHaveBeenCalledTimes(1);
+  await service.runTests(false);
+  expect(sandbox.withExecution).toHaveBeenCalledTimes(1);
+  await service.close();
+  expect(sandbox.close).toHaveBeenCalledTimes(1);
+});
+
+it('does not persist sandbox opt-in after failed setup, and closes it even if MCP cleanup fails', async () => {
+  const sandbox = {
+    enable: vi.fn(async () => {
+      throw new Error('Docker is unavailable');
+    }),
+    close: vi.fn(async () => {}),
+  };
+  const { service, mcp } = await fixture(
+    undefined,
+    memoryVault,
+    sandbox as unknown as ManagedSandbox,
+  );
+  await expect(service.enableSandbox()).rejects.toThrow('Docker is unavailable');
+  expect(service.settings().managedSandbox).toBe(false);
+  expect(service.snapshot().busy).toBe(false);
+  mcp.close.mockRejectedValueOnce(new Error('Fixture transport failure'));
+  await expect(service.close()).rejects.toThrow('Fixture transport failure');
+  expect(sandbox.close).toHaveBeenCalledTimes(1);
 });

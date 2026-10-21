@@ -1,0 +1,28 @@
+# App-managed local execution only. Python runtime data survives stop/restart.
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston@sha256:2f66b7456189c4d713aa986d98eccd0b6ee16d26c7ec5f21b30e942756fd127a
+    privileged: true
+    restart: 'no'
+    labels:
+      io.github.armandsyah.interview-workbench.owner: '${INTERVIEW_SANDBOX_OWNER:?App ownership is required}'
+    ports: ['127.0.0.1:2000:2000']
+    environment:
+      PISTON_DISABLE_NETWORKING: 'true'
+      PISTON_MAX_CONCURRENT_JOBS: '4'
+      PISTON_OUTPUT_MAX_SIZE: '65536'
+      PISTON_RUN_MEMORY_LIMIT: '268435456'
+    volumes: [piston_runtime:/piston/packages]
+    tmpfs: [/tmp:exec]
+    mem_limit: 2g
+    cpus: 1.5
+    healthcheck:
+      test: [CMD, node, '-e', "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>{if(r.statusCode!==200)process.exit(1);r.resume()}).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+volumes:
+  piston_runtime:

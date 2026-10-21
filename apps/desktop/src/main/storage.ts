@@ -1,15 +1,26 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, writeFile } from 'node:fs/promises';
 import { join, resolve, relative } from 'node:path';
 import type { ChatItem, PracticeSession, SettingsUpdate } from '../shared/types';
+import type { DesignSession } from '../shared/design';
+import { MANAGED_PISTON_URL } from '../shared/sandbox';
+import type { ReflectionDraft } from '../shared/practice';
 
 export type StoredSettings = Omit<
   SettingsUpdate,
   'apiKey' | 'mcpKey' | 'clearApiKey' | 'clearMcpKey'
 >;
-type Workspace = { sessions: PracticeSession[]; activeProblemId: string | null; chat: ChatItem[] };
+type Workspace = {
+  sessions: PracticeSession[];
+  activeProblemId: string | null;
+  chat: ChatItem[];
+  mode: 'coding' | 'design';
+  designSessions: DesignSession[];
+  activeDesignSessionId: string | null;
+  reflectionDrafts: Record<string, ReflectionDraft>;
+};
 type StoredState = {
-  version: 1;
+  version: 2;
   settings: StoredSettings;
   credentials: { apiKey?: string; mcpKey?: string };
   workspaces: Record<string, Workspace>;
@@ -21,13 +32,14 @@ export const defaultSettings: StoredSettings = {
   ollamaUrl: 'http://127.0.0.1:11434',
   corpusPath: '',
   pistonUrl: 'http://127.0.0.1:2000',
+  managedSandbox: false,
   connection: 'local',
   mcpUrl: '',
 };
 
 export class LocalStore {
   state: StoredState = {
-    version: 1,
+    version: 2,
     settings: { ...defaultSettings },
     credentials: {},
     workspaces: {},
@@ -43,16 +55,55 @@ export class LocalStore {
   async load(): Promise<void> {
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     try {
-      const raw = JSON.parse(
-        await readFile(join(this.root, 'workspace.json'), 'utf8'),
-      ) as StoredState;
-      if (raw.version !== 1 || !raw.workspaces || !raw.settings)
+      const contents = await readFile(join(this.root, 'workspace.json'), 'utf8');
+      const raw = JSON.parse(contents) as Omit<StoredState, 'version'> & { version: number };
+      if (![1, 2].includes(raw.version) || !raw.workspaces || !raw.settings)
         throw new Error('Unsupported workspace data');
+      if (
+        raw.settings.managedSandbox !== undefined &&
+        typeof raw.settings.managedSandbox !== 'boolean'
+      )
+        throw new Error('Invalid sandbox opt-in');
+      if (raw.settings.managedSandbox === true && raw.settings.pistonUrl !== MANAGED_PISTON_URL)
+        throw new Error('Invalid managed sandbox endpoint');
+      for (const workspace of Object.values(raw.workspaces)) {
+        workspace.chat ??= [];
+        if (!Array.isArray(workspace.sessions) || !Array.isArray(workspace.chat))
+          throw new Error('Unsupported workspace data');
+        workspace.mode ??= 'coding';
+        workspace.designSessions ??= [];
+        workspace.activeDesignSessionId ??= null;
+        workspace.reflectionDrafts ??= {};
+        if (
+          !['coding', 'design'].includes(workspace.mode) ||
+          !Array.isArray(workspace.designSessions) ||
+          typeof workspace.reflectionDrafts !== 'object' ||
+          Array.isArray(workspace.reflectionDrafts)
+        )
+          throw new Error('Unsupported workspace data');
+      }
+      if (raw.version === 1) {
+        await mkdir(join(this.root, 'backups'), { recursive: true, mode: 0o700 });
+        await writeFile(
+          join(this.root, 'backups', 'workspace-v1-' + randomUUID() + '.json'),
+          contents,
+          {
+            encoding: 'utf8',
+            mode: 0o600,
+            flag: 'wx',
+          },
+        );
+      }
       this.state = {
         ...raw,
+        version: 2,
         settings: { ...defaultSettings, ...raw.settings },
         credentials: raw.credentials ?? {},
       };
+      if (raw.version === 1) {
+        this.loaded = true;
+        await this.persist();
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
         throw new Error(
@@ -75,8 +126,16 @@ export class LocalStore {
       sessions: [],
       activeProblemId: null,
       chat: [],
+      mode: 'coding',
+      designSessions: [],
+      activeDesignSessionId: null,
+      reflectionDrafts: {},
     });
     workspace.chat ??= [];
+    workspace.mode ??= 'coding';
+    workspace.designSessions ??= [];
+    workspace.activeDesignSessionId ??= null;
+    workspace.reflectionDrafts ??= {};
     return workspace;
   }
 
@@ -115,7 +174,13 @@ export class LocalStore {
 
   private async atomicWrite(path: string, data: string): Promise<void> {
     const temporary = `${path}.${randomUUID()}.tmp`;
-    await writeFile(temporary, data, { encoding: 'utf8', mode: 0o600 });
+    const file = await open(temporary, 'wx', 0o600);
+    try {
+      await file.writeFile(data, 'utf8');
+      await file.sync();
+    } finally {
+      await file.close();
+    }
     await rename(temporary, path);
   }
 }
