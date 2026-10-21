@@ -498,10 +498,12 @@ export class WorkbenchService {
       .workspace(this.scope)
       .sessions.find((session) => session.problem.id === id);
     if (!session) throw new Error('No active workspace for this problem');
-    if (session.code === code) return;
-    session.code = code;
-    session.updatedAt = Date.now();
-    session.resultStale = !!session.result;
+    if (session.code !== code) {
+      session.code = code;
+      session.updatedAt = Date.now();
+      session.resultStale = !!session.result;
+    }
+    // Equal memory values do not prove that an earlier disk write succeeded.
     await this.store.saveCode(this.scope, session);
   }
 

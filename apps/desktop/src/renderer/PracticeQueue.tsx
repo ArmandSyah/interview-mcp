@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
+import { DraftWriter } from './draft-writer';
 import type { Snapshot } from '../shared/types';
 import type {
   PracticeQueueItem,
@@ -39,25 +40,21 @@ export function PracticeQueueDialog({ snapshot, beforeAction, registerFlush, onC
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
   const [now, setNow] = useState(Date.now);
-  const pending = useRef<{ id: string; draft: ReflectionDraft } | null>(null);
+  const drafts = useRef(
+    new DraftWriter<ReflectionDraft>((id, draft) =>
+      window.interview.saveReflectionDraft(id, draft),
+    ),
+  );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const writes = useRef(Promise.resolve());
   const item = state?.items.find((value) => value.id === selected);
   const flush = useCallback(async () => {
     if (timer.current) clearTimeout(timer.current);
-    const value = pending.current;
-    if (value) {
-      pending.current = null;
-      setSaved('Saving draft…');
-      writes.current = writes.current
-        .catch(() => {})
-        .then(() => window.interview.saveReflectionDraft(value.id, value.draft));
-    }
+    const changed = drafts.current.dirty;
+    if (changed) setSaved('Saving draft…');
     try {
-      await writes.current;
-      if (value && !pending.current) setSaved('Draft saved locally');
+      await drafts.current.flush();
+      if (changed && !drafts.current.dirty) setSaved('Draft saved locally');
     } catch (error) {
-      if (value && !pending.current) pending.current = value;
       setSaved('Draft not saved');
       setError(clean(error));
       throw error;
@@ -94,7 +91,7 @@ export function PracticeQueueDialog({ snapshot, beforeAction, registerFlush, onC
   function change(next: ReflectionDraft) {
     if (!item) return;
     setDraft(next);
-    pending.current = { id: item.id, draft: next };
+    drafts.current.set(item.id, next);
     setSaved('Unsaved draft');
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {

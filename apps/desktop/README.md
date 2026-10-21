@@ -318,3 +318,28 @@ Some packages have no published notice file.
 Examine that inventory before a production release.
 
 See [demo capture](../../docs/media/README.md) to regenerate the public GIFs and screenshots.
+
+### Save regression tests
+
+The app keeps each draft until its disk write completes without an error.
+Navigation and window close wait for edits that the app receives during a save.
+An older snapshot must not replace a draft while its save is in progress.
+A failed write keeps the draft available for another save.
+These rules do not change the file formats or ownership of saved practice data.
+
+The native save tests use temporary workspaces and the Electron app.
+Each test sets when an inter-process communication (IPC) call starts.
+The test can also supply an error instead of a call result.
+Other calls use the app service and disk writes.
+The tests include code drafts, design notes, recall answers, navigation, failed writes, window close, and restart.
+Unit tests also examine concurrent save requests and retries after a disk failure.
+
+After the build, enter this command from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/save-races.spec.ts
+```
+
+Playwright keeps a trace for each failed native test.
+The trace includes the actions and assertions for that test.
+The full UI audit is not completed.

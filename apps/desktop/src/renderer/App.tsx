@@ -32,6 +32,7 @@ import { Markdown } from './Markdown';
 import { SettingsDialog } from './Settings';
 import { DesignWorkbench } from './DesignWorkbench';
 import { PracticeQueueDialog } from './PracticeQueue';
+import { DraftWriter } from './draft-writer';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 
 function cleanError(error: unknown): string {
@@ -62,9 +63,8 @@ export function App() {
   const [sidebar, setSidebar] = useState<'problems' | 'files'>('problems');
   const [chatWidth, setChatWidth] = useState(360);
   const [bottomHeight, setBottomHeight] = useState(220);
-  const pending = useRef<{ id: string; code: string } | null>(null);
+  const drafts = useRef(new DraftWriter<string>((id, code) => window.interview.saveCode(id, code)));
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveQueue = useRef(Promise.resolve());
   const chatEnd = useRef<HTMLDivElement>(null);
   const snapshotRef = useRef(snapshot);
   const designFlush = useRef<() => Promise<void>>(async () => {});
@@ -87,19 +87,11 @@ export function App() {
     await designFlush.current();
     await queueFlush.current();
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    const value = pending.current;
-    if (value) {
-      pending.current = null;
-      setSaveState('saving');
-      saveQueue.current = saveQueue.current
-        .catch(() => {})
-        .then(() => window.interview.saveCode(value.id, value.code));
-    }
+    if (drafts.current.dirty) setSaveState('saving');
     try {
-      await saveQueue.current;
-      if (!pending.current) setSaveState('saved');
+      await drafts.current.flush();
+      if (!drafts.current.dirty) setSaveState('saved');
     } catch (error) {
-      if (value && !pending.current) pending.current = value;
       setSaveState('error');
       setError(cleanError(error));
       throw error;
@@ -111,14 +103,15 @@ export function App() {
     const unsubscribe = window.interview.onEvent((event) => {
       if (event.type === 'snapshot') {
         setSnapshot(() => {
-          const next = event.snapshot;
-          if (pending.current)
-            next.sessions = next.sessions.map((session) =>
-              session.problem.id === pending.current?.id
-                ? { ...session, code: pending.current.code, resultStale: !!session.result }
-                : session,
-            );
-          return next;
+          return {
+            ...event.snapshot,
+            sessions: event.snapshot.sessions.map((session) => {
+              const code = drafts.current.get(session.problem.id);
+              return code === undefined
+                ? session
+                : { ...session, code, resultStale: !!session.result };
+            }),
+          };
         });
       }
       if (event.type === 'chat')
@@ -193,7 +186,7 @@ export function App() {
   function edit(code: string) {
     const id = snapshotRef.current?.activeProblemId;
     if (!id) return;
-    pending.current = { id, code };
+    drafts.current.set(id, code);
     setSaveState('saving');
     setSnapshot((current) =>
       current

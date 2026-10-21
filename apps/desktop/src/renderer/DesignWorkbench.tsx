@@ -17,6 +17,7 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { Settings2, Sparkles, Send, Square, X } from 'lucide-react';
 import { Markdown } from './Markdown';
 import { SettingsDialog } from './Settings';
+import { DraftWriter } from './draft-writer';
 import { ChatMessage } from './App';
 import {
   MAX_DIAGRAM_LABEL_CHARACTERS,
@@ -85,27 +86,20 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
   const api = useRef<ExcalidrawImperativeAPI | null>(null);
   const latest = useRef<DesignDraft | null>(null);
   const activeId = useRef<string | null>(null);
-  const pending = useRef<{ id: string; draft: DesignDraft } | null>(null);
+  const drafts = useRef(
+    new DraftWriter<DesignDraft>((id, draft) => window.interview.saveDesignDraft(id, draft)),
+  );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const writes = useRef<Promise<unknown>>(Promise.resolve());
   const chatEnd = useRef<HTMLDivElement>(null);
   const flush = useCallback(async () => {
     if (timer.current) clearTimeout(timer.current);
-    const value = pending.current;
-    if (value) {
-      pending.current = null;
-      writes.current = writes.current
-        .catch(() => {})
-        .then(() => window.interview.saveDesignDraft(value.id, value.draft));
-    }
     try {
-      await writes.current;
-      if (!pending.current) {
+      await drafts.current.flush();
+      if (!drafts.current.dirty) {
         setSaved('Saved locally');
         setDirty(false);
       }
     } catch (error) {
-      if (value && !pending.current) pending.current = value;
       setSaved('Save failed');
       setError(errorText(error));
       throw error;
@@ -146,7 +140,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
       if (latest.current && designEvidenceChanged(latest.current, value)) setDirty(true);
       latest.current = value;
       setDraft(value);
-      pending.current = { id, draft: value };
+      drafts.current.set(id, value);
       setSaved('Saving…');
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {

@@ -98,6 +98,49 @@
     "status": "not_started",
     "condition": "Finish and hand off the current desktop and Supabase work first. No billing is active."
   },
+  "ui_interaction_audit": {
+    "status": "in_progress",
+    "prior_delivery_commit": "38257228803b971caedb1d1ac90d0d0534f9ddc0",
+    "completed_save_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/save-races.spec.ts",
+      "unit_tests": [
+        "apps/desktop/tests/draft-writer.test.ts",
+        "apps/desktop/tests/service.test.ts"
+      ],
+      "corrected_defects": [
+        "An older snapshot could replace a code draft during its save.",
+        "A mode change could discard design notes edited during an earlier save.",
+        "A code-save retry could report success without another disk write."
+      ],
+      "verified_behaviors": [
+        "Code drafts stay visible until their writes have confirmation.",
+        "Navigation and window close wait for edits received during a save.",
+        "Failed code and recall writes prevent navigation and keep the last draft for retry.",
+        "Restart restores the code entered while window close waits for a save.",
+        "Concurrent flush requests share one operation and preserve independent draft IDs.",
+        "An edit between write completion and promise cleanup starts a new write, including an empty draft."
+      ],
+      "verification": {
+        "desktop_unit_and_process": "81 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "11 passed, 1 opt-in Piston execution test skipped. This run includes all five new save stories.",
+        "build_types_format": "Passed.",
+        "documentation": "Local links, anchors, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "New package and CI verification are still required. The last_verified records below describe the prior delivery."
+      }
+    },
+    "remaining_checks": [
+      "Repeated actions before a busy snapshot and settings changes during service operations",
+      "Catalog filters, file navigation, editor shortcuts, and result states",
+      "Settings validation, provider changes, credential controls, and file picker cancellation",
+      "Chat input recovery, repeated sends, cancellation, and submission approval",
+      "Design timer, guided and mock modes, canvas controls, late loads, and failed history or export operations",
+      "Recall filters, schedule conflicts, repeated requests, and unavailable saved attempts",
+      "Update, archive, content pack, and license dialogs",
+      "Sandbox consent, status changes, cancellation, and failures",
+      "Startup and reconnection failures, modal keyboard controls, focus, and panel resizing",
+      "Packaged app tests and platform CI for the final audit changes"
+    ]
+  },
   "last_verified": {
     "python": "229 passed, 30 skipped in the default run, including 20 opt-in PostgreSQL tests. All 23 catalog/PostgreSQL tests passed separately. 30 existing datetime deprecation warnings.",
     "desktop_unit_and_process": "74 passed, 2 opt-in tests skipped in the default run. The remote MCP suite passed all 3 tests separately with real Piston. Real managed Docker integration passed earlier.",

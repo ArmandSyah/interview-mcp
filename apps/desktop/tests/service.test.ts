@@ -106,6 +106,27 @@ it('an older remote engine can keep practicing without queue support', async () 
   }
 });
 
+it('retries the same code after a disk write fails', async () => {
+  const { service, store } = await fixture();
+  try {
+    await service.startProblem(problem.id);
+    const save = vi.spyOn(store, 'saveCode');
+    save.mockRejectedValueOnce(new Error('Fixture disk failure'));
+    const latest = '# draft retained after a failed write';
+    await expect(service.saveCode(problem.id, latest)).rejects.toThrow('Fixture disk failure');
+    await service.saveCode(problem.id, latest);
+    expect(
+      save,
+      'The retry must write the same draft instead of returning early',
+    ).toHaveBeenCalledTimes(2);
+    expect(await readFile(store.path(store.scope(), problem.id), 'utf8')).toBe(latest);
+    const disk = JSON.parse(await readFile(join(store.root, 'workspace.json'), 'utf8'));
+    expect(disk.workspaces[store.scope()].sessions[0].code).toBe(latest);
+  } finally {
+    await service.close();
+  }
+});
+
 it('binds agent tools to the selected attempt and captured editor draft', async () => {
   let round = 0;
   const model: Model = {
