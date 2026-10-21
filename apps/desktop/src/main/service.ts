@@ -1068,12 +1068,21 @@ export class WorkbenchService {
     this.agent = new AbortController();
     this.agentId = randomUUID();
     this.publish();
-    const context = design
-      ? `Pinned system-design brief:\n${JSON.stringify(design.brief)}\nImmutable checkpoint evidence:\n${JSON.stringify(checkpoint)}\nThis is not a correctness grade. Only refer to this checkpoint, even if the live canvas changes.`
-      : session
-        ? `Problem: ${session.problem.title}\nAttempt ID: ${session.attemptId}\nDescription:\n${session.description}\nSaved editor draft:\n${code}\nLast tests: ${session.result ? `${session.result.tests_passed}/${session.result.tests_total} passed${session.resultStale ? ' (older draft)' : ''}` : 'Not run'}`
-        : 'No selected problem. You may browse the catalog and suggest a problem; the user opens it from the sidebar.';
     try {
+      let lastTests = 'Not run';
+      if (!design && session?.result != null) {
+        try {
+          const report = parseTestReport(session.result, session.attemptId, session.problem.id);
+          lastTests = `${report.tests_passed}/${report.tests_total} passed${session.resultStale ? ' (older draft)' : ''}`;
+        } catch {
+          lastTests = 'Saved report is invalid. Run tests again.';
+        }
+      }
+      const context = design
+        ? `Pinned system-design brief:\n${JSON.stringify(design.brief)}\nImmutable checkpoint evidence:\n${JSON.stringify(checkpoint)}\nThis is not a correctness grade. Only refer to this checkpoint, even if the live canvas changes.`
+        : session
+          ? `Problem: ${session.problem.title}\nAttempt ID: ${session.attemptId}\nDescription:\n${session.description}\nSaved editor draft:\n${code}\nLast tests: ${lastTests}`
+          : 'No selected problem. You may browse the catalog and suggest a problem; the user opens it from the sidebar.';
       const model =
         this.modelFactory?.(settings, this.apiKey) ??
         (settings.provider === 'anthropic'

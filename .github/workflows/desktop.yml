@@ -37,6 +37,10 @@ jobs:
       - run: npm run backend
       - run: npm run build
       - run: npm test
+      - name: Check Electron failure traces
+        run: xvfb-run -a npx playwright test --config playwright.diagnostics.config.ts
+      - name: Verify Electron trace artifacts
+        run: uv run python scripts/check-desktop-traces.py
       - name: Managed sandbox onboarding and lifecycle
         run: npm test -- --run tests/managed-sandbox.integration.test.ts
         env:
@@ -76,7 +80,9 @@ jobs:
         if: always()
         with:
           name: desktop-ui-results
-          path: apps/desktop/test-results
+          path: |
+            apps/desktop/test-results
+            apps/desktop/test-results-diagnostics
       - name: Sandbox logs on failure
         if: failure()
         working-directory: .
@@ -112,6 +118,12 @@ jobs:
       - run: npx electron-builder --win --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Check packaged Electron failure traces
+        run: npx playwright test --config playwright.diagnostics.config.ts
+        env:
+          INTERVIEW_DESKTOP_EXECUTABLE: ${{ github.workspace }}/apps/desktop/release/win-unpacked/Interview Workbench.exe
+      - name: Verify Electron trace artifacts
+        run: uv run python scripts/check-desktop-traces.py
       - name: Test Windows standalone app
         run: npm run test:desktop
         env:
@@ -121,7 +133,9 @@ jobs:
         if: always()
         with:
           name: desktop-ui-results-windows
-          path: apps/desktop/test-results
+          path: |
+            apps/desktop/test-results
+            apps/desktop/test-results-diagnostics
       - uses: actions/upload-artifact@v4
         with:
           name: interview-workbench-windows

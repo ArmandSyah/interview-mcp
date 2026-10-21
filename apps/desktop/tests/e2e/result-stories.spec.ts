@@ -6,6 +6,7 @@ import { launch } from './desktop';
 import { accountServer, connectAccount, pasteAccountDraft } from './account-fixture';
 import { testReport } from '../test-report-fixture';
 import type { TestRun } from '../../src/shared/types';
+import { controlledCoach } from './chat-fixture';
 
 test('an invalid test report keeps the desktop usable and the previous result unchanged', async () => {
   const server = await accountServer(async () => ({ tests_total: 1, tests_passed: 0 }));
@@ -248,5 +249,61 @@ test('an invalid saved report leaves drafts available and a new run replaces the
     if (errors.length) await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
     await app.close().catch(() => {});
     await server.close();
+  }
+});
+
+test('the coach rejects invalid saved counts and releases its controls after each reply', async () => {
+  const server = await accountServer();
+  const coach = await controlledCoach();
+  const data = await mkdtemp(join(tmpdir(), 'interview-report-coach-'));
+  let app = await launch(data);
+  try {
+    let page = await app.firstWindow();
+    await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
+    await connectAccount(page, server.url, 'fixture-alice');
+    await page.getByRole('button', { name: /Account fixture/ }).click();
+    await pasteAccountDraft(page, '# Coach must preserve this draft\n');
+    await app.close();
+    const path = join(data, 'workspace.json');
+    const state = JSON.parse(await readFile(path, 'utf8'));
+    const workspace = Object.values(state.workspaces).find(
+      (item) => (item as { sessions: unknown[] }).sessions.length,
+    ) as { sessions: { result: unknown }[] };
+    const invalid = { tests_passed: { toString: null, valueOf: null }, tests_total: 3 };
+    workspace.sessions[0].result = invalid;
+    await writeFile(path, JSON.stringify(state));
+    app = await launch(data);
+    page = await app.firstWindow();
+    await expect(page.getByRole('button', { name: 'Open settings' })).toBeEnabled({
+      timeout: 20_000,
+    });
+    await connectAccount(page, server.url, 'fixture-alice');
+    await page.getByRole('button', { name: 'Open settings' }).click();
+    await page.getByLabel('Provider').selectOption('ollama');
+    await page.getByLabel('Ollama URL').fill(coach.url);
+    await page.getByRole('button', { name: 'Save & connect' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const composer = page.getByRole('textbox', { name: 'Message the coach', exact: true });
+    for (const index of [0, 1]) {
+      await composer.fill(`Explain my draft ${index}.`);
+      await page.getByRole('button', { name: 'Send message', exact: true }).click();
+      await expect.poll(() => coach.requests).toHaveLength(index + 1);
+      expect(coach.requests[index].messages.at(-1)?.content).toContain(
+        'Last tests: Saved report is invalid. Run tests again.',
+      );
+      expect(coach.requests[index].messages.at(-1)?.content).toContain(
+        '# Coach must preserve this draft',
+      );
+      coach.finish(index, ' Fixture final reply.');
+      await expect(page.getByRole('button', { name: 'Open settings' })).toBeEnabled();
+      const snapshot = await page.evaluate(() => window.interview.snapshot());
+      expect(snapshot).toMatchObject({ busy: false, chatId: null, error: null });
+      expect(snapshot.sessions[0].result).toEqual(invalid);
+      expect(snapshot.sessions[0].code).toBe('# Coach must preserve this draft\n');
+    }
+  } finally {
+    await app.close().catch(() => {});
+    await server.close();
+    await coach.close();
   }
 });

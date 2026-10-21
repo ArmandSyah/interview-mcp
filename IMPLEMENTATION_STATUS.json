@@ -365,12 +365,48 @@
         "interrupted_native_runs": "The WSLg run stopped after 42 passes, 4 failures, and 56 tests not run. An Electron connection closed, then three launches timed out. A direct X11 handshake returned EAGAIN, and the WSLg log contained a fatal file-descriptor error. Failure artifacts are in /tmp/interview-native-display-failure-MWKCSC. The first isolated-display run stopped after 29 passes for the final export cleanup correction. Neither interrupted run is a full-suite pass.",
         "build_types_format": "Passed.",
         "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
-        "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39661389799 and the Windows job in Desktop workflow 39661389789 passed for 1f3bda6. The Linux packaged test job is in progress. The previous Windows settings-close and startup failures need investigation even though this Windows run passed. Local release packages predate these changes."
+      }
+    },
+    "report_context_and_trace_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/result-stories.spec.ts",
+        "apps/desktop/tests/e2e/solution-export.spec.ts",
+        "apps/desktop/tests/diagnostics/trace-probe.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/export-file.test.ts",
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/desktop-environment.test.ts",
+        "tests/test_desktop_trace_verifier.py"
+      ],
+      "corrected_defects": [
+        "An accepted long export filename caused a temporary filename to exceed the filesystem limit.",
+        "Invalid saved report counts could throw during coach context creation and leave the service busy.",
+        "Manual Electron launches produced runner traces without Electron document snapshots. The new helper captures both trace types."
+      ],
+      "verified_behaviors": [
+        "A 223-character export filename works with draft saves, duplicate requests, cancellation, retry, and edits during the native file dialog.",
+        "The coach receives a warning for an invalid saved report, not unchecked counts. Two consecutive replies preserve the report and draft and release the controls.",
+        "A context creation error releases the service lock. A subsequent chat can use corrected context.",
+        "Electron context traces retain document snapshots and screenshot files after both helper close and native window close. The runner trace records the intended assertion failure.",
+        "The test helper copies platform environment values without unrelated shell values or provider credentials. A sentinel value and its name do not enter launch metadata.",
+        "The diagnostic configuration retains expected failures. The usual configuration removes successful test output. No Electron traces remain after the full passing native suite.",
+        "The artifact verifier rejects missing context metadata, document snapshots, dialog content, screenshots, JPEG markers, leaked sentinel values, and an unintended assertion failure."
+      ],
+      "verification": {
+        "native_source_ui": "104 passed in 7.3 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. This includes the two new application stories.",
+        "desktop_unit_and_process": "173 passed, 2 opt-in tests skipped. This includes four new cases.",
+        "trace_verifier_units": "9 passed. These tests check the verifier with synthetic artifacts. The native diagnostic tests supply the actual Electron artifacts.",
+        "trace_diagnostics": "The two expected-failure probes and artifact verification passed on the final harness. Both explicit settings screenshots were inspected and show the dialog. The trace checks verify document snapshots, JPEG files, PNG headers, expected assertion messages, and exclusion of the sentinel name and value.",
+        "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
+        "documentation": "The new README sections were reviewed against Issue 9 writing rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Platform checks for this batch are pending. The workflow now includes trace probes, artifact verification, and uploads on Linux and Windows. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
       "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
-      "Additional catalog and editor interactions, new-attempt write failures, export dialog errors and long filenames, result states after connection or disk errors, and invalid saved reports in coach context",
+      "Additional catalog and editor interactions, new-attempt write failures, export dialog errors, and result states after connection or disk errors",
       "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
@@ -378,7 +414,7 @@
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",
       "Service initialization and reconnection failures, native window resize controls, and panel resizing",
-      "Windows settings-close and startup assertion failures, Electron context trace retention, packaged app tests, and platform CI for the final audit changes"
+      "Windows settings-close and startup assertion failures, packaged trace verification, packaged app tests, and platform CI for the final audit changes"
     ]
   },
   "last_verified": {

@@ -782,3 +782,69 @@ The Piston stories run code in a local sandbox.
 
 Export unit tests also include hard links and symbolic links.
 The symbolic-link test does not run on Windows because link creation can need special operating system permissions.
+
+### Long export filenames and coach recovery
+
+Export filenames can use the limits of the selected filesystem.
+The previous temporary filename included the selected filename and a suffix.
+This could make the temporary filename too long.
+The new temporary filename does not include the selected filename.
+The temporary file stays in the selected directory for file replacement.
+This change does not migrate saved data or change export contents.
+
+The coding coach context contains the problem, code draft, and previous test counts.
+The coding coach validates a saved test report before it uses the counts in its context.
+An invalid report supplies a warning, not test counts.
+The coach does not change the saved report or code draft.
+A subsequent accepted test report can replace the invalid report.
+The app shows context errors and enables the chat controls for a new request.
+
+The export stories include a 223-character filename, duplicate requests, cancellation, retry, and edits during the file dialog.
+The coach story uses an invalid saved report and starts the app again.
+It sends two messages through a local provider fixture.
+It examines the warning, saved draft, and controls after each reply.
+The fixture does not contact a model provider.
+
+### Electron failure traces
+
+Each native test starts an Electron context trace after the first window loads its document.
+The trace contains document snapshots, screenshots, and browser operations.
+The Playwright runner trace contains test assertions.
+These are different traces because the tests start Electron directly.
+
+The test helper saves an `electron-*.zip` archive before it closes the app.
+A native window close can stop Electron before the helper saves that archive.
+The helper also writes trace files during the test to its `electron-*-raw` directory for this case.
+The usual test configuration keeps output directories only for failures.
+The output directory is `apps/desktop/test-results`.
+
+The helper copies only platform environment variables from its list into the Electron process.
+The test arguments set the workspace directory and development URL.
+The helper does not copy other shell values, provider credentials, or `NODE_OPTIONS`.
+Trace files can contain fixture requests and data from the test windows.
+Use fixture accounts and credentials in native tests.
+
+The trace tests use two expected assertion failures after they open the settings dialog.
+They save a `settings.png` screenshot before the window closes.
+Playwright accepts these expected failures.
+
+One case closes the app through the helper.
+The other case closes the native window first.
+The verifier examines document snapshots, screenshot files, and the expected assertion messages.
+A startup failure cannot give the expected assertion message.
+
+The tests set a test environment value before the launch.
+The verifier makes sure that launch metadata does not contain this value or its name.
+
+After the build, run these tests from `apps/desktop`:
+
+```bash
+npx playwright test --config playwright.diagnostics.config.ts
+uv run python scripts/check-desktop-traces.py
+```
+
+A display is necessary for the first Linux command.
+On Linux without a display, use `xvfb-run -a` before the first command.
+The trace tests keep all output in `test-results-diagnostics`, including the two expected failures.
+The Linux and Windows workflows run these tests, examine the files, and upload the trace directories.
+The application tests are also necessary.

@@ -8,7 +8,7 @@ import { LocalStore, defaultSettings } from '../src/main/storage';
 import type { McpConnection } from '../src/main/mcp';
 import type { Model } from '../src/main/providers';
 import type { ManagedSandbox } from '../src/main/sandbox';
-import type { AppEvent, Approval, Problem } from '../src/shared/types';
+import type { AppEvent, Approval, Problem, TestRun } from '../src/shared/types';
 import { testReport } from './test-report-fixture';
 
 const problem: Problem = {
@@ -124,6 +124,61 @@ for (const submit of [false, true]) {
     await service.close();
   });
 }
+
+it('an invalid saved report cannot block the coach or leave the service busy', async () => {
+  const model: Model = {
+    complete: vi.fn(async (_system, _messages, _tools, _signal, delta) => {
+      delta('Fixture reply');
+      return { text: 'Fixture reply', calls: [] };
+    }),
+  };
+  const { service, store } = await fixture(model);
+  await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+  await service.startProblem(problem.id);
+  const invalid = { tests_passed: { toString: null, valueOf: null }, tests_total: 3 };
+  store.workspace(store.scope()).sessions[0].result = invalid as unknown as TestRun;
+  await store.persist();
+  await expect(
+    service.chat('Use my draft without trusting the saved report.'),
+  ).resolves.toBeUndefined();
+  expect(service.snapshot()).toMatchObject({ busy: false, chatId: null, error: null });
+  expect(service.snapshot().sessions[0].result).toEqual(invalid);
+  expect(model.complete).toHaveBeenCalledTimes(1);
+  expect(
+    vi.mocked(model.complete).mock.calls[0][1].find((item) => item.role === 'user')?.text,
+  ).toContain('Saved report is invalid. Run tests again.');
+  expect(service.snapshot().sessions[0].chat.at(-1)?.text).toBe('Fixture reply');
+  await service.close();
+});
+
+it('a coach context error releases the controls and permits a subsequent chat', async () => {
+  const model: Model = {
+    complete: vi.fn(async () => ({ text: 'Fixture reply', calls: [] })),
+  };
+  const { service, store } = await fixture(model);
+  try {
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.startProblem(problem.id);
+    const session = store.workspace(store.scope()).sessions[0];
+    const description = session.description;
+    session.description = { toString: null, valueOf: null } as unknown as string;
+    await expect(service.chat('Read the problem context.')).resolves.toBeUndefined();
+    expect(service.snapshot()).toMatchObject({
+      busy: false,
+      chatId: null,
+      error: 'Cannot convert object to primitive value',
+    });
+    expect(model.complete).not.toHaveBeenCalled();
+    expect(service.snapshot().sessions[0].code).toBe(code);
+    session.description = description;
+    await expect(service.chat('Read the corrected problem context.')).resolves.toBeUndefined();
+    expect(model.complete).toHaveBeenCalledTimes(1);
+    expect(service.snapshot()).toMatchObject({ busy: false, chatId: null, error: null });
+    expect(service.snapshot().sessions[0].chat.at(-1)?.text).toBe('Fixture reply');
+  } finally {
+    await service.close();
+  }
+});
 
 it.each(
   ['problem', 'mode'].flatMap((operation) =>

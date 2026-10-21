@@ -46,57 +46,60 @@ async function holdExportDialog(app: ElectronApplication, filePath: string) {
   };
 }
 
-test('solution export flushes the draft, ignores repeated requests, and keeps later edits', async () => {
-  const server = await accountServer();
-  const data = await mkdtemp(join(tmpdir(), 'interview-export-ui-'));
-  const app = await launch(data);
-  const path = join(data, 'export.py');
-  const dialog = await holdExportDialog(app, path);
-  const save = await gateIpc(app, 'save');
-  try {
-    const page = await app.firstWindow();
-    await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
-    await connectAccount(page, server.url, 'fixture-alice');
-    await page.getByRole('button', { name: /Account fixture/ }).click();
-    const edit = pasteAccountDraft(page, '# Export captured draft\n');
-    await expect.poll(save.calls).toHaveLength(1);
-    await page
-      .getByRole('button', { name: 'Export solution' })
-      .evaluate((button: HTMLButtonElement) => {
-        button.click();
-        button.click();
-      });
-    expect(await dialog.calls(), 'Export must wait for the draft write').toBe(0);
-    await save.release(0);
-    await edit;
-    await save.restore();
-    await expect.poll(dialog.calls).toBe(1);
-    await expect(page.getByRole('button', { name: 'Submit', exact: true })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'System design', exact: true })).toBeDisabled();
-    await pasteAccountDraft(page, '# Edit after export starts\n');
-    await dialog.release(false);
-    await expect(page.getByRole('button', { name: 'Export solution' })).toBeEnabled();
-    expect(await readFile(path, 'utf8')).toBe('# Export captured draft\n');
-    expect((await page.evaluate(() => window.interview.snapshot())).sessions[0].code).toBe(
-      '# Edit after export starts\n',
-    );
-    await page.getByRole('button', { name: 'Export solution' }).click();
-    await expect.poll(dialog.calls).toBe(2);
-    await dialog.release(true);
-    await expect(page.getByRole('button', { name: 'Export solution' })).toBeEnabled();
-    expect(await readFile(path, 'utf8')).toBe('# Export captured draft\n');
-    await page.getByRole('button', { name: 'Export solution' }).click();
-    await expect.poll(dialog.calls).toBe(3);
-    await dialog.release(false);
-    await expect(page.getByRole('button', { name: 'Export solution' })).toBeEnabled();
-    expect(await readFile(path, 'utf8')).toBe('# Edit after export starts\n');
-  } finally {
-    await save.restore().catch(() => {});
-    await dialog.restore().catch(() => {});
-    await app.close().catch(() => {});
-    await server.close();
-  }
-});
+for (const longName of [false, true]) {
+  test(`solution export preserves drafts and cancellation with a long filename=${longName}`, async () => {
+    const server = await accountServer();
+    const data = await mkdtemp(join(tmpdir(), 'interview-export-ui-'));
+    const app = await launch(data);
+    const path = join(data, longName ? `${'e'.repeat(220)}.py` : 'export.py');
+    await writeFile(path, '# Previous export\n');
+    const dialog = await holdExportDialog(app, path);
+    const save = await gateIpc(app, 'save');
+    try {
+      const page = await app.firstWindow();
+      await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
+      await connectAccount(page, server.url, 'fixture-alice');
+      await page.getByRole('button', { name: /Account fixture/ }).click();
+      const edit = pasteAccountDraft(page, '# Export captured draft\n');
+      await expect.poll(save.calls).toHaveLength(1);
+      await page
+        .getByRole('button', { name: 'Export solution' })
+        .evaluate((button: HTMLButtonElement) => {
+          button.click();
+          button.click();
+        });
+      expect(await dialog.calls(), 'Export must wait for the draft write').toBe(0);
+      await save.release(0);
+      await edit;
+      await save.restore();
+      await expect.poll(dialog.calls).toBe(1);
+      await expect(page.getByRole('button', { name: 'Submit', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'System design', exact: true })).toBeDisabled();
+      await pasteAccountDraft(page, '# Edit after export starts\n');
+      await dialog.release(false);
+      await expect(page.getByRole('button', { name: 'Export solution' })).toBeEnabled();
+      expect(await readFile(path, 'utf8')).toBe('# Export captured draft\n');
+      expect((await page.evaluate(() => window.interview.snapshot())).sessions[0].code).toBe(
+        '# Edit after export starts\n',
+      );
+      await page.getByRole('button', { name: 'Export solution' }).click();
+      await expect.poll(dialog.calls).toBe(2);
+      await dialog.release(true);
+      await expect(page.getByRole('button', { name: 'Export solution' })).toBeEnabled();
+      expect(await readFile(path, 'utf8')).toBe('# Export captured draft\n');
+      await page.getByRole('button', { name: 'Export solution' }).click();
+      await expect.poll(dialog.calls).toBe(3);
+      await dialog.release(false);
+      await expect(page.getByRole('button', { name: 'Export solution' })).toBeEnabled();
+      expect(await readFile(path, 'utf8')).toBe('# Edit after export starts\n');
+    } finally {
+      await save.restore().catch(() => {});
+      await dialog.restore().catch(() => {});
+      await app.close().catch(() => {});
+      await server.close();
+    }
+  });
+}
 
 for (const kind of ['solution', 'design', 'backup'] as const) {
   test(`a ${kind} export write failure preserves an existing file and permits retry`, async () => {
@@ -153,7 +156,7 @@ for (const kind of ['solution', 'design', 'backup'] as const) {
         }) as typeof fs.writeFile;
         fs.open = (async (target: Parameters<typeof fs.open>[0], ...args: unknown[]) => {
           const file = await Reflect.apply(originalOpen, fs, [target, ...args]);
-          if (String(target).startsWith(path + '.') && String(target).endsWith('.tmp')) {
+          if (String(target).includes('.interview-export-') && String(target).endsWith('.tmp')) {
             const original = file.writeFile.bind(file);
             file.writeFile = async () => {
               await original('# Partial data');
@@ -177,7 +180,7 @@ for (const kind of ['solution', 'design', 'backup'] as const) {
       ).toBe('# Existing export\n');
       expect(
         (await readdir(data)).filter(
-          (name) => name.startsWith('export.py.') && name.endsWith('.tmp'),
+          (name) => name.startsWith('.interview-export-') && name.endsWith('.tmp'),
         ),
       ).toEqual([]);
       expect((await page.evaluate(() => window.interview.snapshot())).sessions[0].code).toBe(

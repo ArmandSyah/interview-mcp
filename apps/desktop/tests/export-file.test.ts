@@ -111,3 +111,14 @@ it('does not perform temporary-file cleanup after file replacement succeeds', as
     unlink.mockRestore();
   }
 });
+
+it('exports to a valid long filename without adding the temporary suffix to that name', async () => {
+  const root = await fs.mkdtemp(join(tmpdir(), 'interview-export-name-'));
+  const name = `${'a'.repeat(220)}.py`;
+  const path = join(root, name);
+  // Establish that the selected name is valid on this filesystem.
+  await fs.writeFile(path, 'Previous export');
+  await expect(writeExport(path, 'Long filename export')).resolves.toBeUndefined();
+  expect(await fs.readFile(path, 'utf8')).toBe('Long filename export');
+  expect(await fs.readdir(root)).toEqual([name]);
+});
