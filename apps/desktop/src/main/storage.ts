@@ -206,9 +206,10 @@ export class LocalStore {
     });
   }
 
-  async persist(): Promise<void> {
+  /** Write a state snapshot without replacing memory. The default is the active state. */
+  async persist(state: StoredState = this.state): Promise<void> {
     if (!this.loaded) throw new Error('Workspace could not be loaded; saving is disabled');
-    const data = JSON.stringify(this.state, null, 2);
+    const data = JSON.stringify(state, null, 2);
     return this.enqueue(() => this.atomicWrite(join(this.root, 'workspace.json'), data));
   }
 

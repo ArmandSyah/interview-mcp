@@ -90,6 +90,10 @@ export class WorkbenchService {
   private agentId: string | null = null;
   private approvals = new Map<string, (allow: boolean) => void>();
   private practiceOwned = new Set<string>();
+  /** Pending draft operations, including writes that wait for a history clear. */
+  private draftWrites = new Set<Promise<unknown>>();
+  /** Resolves after a history clear, including failure. New drafts wait for this promise. */
+  private historyWrite: Promise<void> | null = null;
 
   constructor(
     readonly store: LocalStore,
@@ -323,6 +327,18 @@ export class WorkbenchService {
       this.publish();
     }
   }
+
+  /** Keep draft writes outside the shared action lock, except during a history clear. */
+  private draftWrite<T>(operation: () => Promise<T>): Promise<T> {
+    const scope = this.scope;
+    const invoke = () => {
+      if (this.scope !== scope) throw new Error('Workspace changed. Retry the draft save.');
+      return operation();
+    };
+    const pending = this.historyWrite ? this.historyWrite.then(invoke) : invoke();
+    this.draftWrites.add(pending);
+    return pending.finally(() => this.draftWrites.delete(pending));
+  }
   async practiceQueue(): Promise<PracticeQueueState> {
     const names = [
       'get_practice_queue',
@@ -404,17 +420,19 @@ export class WorkbenchService {
         };
   }
   async saveReflectionDraft(itemId: string, input: ReflectionDraft): Promise<void> {
-    const scope = this.scope;
-    const draft = reflectionDraftSchema.parse(input);
-    // Ownership is immutable through practice APIs. Once checked on load, local
-    // autosave need not consume a remote request on every short typing pause.
-    if (!this.practiceOwned.has(itemId)) {
-      await this.mcp.call('get_practice_review', { item_id: itemId });
-      this.practiceOwned.add(itemId);
-    }
-    if (this.scope !== scope) throw new Error('Workspace changed; reopen the practice queue.');
-    this.store.workspace(scope).reflectionDrafts[itemId] = draft;
-    await this.store.persist();
+    await this.draftWrite(async () => {
+      const scope = this.scope;
+      const draft = reflectionDraftSchema.parse(input);
+      // Ownership is immutable through practice APIs. Once checked on load, local
+      // autosave need not consume a remote request on every short typing pause.
+      if (!this.practiceOwned.has(itemId)) {
+        await this.mcp.call('get_practice_review', { item_id: itemId });
+        this.practiceOwned.add(itemId);
+      }
+      if (this.scope !== scope) throw new Error('Workspace changed; reopen the practice queue.');
+      this.store.workspace(scope).reflectionDrafts[itemId] = draft;
+      await this.store.persist();
+    });
   }
   async recordPracticeReflection(input: ReflectionInput): Promise<PracticeReflection> {
     const { item_id, ...draft } = input;
@@ -497,18 +515,20 @@ export class WorkbenchService {
   }
 
   async saveCode(id: string, code: string): Promise<void> {
-    if (Buffer.byteLength(code, 'utf8') > 100_000) throw new Error('Code must be at most 100 KB');
-    const session = this.store
-      .workspace(this.scope)
-      .sessions.find((session) => session.problem.id === id);
-    if (!session) throw new Error('No active workspace for this problem');
-    if (session.code !== code) {
-      session.code = code;
-      session.updatedAt = Date.now();
-      session.resultStale = !!session.result;
-    }
-    // Equal memory values do not prove that an earlier disk write succeeded.
-    await this.store.saveCode(this.scope, session);
+    await this.draftWrite(async () => {
+      if (Buffer.byteLength(code, 'utf8') > 100_000) throw new Error('Code must be at most 100 KB');
+      const session = this.store
+        .workspace(this.scope)
+        .sessions.find((session) => session.problem.id === id);
+      if (!session) throw new Error('No active workspace for this problem');
+      if (session.code !== code) {
+        session.code = code;
+        session.updatedAt = Date.now();
+        session.resultStale = !!session.result;
+      }
+      // Equal memory values do not prove that an earlier disk write succeeded.
+      await this.store.saveCode(this.scope, session);
+    });
   }
 
   async setMode(mode: 'coding' | 'design'): Promise<void> {
@@ -607,15 +627,17 @@ export class WorkbenchService {
   }
 
   async saveDesignDraft(sessionId: string, draft: DesignDraft): Promise<string> {
-    const session = this.designSession(sessionId);
-    if (session.status === 'completed')
-      throw new Error('This session is finished; start a new attempt to make changes');
-    const digest = await this.designs.save(this.scope, sessionId, draft);
-    session.draftDigest = digest;
-    session.updatedAt = Date.now();
-    await this.store.persist();
-    this.publish();
-    return digest;
+    return this.draftWrite(async () => {
+      const session = this.designSession(sessionId);
+      if (session.status === 'completed')
+        throw new Error('This session is finished; start a new attempt to make changes');
+      const digest = await this.designs.save(this.scope, sessionId, draft);
+      session.draftDigest = digest;
+      session.updatedAt = Date.now();
+      await this.store.persist();
+      this.publish();
+      return digest;
+    });
   }
 
   private async captureDesign(session: DesignSession, label: string): Promise<DesignCheckpoint> {
@@ -1064,16 +1086,45 @@ export class WorkbenchService {
   cancelChat(chatId?: string): void {
     if (chatId === undefined || chatId === this.agentId) this.agent?.abort();
   }
+  /**
+   * Clear the selected conversation only after its state write completes.
+   * Reject on a busy service, a missing design session, or a write failure.
+   * Queued drafts continue after either result.
+   */
   async clearChat(): Promise<void> {
     await this.practiceAction(async () => {
-      if (this.store.workspace(this.scope).mode === 'design') {
-        this.designSession().chat = [];
-      } else {
-        const session = this.active();
-        if (session) session.chat = [];
-        else this.store.workspace(this.scope).chat = [];
+      const earlierWrites = [...this.draftWrites];
+      let release!: () => void;
+      this.historyWrite = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      try {
+        // Include earlier edits. New draft writes wait until the clear succeeds or fails.
+        const results = await Promise.allSettled(earlierWrites);
+        const failure = results.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') throw failure.reason;
+        const next = structuredClone(this.store.state);
+        const workspace = next.workspaces[this.scope];
+        let target: { chat: ChatItem[] };
+        let staged: { chat: ChatItem[] };
+        if (workspace.mode === 'design') {
+          const session = this.designSession();
+          target = session;
+          staged = workspace.designSessions.find((item) => item.id === session.id)!;
+        } else {
+          const session = this.active();
+          target = session ?? this.store.workspace(this.scope);
+          staged = session
+            ? workspace.sessions.find((item) => item.problem.id === session.problem.id)!
+            : workspace;
+        }
+        staged.chat = [];
+        await this.store.persist(next);
+        target.chat = [];
+      } finally {
+        this.historyWrite = null;
+        release();
       }
-      await this.store.persist();
     });
   }
   /**

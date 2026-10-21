@@ -866,7 +866,12 @@ function Workbench() {
                 maxLength={8000}
                 disabled={snapshot.settings.provider === 'disabled'}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
+                  if (
+                    event.key === 'Enter' &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing &&
+                    !event.defaultPrevented
+                  ) {
                     event.preventDefault();
                     void send();
                   }

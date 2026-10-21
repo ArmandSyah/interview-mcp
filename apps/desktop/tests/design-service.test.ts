@@ -1,12 +1,74 @@
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { McpConnection } from '../src/main/mcp';
 import { LocalStore, defaultSettings } from '../src/main/storage';
 import { WorkbenchService } from '../src/main/service';
 import { emptyDesignDraft } from '../src/shared/design';
 import type { Model } from '../src/main/providers';
+
+it.each([false, true])(
+  'design history clear keeps concurrent notes and handles a write failure=%s',
+  async (failure) => {
+    const root = await mkdtemp(join(tmpdir(), 'interview-design-clear-'));
+    const store = new LocalStore(root);
+    const service = new WorkbenchService(
+      store,
+      new McpConnection(resolve('../..'), root),
+      { available: () => false, encrypt: () => '', decrypt: () => '' },
+      () => {},
+    );
+    let release!: () => void;
+    let reject!: (error: Error) => void;
+    const gate = new Promise<void>((resolve, fail) => {
+      release = resolve;
+      reject = fail;
+    });
+    let clear: Promise<string | null> | undefined;
+    let save: Promise<string> | undefined;
+    try {
+      await service.initialize();
+      await service.setMode('design');
+      await service.startDesign('design-link-aliases');
+      await service.designHint();
+      const before = service.snapshot().designSessions[0];
+      expect(before.chat.length).toBeGreaterThan(0);
+      const original = store.persist.bind(store);
+      const persist = vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
+        await gate;
+        await original(...args);
+      });
+      clear = service.clearChat().then(
+        () => null,
+        (error: Error) => error.message,
+      );
+      await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+      const draft = emptyDesignDraft();
+      draft.notes.requirements = 'Notes entered during history clear';
+      save = service.saveDesignDraft(before.id, draft);
+      await Promise.resolve();
+      expect(service.snapshot().designSessions[0].chat).toEqual(before.chat);
+      expect(persist).toHaveBeenCalledTimes(1);
+      if (failure) reject(new Error('Design history write failed'));
+      else release();
+      expect(await clear).toBe(failure ? 'Design history write failed' : null);
+      await save;
+      expect((await service.loadDesignDraft(before.id)).notes.requirements).toBe(
+        draft.notes.requirements,
+      );
+      const restored = new LocalStore(root);
+      await restored.load();
+      expect(restored.workspace(store.scope()).designSessions[0].chat).toEqual(
+        failure ? before.chat : [],
+      );
+    } finally {
+      release();
+      await Promise.allSettled([clear, save]);
+      await service.close();
+    }
+  },
+);
 
 it('real SQLAlchemy engine: design checkpoints, reviews, ownership, coach binding, and reopening', async () => {
   const root = await mkdtemp(join(tmpdir(), 'interview-design-service-'));

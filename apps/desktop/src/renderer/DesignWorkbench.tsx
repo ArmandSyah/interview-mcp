@@ -597,7 +597,7 @@ export function DesignWorkbench({
                     if (message.trim())
                       void action(async () => {
                         const text = message;
-                        setMessage('');
+                        setMessage((current) => (current === text ? '' : current));
                         try {
                           await window.interview.chat(text);
                         } catch (error) {

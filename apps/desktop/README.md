@@ -496,3 +496,70 @@ Set `INTERVIEW_DESKTOP_TEST_PISTON=1`.
 
 The Piston test submits the starter draft without edits.
 Its checks make sure that failed tests do not complete the attempt.
+
+### Chat input and history tests
+
+In coding mode, Enter sends the message and Shift+Enter inserts a line break.
+During text composition, Enter stays with the input method.
+The app does not send the message.
+In design mode, Enter inserts a line break.
+Use Send design message to send that question.
+These mode differences do not change.
+
+Each composer has a limit of 8,000 UTF-16 code units.
+UTF-16 is the 16-bit Unicode Transformation Format.
+A code unit is one 16-bit value in this text encoding.
+The limit includes spaces and line breaks.
+Some characters, such as 🙂, use two code units.
+Messages with only whitespace do not start a chat.
+
+More Send actions cannot start a different chat while a chat is active.
+New composer text stays available while the app saves drafts before a chat.
+A provider error keeps the question and response text received before the error.
+The error does not replace a newer unsent question.
+A new chat clears the active error indicator.
+The provider error is also a saved system message.
+
+The desktop bridge method `clearChat()` has no parameters and returns `Promise<void>`.
+In coding mode, it clears the selected problem conversation.
+If no problem is selected, it clears the welcome conversation.
+In design mode, it clears the selected design conversation.
+The method rejects a busy service or a missing design session.
+An empty conversation stays empty.
+
+The coding workspace has a Clear conversation button.
+There is no history-clear button in the design workspace.
+The method does not change other conversations, drafts, attempt status, or account ownership.
+Unsent composer text stays available after a clear.
+
+Draft writes before the clear complete first.
+New code, design, and recall writes wait for the clear result.
+The editors accept edits during this interval.
+
+The app keeps the history until its disk write completes without an error.
+If a draft write before the clear fails, the method rejects and keeps the history.
+History write failures also keep the history.
+The retry clears only that conversation after the write completes without an error.
+
+`LocalStore.persist(state)` is an internal storage method.
+Its optional `state` parameter supplies a full workspace snapshot.
+Without that parameter, the method uses the active store state.
+The method writes `workspace.json` and returns `Promise<void>` after the write completes.
+It rejects a write failure or a store that has not loaded.
+It does not replace the state in memory.
+
+The history clear writes a staged snapshot before it changes memory.
+The saved data format stays the same.
+
+After the build, run these tests from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/chat-input.spec.ts tests/e2e/chat-recovery.spec.ts tests/e2e/history-save-races.spec.ts
+```
+
+The tests use local response fixtures and isolated workspaces.
+They do not run a model.
+The composition test sends browser events to the app renderer.
+It does not test input methods from the operating system.
+The history tests include write failures, retry, restart, and code edits during a history clear.
+Service tests also include design notes and recall drafts during a history clear.

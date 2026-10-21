@@ -4,12 +4,15 @@ import { expect } from '@playwright/test';
 
 /** A local provider fixture. It never loads a model or sends a paid request. */
 export async function controlledCoach(approval: boolean | number[] = false) {
-  const requests: { response: ServerResponse; closed: boolean }[] = [];
+  const requests: {
+    response: ServerResponse;
+    closed: boolean;
+    messages: { role: string; content: string }[];
+  }[] = [];
   const server = createServer(async (request, response) => {
-    for await (const _chunk of request) {
-      /* Drain the request body. */
-    }
-    const entry = { response, closed: false };
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const entry = { response, closed: false, messages: JSON.parse(body).messages };
     requests.push(entry);
     response.on('close', () => {
       entry.closed = true;
@@ -49,6 +52,13 @@ export async function controlledCoach(approval: boolean | number[] = false) {
         JSON.stringify({ message: { content: text }, done: true }) + '\n',
       );
     },
+    fail(index: number, kind: 'provider' | 'malformed') {
+      requests[index].response.end(
+        kind === 'provider'
+          ? JSON.stringify({ error: 'Fixture provider failure' }) + '\n'
+          : 'invalid-json\n',
+      );
+    },
     async close() {
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -56,7 +66,11 @@ export async function controlledCoach(approval: boolean | number[] = false) {
   };
 }
 
-export async function openCoach(page: Page, url: string, mode: 'coding' | 'design' = 'coding') {
+export async function openCoach(
+  page: Page,
+  url: string,
+  mode: 'coding' | 'design' | 'welcome' = 'coding',
+) {
   await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Open settings' }).click();
   await page.getByLabel('Provider').selectOption('ollama');
@@ -66,7 +80,7 @@ export async function openCoach(page: Page, url: string, mode: 'coding' | 'desig
   if (mode === 'coding') {
     await page.getByRole('button', { name: /Delivery Hold Clusters/ }).click();
     await expect(page.getByTestId('code-editor')).toBeVisible();
-  } else {
+  } else if (mode === 'design') {
     await page.getByRole('button', { name: 'System design', exact: true }).click();
     await page
       .getByRole('button', { name: /Link Alias Service/ })
@@ -77,11 +91,11 @@ export async function openCoach(page: Page, url: string, mode: 'coding' | 'desig
   }
   return {
     composer: page.getByRole('textbox', {
-      name: mode === 'coding' ? 'Message the coach' : 'Message the design coach',
+      name: mode === 'design' ? 'Message the design coach' : 'Message the coach',
       exact: true,
     }),
     send: page.getByRole('button', {
-      name: mode === 'coding' ? 'Send message' : 'Send design message',
+      name: mode === 'design' ? 'Send design message' : 'Send message',
       exact: true,
     }),
   };

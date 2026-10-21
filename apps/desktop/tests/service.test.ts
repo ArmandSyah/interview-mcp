@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -52,6 +52,7 @@ async function fixture(
       };
     if (name === 'get_problem_description') return 'Fixture contract';
     if (name === 'get_hint') return { hint: 'One small hint' };
+    if (name === 'get_practice_review') return { id: _args.item_id };
     if (name === 'submit_solution')
       return {
         completed: true,
@@ -94,6 +95,157 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+for (const owner of ['welcome', 'coding'] as const) {
+  it.each([false, true])(
+    `${owner} history clear orders code saves and preserves history on failure=%s`,
+    async (failure) => {
+      const { service, store } = await fixture();
+      await service.startProblem(problem.id);
+      const workspace = store.workspace(store.scope());
+      workspace.chat = [{ id: 'welcome', role: 'user', text: 'Welcome history', timestamp: 1 }];
+      workspace.sessions[0].chat = [
+        { id: 'coding', role: 'user', text: 'Coding history', timestamp: 2 },
+      ];
+      if (owner === 'welcome') workspace.activeProblemId = null;
+      await store.persist();
+      const history = structuredClone(
+        owner === 'coding' ? workspace.sessions[0].chat : workspace.chat,
+      );
+      const earlier = deferred();
+      const clearing = deferred();
+      const originalSave = store.saveCode.bind(store);
+      const save = vi.spyOn(store, 'saveCode').mockImplementationOnce(async (...args) => {
+        await earlier.promise;
+        await originalSave(...args);
+      });
+      const originalPersist = store.persist.bind(store);
+      const persist = vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
+        await clearing.promise;
+        await originalPersist(...args);
+      });
+      const first = service.saveCode(problem.id, '# earlier edit');
+      const clear = service.clearChat().then(
+        () => null,
+        (error: Error) => error.message,
+      );
+      const next = service.saveCode(problem.id, '# edit during clear');
+      try {
+        await Promise.resolve();
+        expect(persist, 'clearChat must wait for the earlier saveCode call').not.toHaveBeenCalled();
+        expect(save, 'The newer save must wait for clearChat').toHaveBeenCalledTimes(1);
+        earlier.resolve();
+        await first;
+        await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+        const pending = service.snapshot();
+        expect(
+          owner === 'coding' ? pending.sessions[0].chat : pending.welcomeChat,
+          'A pending clear must not remove live history',
+        ).toEqual(history);
+        expect(pending.sessions[0].code).toBe('# earlier edit');
+        expect(pending.busy).toBe(true);
+        if (failure) clearing.reject(new Error('Fixture history write failure'));
+        else clearing.resolve();
+        expect(await clear).toBe(failure ? 'Fixture history write failure' : null);
+        await next;
+        expect(save).toHaveBeenCalledTimes(2);
+        const after = service.snapshot();
+        expect(owner === 'coding' ? after.sessions[0].chat : after.welcomeChat).toEqual(
+          failure ? history : [],
+        );
+        expect(
+          owner === 'coding' ? after.welcomeChat[0].text : after.sessions[0].chat[0].text,
+        ).toBe(owner === 'coding' ? 'Welcome history' : 'Coding history');
+        expect(after.sessions[0].code).toBe('# edit during clear');
+        expect(after.busy).toBe(false);
+        const restored = new LocalStore(store.root);
+        await restored.load();
+        const disk = restored.workspace(store.scope());
+        expect(owner === 'coding' ? disk.sessions[0].chat : disk.chat).toEqual(
+          failure ? history : [],
+        );
+        expect(disk.sessions[0].code).toBe('# edit during clear');
+        expect(await readFile(store.path(store.scope(), problem.id), 'utf8')).toBe(
+          '# edit during clear',
+        );
+      } finally {
+        earlier.resolve();
+        clearing.resolve();
+        await Promise.allSettled([first, clear, next]);
+        await service.close();
+      }
+    },
+  );
+}
+
+it('an earlier draft failure cancels history deletion and releases later draft saves', async () => {
+  const { service, store } = await fixture();
+  await service.startProblem(problem.id);
+  await service.hint();
+  const history = service.snapshot().sessions[0].chat;
+  const earlier = deferred();
+  vi.spyOn(store, 'saveCode').mockReturnValueOnce(earlier.promise);
+  const first = service
+    .saveCode(problem.id, '# failed earlier write')
+    .catch((error: Error) => error.message);
+  const clear = service.clearChat().catch((error: Error) => error.message);
+  const next = service.saveCode(problem.id, '# recovered write');
+  earlier.reject(new Error('Earlier draft failed'));
+  expect(await first).toBe('Earlier draft failed');
+  expect(await clear).toBe('Earlier draft failed');
+  await next;
+  expect(service.snapshot().sessions[0].chat).toEqual(history);
+  expect(service.snapshot().sessions[0].code).toBe('# recovered write');
+  await service.clearChat();
+  expect(service.snapshot().sessions[0].chat).toEqual([]);
+  await service.close();
+});
+
+it.each([false, true])(
+  'a recall draft waits for history clear and retains its result (failure=%s)',
+  async (failure) => {
+    const { service, store } = await fixture();
+    await service.startProblem(problem.id);
+    await service.hint();
+    const history = service.snapshot().sessions[0].chat;
+    const disk = deferred();
+    const original = store.persist.bind(store);
+    vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
+      await disk.promise;
+      await original(...args);
+    });
+    const clear = service.clearChat().then(
+      () => null,
+      (error: Error) => error.message,
+    );
+    const id = randomUUID();
+    const draft = {
+      reflection_id: randomUUID(),
+      expected_version: 1,
+      answer: 'Recall during history clear',
+      takeaway: '',
+      next_action: '',
+      self_rating: 'needs_work' as const,
+    };
+    const save = service.saveReflectionDraft(id, draft);
+    try {
+      await Promise.resolve();
+      expect(store.workspace(store.scope()).reflectionDrafts[id]).toBeUndefined();
+      if (failure) disk.reject(new Error('History write failed'));
+      else disk.resolve();
+      expect(await clear).toBe(failure ? 'History write failed' : null);
+      await save;
+      const restored = new LocalStore(store.root);
+      await restored.load();
+      expect(restored.workspace(store.scope()).reflectionDrafts[id]).toEqual(draft);
+      expect(restored.workspace(store.scope()).sessions[0].chat).toEqual(failure ? history : []);
+    } finally {
+      disk.resolve();
+      await Promise.allSettled([clear, save]);
+      await service.close();
+    }
+  },
+);
 
 it.each(
   (['settings', 'activate', 'mode', 'clear', 'tests', 'hint'] as const).flatMap((operation) =>
@@ -389,7 +541,7 @@ it('chat cancellation is unavailable during the final write but the service rema
   const persist = store.persist.bind(store);
   let calls = 0;
   vi.spyOn(store, 'persist').mockImplementation(() =>
-    ++calls === 2 ? finalWrite.promise.then(persist) : persist(),
+    ++calls === 2 ? finalWrite.promise.then(() => persist()) : persist(),
   );
   const turn = service.chat('Start the coach.');
   try {
