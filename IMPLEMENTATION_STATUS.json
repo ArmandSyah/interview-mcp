@@ -365,7 +365,7 @@
         "interrupted_native_runs": "The WSLg run stopped after 42 passes, 4 failures, and 56 tests not run. An Electron connection closed, then three launches timed out. A direct X11 handshake returned EAGAIN, and the WSLg log contained a fatal file-descriptor error. Failure artifacts are in /tmp/interview-native-display-failure-MWKCSC. The first isolated-display run stopped after 29 passes for the final export cleanup correction. Neither interrupted run is a full-suite pass.",
         "build_types_format": "Passed.",
         "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
-        "packages_and_ci": "Supabase workflow 39661389799 and the Windows job in Desktop workflow 39661389789 passed for 1f3bda6. The Linux packaged test job is in progress. The previous Windows settings-close and startup failures need investigation even though this Windows run passed. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39661389799 and the Windows job in Desktop workflow 39661389789 passed for 1f3bda6. Linux passed all 102 source UI tests in 11.3 minutes, managed sandbox integration, and three remote Piston tests. GitHub cancelled the Linux job at its 25-minute limit during packaged UI tests. The packaged result is incomplete. The previous Windows settings-close and startup failures need investigation even though this Windows run passed. Local release packages predate these changes."
       }
     },
     "report_context_and_trace_regressions": {
@@ -401,7 +401,7 @@
         "trace_diagnostics": "The two expected-failure probes and artifact verification passed on the final harness. Both explicit settings screenshots were inspected and show the dialog. The trace checks verify document snapshots, JPEG files, PNG headers, expected assertion messages, and exclusion of the sentinel name and value.",
         "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
         "documentation": "The new README sections were reviewed against Issue 9 writing rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
-        "packages_and_ci": "Platform checks for this batch are pending. The workflow now includes trace probes, artifact verification, and uploads on Linux and Windows. Local release packages predate these changes."
+        "packages_and_ci": "Platform checks for this batch are pending. The workflow now includes trace probes, artifact verification, and uploads on Linux and Windows. The Linux job limit is 35 minutes because the previous 25-minute limit cancelled the second full UI suite. Individual test and assertion timeouts are unchanged. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
