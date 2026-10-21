@@ -19,6 +19,7 @@ import { Markdown } from './Markdown';
 import { SettingsDialog } from './Settings';
 import { DraftWriter } from './draft-writer';
 import { useActions } from './actions';
+import { Modal } from './Modal';
 import { ChatMessage } from './App';
 import {
   MAX_DIAGRAM_LABEL_CHARACTERS,
@@ -91,6 +92,7 @@ export function DesignWorkbench({
   const [tab, setTab] = useState<'notes' | 'review' | 'coach'>('notes');
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<DesignCheckpoint[] | null>(null);
+  const historyButton = useRef<HTMLButtonElement>(null);
   const [running, setRunning] = useState(false);
   const [dirty, setDirty] = useState(false);
   const api = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -383,6 +385,7 @@ export function DesignWorkbench({
                 <button
                   className="secondary small"
                   disabled={busy}
+                  ref={historyButton}
                   onClick={() =>
                     void action(async () => setHistory(await window.interview.designCheckpoints()))
                   }
@@ -699,24 +702,30 @@ export function DesignWorkbench({
         />
       )}
       {history && (
-        <div className="modal-backdrop">
-          <section
-            className="settings-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Design checkpoint history"
-          >
-            <header>
-              <h2>Immutable checkpoints</h2>
-              <button
-                className="icon-button"
-                aria-label="Close history"
-                disabled={busy}
-                onClick={() => setHistory(null)}
-              >
-                <X size={18} />
-              </button>
-            </header>
+        <Modal
+          className="settings-modal"
+          aria-label="Design checkpoint history"
+          returnFocus={historyButton.current}
+          onDismiss={() => setHistory(null)}
+          canDismiss={!busy}
+        >
+          <header>
+            <h2>Immutable checkpoints</h2>
+            <button
+              className="icon-button"
+              aria-label="Close history"
+              disabled={busy}
+              onClick={() => setHistory(null)}
+            >
+              <X size={18} />
+            </button>
+          </header>
+          {error && (
+            <p className="inline-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="design-history-content">
             {!history.length && <p>No checkpoints yet.</p>}
             {history.map((item) => (
               <div className="design-history-item" key={item.id}>
@@ -749,8 +758,8 @@ export function DesignWorkbench({
                 </button>
               </div>
             ))}
-          </section>
-        </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

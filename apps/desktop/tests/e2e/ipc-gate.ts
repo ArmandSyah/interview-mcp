@@ -10,27 +10,35 @@ type TestIpc = Electron.IpcMain & {
 
 // Delay the real IPC handler. Keep the real renderer, preload, service, and disk writes.
 // Electron has no public API to get an existing handler. Fail if its test adapter changes.
-export async function gateIpc(app: ElectronApplication, method: string) {
+export async function gateIpc(
+  app: ElectronApplication,
+  method: string,
+  phase: 'request' | 'response' = 'request',
+) {
   const channel = `workbench:${method}`;
-  await app.evaluate(({ ipcMain }, channel) => {
-    const ipc = ipcMain as TestIpc;
-    const original = ipc._invokeHandlers?.get(channel);
-    if (!original) throw new Error(`No IPC handler for ${channel}`);
-    ipc.workbenchTestGates ??= new Map();
-    if (ipc.workbenchTestGates.has(channel)) throw new Error(`Duplicate IPC gate: ${channel}`);
-    const gate: Gate = { original, calls: [] };
-    ipc.workbenchTestGates.set(channel, gate);
-    ipc.removeHandler(channel);
-    ipc.handle(channel, async (event, ...args: unknown[]) => {
-      await new Promise<void>((resolve, reject) => {
-        gate.calls.push({
-          args,
-          release: (error) => (error ? reject(new Error(error)) : resolve()),
+  await app.evaluate(
+    ({ ipcMain }, { channel, phase }) => {
+      const ipc = ipcMain as TestIpc;
+      const original = ipc._invokeHandlers?.get(channel);
+      if (!original) throw new Error(`No IPC handler for ${channel}`);
+      ipc.workbenchTestGates ??= new Map();
+      if (ipc.workbenchTestGates.has(channel)) throw new Error(`Duplicate IPC gate: ${channel}`);
+      const gate: Gate = { original, calls: [] };
+      ipc.workbenchTestGates.set(channel, gate);
+      ipc.removeHandler(channel);
+      ipc.handle(channel, async (event, ...args: unknown[]) => {
+        const result = phase === 'response' ? await original(event, ...args) : undefined;
+        await new Promise<void>((resolve, reject) => {
+          gate.calls.push({
+            args,
+            release: (error) => (error ? reject(new Error(error)) : resolve()),
+          });
         });
+        return phase === 'response' ? result : original(event, ...args);
       });
-      return original(event, ...args);
-    });
-  }, channel);
+    },
+    { channel, phase },
+  );
   return {
     calls: () =>
       app.evaluate(

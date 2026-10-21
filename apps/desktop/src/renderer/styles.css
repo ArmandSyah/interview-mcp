@@ -216,6 +216,11 @@
   gap: 8px;
   border-top: 1px solid var(--border);
 }
+.design-history-content {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 24px 20px;
+}
 .design-history-item {
   display: flex;
   justify-content: space-between;
@@ -1374,16 +1379,19 @@ svg {
 .external-label {
   color: #bba4df;
 }
-.modal-backdrop {
+.modal-dialog {
   position: fixed;
-  inset: 0;
-  z-index: 100;
+  margin: auto;
+  padding: 0;
+  max-width: calc(100vw - 60px);
+  color: inherit;
+}
+.modal-dialog:not([open]) {
+  display: none;
+}
+.modal-dialog::backdrop {
   background: #080a10bf;
   backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30px;
 }
 .settings-modal {
   width: 620px;
@@ -1397,6 +1405,7 @@ svg {
   overflow: hidden;
 }
 .settings-modal > header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;

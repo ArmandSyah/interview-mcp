@@ -150,19 +150,42 @@
         "native_regression_stories": "14 passed across action-races.spec.ts and settings-stories.spec.ts.",
         "native_source_ui": "25 passed, 1 opt-in Piston execution test skipped in the final source run.",
         "build_types_format": "Passed.",
-        "packages_and_ci": "Verification of this new batch is still required. The earlier package result applies to 359f5a2."
+        "packages_and_ci": "Desktop workflow 39636521059 and Supabase workflow 39636521267 passed for d242a7e."
+      }
+    },
+    "dialog_and_startup_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/lifecycle.spec.ts",
+      "verified_behaviors": [
+        "Settings, recall, and history dialogs contain keyboard focus and prevent background input.",
+        "The dialogs restore focus after asynchronous operations without replacing a later focus selection.",
+        "Escape and backdrop clicks discard unsaved settings only when no operation is in progress. Pointer drags from the dialog do not close it.",
+        "Recall saves complete before Escape closes the dialog. Save failures preserve the answer and permit a retry.",
+        "Repeated Escape presses cannot hide a dialog during an operation. Focus stays in the dialog when controls become disabled.",
+        "Checkpoint restore errors show in the history dialog. A retry restores the selected checkpoint.",
+        "The mouse wheel reaches all 18 checkpoint records in the test. The history header stays visible.",
+        "The initial workspace request has an error display and one retry request for concurrent clicks.",
+        "A late initial response or error does not replace a newer workspace event. No unhandled promise rejection occurs in these tests."
+      ],
+      "verification": {
+        "native_regression_stories": "14 passed.",
+        "desktop_unit_and_process": "93 passed, 2 opt-in tests skipped.",
+        "layout": "Settings and history tests passed in a 1040 by 633 renderer viewport. The screenshots were inspected. Native window-manager resize behavior remains unverified because WSLg ignored the resize request.",
+        "native_source_ui": "39 passed, 1 opt-in Piston execution test skipped. This run includes all 14 dialog and startup stories.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 writing rules and dictionary entries. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Checks for this batch remain pending. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
       "Additional repeated actions, workspace changes during edits, and window close during active operations",
       "Catalog filters, file navigation, editor shortcuts, and result states",
-      "Settings save failures, account changes, background input while a modal is open, and late initial responses",
+      "Settings disk-write failures and account changes",
       "Chat keyboard behavior, repeated sends, cancellation, and submission approval",
-      "Design timer, guided and mock modes, canvas controls, late loads, and failed history or export operations",
+      "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
       "Recall filters, schedule conflicts, repeated requests, and unavailable saved attempts",
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",
-      "Startup and reconnection failures, modal keyboard controls, focus, and panel resizing",
+      "Service initialization and reconnection failures, submission approval dialogs, native window resize controls, and panel resizing",
       "Packaged app tests and platform CI for the final audit changes"
     ]
   },

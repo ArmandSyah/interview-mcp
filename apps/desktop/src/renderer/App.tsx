@@ -34,6 +34,7 @@ import { DesignWorkbench } from './DesignWorkbench';
 import { PracticeQueueDialog } from './PracticeQueue';
 import { DraftWriter } from './draft-writer';
 import { ActionProvider, useActions } from './actions';
+import { Modal } from './Modal';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 
 function cleanError(error: unknown): string {
@@ -60,12 +61,17 @@ export function App() {
 function Workbench() {
   const actions = useActions();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [bootError, setBootError] = useState('');
+  const [bootLoading, setBootLoading] = useState(true);
+  const loadPending = useRef(false);
+  const loadVersion = useRef(0);
   const [query, setQuery] = useState('');
   const [difficulty, setDifficulty] = useState('all');
   const [tab, setTab] = useState<'solution' | 'problem'>('solution');
   const [bottomTab, setBottomTab] = useState<'tests' | 'progress'>('tests');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
+  const queueOpener = useRef<HTMLElement | null>(null);
   const [approval, setApproval] = useState<Approval | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -108,8 +114,26 @@ function Workbench() {
     }
   }, []);
 
+  const loadWorkspace = useCallback(async () => {
+    if (loadPending.current) return;
+    loadPending.current = true;
+    const version = ++loadVersion.current;
+    setBootLoading(true);
+    setBootError('');
+    try {
+      const value = await window.interview.snapshot();
+      if (version === loadVersion.current) setSnapshot((current) => current ?? value);
+    } catch (error) {
+      if (version === loadVersion.current) setBootError(cleanError(error));
+    } finally {
+      if (version === loadVersion.current) {
+        loadPending.current = false;
+        setBootLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
-    let live = true;
     const unsubscribe = window.interview.onEvent((event) => {
       if (event.type === 'snapshot') {
         setSnapshot(() => {
@@ -161,15 +185,14 @@ function Workbench() {
           .catch(() => window.interview.closeReady(false));
       }
     });
-    void window.interview.snapshot().then((value) => {
-      if (live) setSnapshot((current) => current ?? value);
-    });
+    void loadWorkspace();
     return () => {
-      live = false;
+      loadVersion.current++;
+      loadPending.current = false;
       unsubscribe();
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [flush]);
+  }, [flush, loadWorkspace]);
 
   const active = snapshot?.sessions.find(
     (session) => session.problem.id === snapshot.activeProblemId,
@@ -255,8 +278,19 @@ function Workbench() {
       <div className="boot">
         <Code2 size={34} />
         <h1>Interview Workbench</h1>
-        <p>Opening your workspace…</p>
-        <LoaderCircle className="spin" size={20} />
+        {bootError ? (
+          <>
+            <p role="alert">{bootError}</p>
+            <button className="primary" disabled={bootLoading} onClick={() => void loadWorkspace()}>
+              Retry workspace load
+            </button>
+          </>
+        ) : (
+          <>
+            <p>Opening your workspace…</p>
+            <LoaderCircle className="spin" size={20} />
+          </>
+        )}
       </div>
     );
   const connected = snapshot.connection === 'connected';
@@ -270,6 +304,11 @@ function Workbench() {
   );
   const completed = snapshot.sessions.filter((session) => session.submitted).length;
   const currentError = error || snapshot.error;
+  const openQueue = () => {
+    queueOpener.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    void action(async () => setQueueOpen(true));
+  };
 
   const queueDialog = queueOpen ? (
     <PracticeQueueDialog
@@ -277,6 +316,7 @@ function Workbench() {
       beforeAction={flush}
       registerFlush={registerQueueFlush}
       onClose={() => setQueueOpen(false)}
+      returnFocus={queueOpener.current}
     />
   ) : null;
   if (snapshot.mode === 'design')
@@ -286,7 +326,7 @@ function Workbench() {
           snapshot={{ ...snapshot, error: error || snapshot.error }}
           registerFlush={registerDesignFlush}
           switchMode={() => void action(() => window.interview.setMode('coding'))}
-          openQueue={() => void action(async () => setQueueOpen(true))}
+          openQueue={openQueue}
           clearError={() => setError('')}
         />
         {queueDialog}
@@ -308,11 +348,7 @@ function Workbench() {
         <div className="topbar-center">
           <Command size={13} />
           <span>Your practice workspace</span>
-          <button
-            className="secondary small"
-            disabled={busy}
-            onClick={() => void action(async () => setQueueOpen(true))}
-          >
+          <button className="secondary small" disabled={busy} onClick={openQueue}>
             Practice queue
           </button>
           <button
@@ -864,38 +900,40 @@ function Workbench() {
         />
       )}
       {approval && (
-        <div className="modal-backdrop">
-          <section
-            className="approval-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="approval-title"
-          >
-            <ShieldCheck size={28} />
-            <h2 id="approval-title">Approve submission?</h2>
-            <p>{approval.description}</p>
-            <div>
-              <button
-                className="secondary"
-                onClick={() => {
-                  void window.interview.approve(approval.id, false);
-                  setApproval(null);
-                }}
-              >
-                Keep practicing
-              </button>
-              <button
-                className="primary"
-                onClick={() => {
-                  void window.interview.approve(approval.id, true);
-                  setApproval(null);
-                }}
-              >
-                Submit this draft
-              </button>
-            </div>
-          </section>
-        </div>
+        <Modal
+          className="approval-modal"
+          aria-labelledby="approval-title"
+          onDismiss={() => {
+            void window.interview
+              .approve(approval.id, false)
+              .catch((error) => setError(cleanError(error)));
+            setApproval(null);
+          }}
+        >
+          <ShieldCheck size={28} />
+          <h2 id="approval-title">Approve submission?</h2>
+          <p>{approval.description}</p>
+          <div>
+            <button
+              className="secondary"
+              onClick={() => {
+                void window.interview.approve(approval.id, false);
+                setApproval(null);
+              }}
+            >
+              Keep practicing
+            </button>
+            <button
+              className="primary"
+              onClick={() => {
+                void window.interview.approve(approval.id, true);
+                setApproval(null);
+              }}
+            >
+              Submit this draft
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

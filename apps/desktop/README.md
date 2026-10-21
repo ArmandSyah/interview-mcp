@@ -365,3 +365,35 @@ npm run test:desktop -- tests/e2e/action-races.spec.ts tests/e2e/settings-storie
 These tests include repeated actions before a service response and form values after a selection change.
 They also include incorrect settings, directory picker cancellation, failed requests, and chat text recovery.
 The service tests examine the busy state before each disk write completes and after a write failure.
+
+### Dialog and startup regression tests
+
+Settings, recall, and history dialogs prevent keyboard and pointer input to the workspace behind them.
+These dialogs restore focus to their previous control after they close.
+They do not replace focus that you move to a different control after the dialog closes.
+Escape discards unsaved settings when no operation is in progress.
+A backdrop click has the same effect.
+A pointer drag from the settings dialog to its backdrop does not close the dialog.
+
+For recall, Escape first saves the draft.
+After a save failure, the dialog and draft stay available.
+The dialog stays open during an operation, also after more than one Escape key press.
+Checkpoint restore errors show in the history dialog.
+The history dialog has a scrollable list of checkpoints.
+Practice records and file formats do not change.
+
+After an initial workspace request failure, the app shows an error and a retry button.
+While a retry request is in progress, more clicks do not start a different request.
+The app keeps workspace data from events that it receives before the initial request completes.
+This retry does not repair a damaged workspace file.
+
+After the build, enter this command from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/lifecycle.spec.ts
+```
+
+These tests include focus, Tab, Shift+Tab, Escape, save failures, backdrop clicks, checkpoint history, and response order.
+The layout test sets the renderer viewport, which is the content area on the screen, to 1040 × 633.
+It does not test native window resize controls.
+The full UI audit continues.
