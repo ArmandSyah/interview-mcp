@@ -371,7 +371,7 @@ function Workbench() {
   const filtered = snapshot.problems.filter(
     (problem) =>
       (difficulty === 'all' || problem.difficulty === difficulty) &&
-      `${problem.title} ${problem.tags.join(' ')} ${problem.id}`
+      `${problem.title} ${problem.tags.join(' ')} ${problem.pattern_tags.join(' ')} ${problem.id}`
         .toLowerCase()
         .includes(query.toLowerCase()),
   );
@@ -490,6 +490,7 @@ function Workbench() {
                   <button
                     key={value}
                     className={difficulty === value ? 'active' : ''}
+                    aria-pressed={difficulty === value}
                     onClick={() => setDifficulty(value)}
                   >
                     {value}

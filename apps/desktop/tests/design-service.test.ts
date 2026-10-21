@@ -9,7 +9,7 @@ import { emptyDesignDraft } from '../src/shared/design';
 import type { Model } from '../src/main/providers';
 
 it.each(
-  ['history', 'settings'].flatMap((operation) =>
+  ['history', 'settings', 'selection'].flatMap((operation) =>
     [false, true].map((failure) => ({ operation, failure })),
   ),
 )(
@@ -38,6 +38,12 @@ it.each(
       await service.designHint();
       const before = service.snapshot().designSessions[0];
       expect(before.chat.length).toBeGreaterThan(0);
+      let target = before.id;
+      if (operation === 'selection') {
+        await service.startDesign('design-link-aliases', true);
+        target = service.snapshot().activeDesignSessionId!;
+        await service.activateDesign(before.id);
+      }
       const original = store.persist.bind(store);
       const persist = vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
         await gate;
@@ -46,7 +52,9 @@ it.each(
       clear = (
         operation === 'history'
           ? service.clearChat()
-          : service.updateSettings({ ...defaultSettings, provider: 'ollama' })
+          : operation === 'settings'
+            ? service.updateSettings({ ...defaultSettings, provider: 'ollama' })
+            : service.activateDesign(target)
       ).then(
         () => null,
         (error: Error) => error.message,
@@ -57,6 +65,7 @@ it.each(
       save = service.saveDesignDraft(before.id, draft);
       await Promise.resolve();
       expect(service.snapshot().designSessions[0].chat).toEqual(before.chat);
+      expect(service.snapshot().activeDesignSessionId).toBe(before.id);
       expect(persist).toHaveBeenCalledTimes(1);
       if (failure) reject(new Error('Design state write failed'));
       else release();
@@ -68,7 +77,10 @@ it.each(
       const restored = new LocalStore(root);
       await restored.load();
       expect(restored.workspace(store.scope()).designSessions[0].chat).toEqual(
-        failure || operation === 'settings' ? before.chat : [],
+        failure || operation !== 'history' ? before.chat : [],
+      );
+      expect(restored.workspace(store.scope()).activeDesignSessionId).toBe(
+        failure ? before.id : target,
       );
       expect(restored.state.settings.provider).toBe(
         operation === 'settings' && !failure ? 'ollama' : 'disabled',

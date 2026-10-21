@@ -97,6 +97,84 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+it.each(
+  ['problem', 'mode'].flatMap((operation) =>
+    [false, true].map((failure) => ({ operation, failure })),
+  ),
+)(
+  '$operation selection preserves drafts and keeps its previous value on failure=$failure',
+  async ({ operation, failure }) => {
+    const { service, store } = await fixture();
+    await service.startProblem(problem.id);
+    const workspace = store.workspace(store.scope());
+    const second = {
+      ...structuredClone(workspace.sessions[0]),
+      problem: { ...problem, id: '0002-test' },
+      attemptId: 'second-attempt',
+      code: '# second saved draft',
+    };
+    workspace.sessions.push(second);
+    await store.saveCode(store.scope(), second);
+    const earlier = deferred();
+    const writing = deferred();
+    const originalSave = store.saveCode.bind(store);
+    vi.spyOn(store, 'saveCode').mockImplementationOnce(async (...args) => {
+      await earlier.promise;
+      await originalSave(...args);
+    });
+    const originalPersist = store.persist.bind(store);
+    const persist = vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
+      await writing.promise;
+      await originalPersist(...args);
+    });
+    const first = service.saveCode(problem.id, '# edit before selection');
+    const change = (
+      operation === 'problem'
+        ? service.activateProblem(second.problem.id)
+        : service.setMode('design')
+    ).then(
+      () => null,
+      (error: Error) => error.message,
+    );
+    const next = service.saveCode(second.problem.id, '# edit during selection');
+    try {
+      expect(persist).not.toHaveBeenCalled();
+      earlier.resolve();
+      await first;
+      await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+      expect(service.snapshot()).toMatchObject({
+        busy: true,
+        mode: 'coding',
+        activeProblemId: problem.id,
+      });
+      expect(service.snapshot().sessions[1].code).toBe('# second saved draft');
+      if (failure) writing.reject(new Error('Fixture selection write failure'));
+      else writing.resolve();
+      expect(await change).toBe(failure ? 'Fixture selection write failure' : null);
+      await next;
+      const restored = new LocalStore(store.root);
+      await restored.load();
+      const saved = restored.workspace(store.scope());
+      expect(saved.activeProblemId).toBe(
+        operation === 'problem' && !failure ? second.problem.id : problem.id,
+      );
+      expect(saved.mode).toBe(operation === 'mode' && !failure ? 'design' : 'coding');
+      expect(saved.sessions.map((item) => item.code)).toEqual([
+        '# edit before selection',
+        '# edit during selection',
+      ]);
+      expect(await readFile(store.path(store.scope(), second.problem.id), 'utf8')).toBe(
+        '# edit during selection',
+      );
+    } finally {
+      earlier.resolve();
+      writing.resolve();
+      await Promise.allSettled([first, change, next]);
+      await service.close();
+    }
+  },
+);
+
 for (const failure of ['disk-replace', 'disk-remove', 'vault'] as const) {
   it(`settings ${failure} preserves settings, credentials, workspace, and connection`, async () => {
     const vault: Vault = {

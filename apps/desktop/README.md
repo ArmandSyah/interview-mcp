@@ -640,3 +640,63 @@ The native tests use a local protocol fixture and temporary workspaces.
 They include write failure, retry, token replacement, account changes, undo, unsent text, credential removal, and restart.
 They do not test Supabase token verification or send model requests.
 Service tests also include encryption failures, queued drafts, account map failures, and sandbox stop failures.
+
+### Catalog and selection tests
+
+Problem search matches the title, problem ID, tags, and pattern tags.
+Search ignores letter case.
+The search results must also match the difficulty filter.
+The All filter includes all difficulties.
+An empty search includes all problems that match the difficulty filter.
+Search and filters do not change drafts or the selected attempt.
+
+The file explorer selects saved coding attempts.
+The `solution.py` tab shows the code editor.
+The `problem.md` tab shows the problem description, not a different local file.
+The file explorer keeps that tab selection when you select a different problem folder.
+Each problem keeps its code draft.
+
+The desktop bridge has three selection methods.
+`activateProblem(id)` selects a saved coding attempt by its problem ID.
+`activateDesign(sessionId)` selects a saved design attempt by its session ID.
+`setMode(mode)` selects `coding` or `design`.
+Each method returns `Promise<void>` after the selection write completes.
+The methods do not add attempts or change code, notes, history, or self-ratings.
+
+The methods reject a busy service or a write failure.
+The attempt selection methods also reject an unknown saved attempt ID.
+The bridge rejects a mode other than `coding` or `design`.
+A selection of the same target also writes the selection.
+
+Draft writes received before a selection complete first.
+New draft writes wait for the selection result.
+The app keeps its previous selection until the disk write completes without an error.
+A write failure keeps that selection and releases queued drafts to the same workspace.
+A retry can save the requested selection.
+The saved data format and draft paths do not change.
+
+Ctrl+S saves the code draft, and Ctrl+Enter starts a test request from the editor.
+On macOS, these shortcuts use Command, not Ctrl.
+Ctrl+S does not start a second save while a save is in progress.
+A draft edit during a save waits for that save and then uses a new write.
+
+A test request in progress prevents a second test request.
+The Run tests shortcut selects the test-results panel.
+A test request error keeps the draft and releases the controls.
+
+After the build, run these tests from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/navigation-stories.spec.ts tests/e2e/editor-shortcuts.spec.ts
+```
+
+The navigation tests make disk writes return errors in temporary workspaces.
+They include retry and restart for problem, mode, and saved design selections.
+Service tests include draft writes before and during selection writes, with write success and failure.
+The shortcut test holds requests at the desktop bridge and supplies a test request error.
+It does not run the code draft.
+The Piston stories run code in a local sandbox.
+
+The Windows workflow uploads its `test-results` files after the native test step, including failure traces.
+This makes the dialog state and operation sequence available when a Windows assertion reports an error.
+The previous Windows run did not upload these files.

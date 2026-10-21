@@ -554,8 +554,7 @@ export class WorkbenchService {
       const workspace = this.store.workspace(this.scope);
       if (!workspace.sessions.some((session) => session.problem.id === id))
         throw new Error('No saved attempt for this problem');
-      workspace.activeProblemId = id;
-      await this.store.persist();
+      await this.selectWorkspace({ activeProblemId: id });
     });
   }
 
@@ -577,9 +576,20 @@ export class WorkbenchService {
   }
 
   async setMode(mode: 'coding' | 'design'): Promise<void> {
-    await this.practiceAction(async () => {
-      this.store.workspace(this.scope).mode = mode;
-      await this.store.persist();
+    await this.practiceAction(() => this.selectWorkspace({ mode }));
+  }
+
+  /** Commit selection fields after the write. The caller must hold the action lock. */
+  private async selectWorkspace(selection: {
+    mode?: 'coding' | 'design';
+    activeProblemId?: string;
+    activeDesignSessionId?: string;
+  }): Promise<void> {
+    await this.withDraftBarrier(async () => {
+      const next = structuredClone(this.store.state);
+      Object.assign(next.workspaces[this.scope], selection);
+      await this.store.persist(next);
+      Object.assign(this.store.workspace(this.scope), selection);
     });
   }
 
@@ -661,8 +671,7 @@ export class WorkbenchService {
   async activateDesign(sessionId: string): Promise<void> {
     await this.practiceAction(async () => {
       this.designSession(sessionId);
-      this.store.workspace(this.scope).activeDesignSessionId = sessionId;
-      await this.store.persist();
+      await this.selectWorkspace({ activeDesignSessionId: sessionId });
     });
   }
 

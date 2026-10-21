@@ -262,7 +262,7 @@
         "build_types_format": "Passed.",
         "documentation": "Issue 9 rules and dictionary review completed for the new README section. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "input_method_scope": "The composition test sends browser events to the real renderer. Operating system input methods remain unverified.",
-        "packages_and_ci": "Supabase workflow 39650092020 passed for a2ee5bd. The Linux job in Desktop workflow 39650092349 passed. Windows standalone app tests are in progress. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39650092020 and the Linux job in Desktop workflow 39650092349 passed for a2ee5bd. Windows failed 8 assertions that waited 5 seconds for settings to close. The Windows job did not upload failure traces. The cause is not yet verified. Local release packages predate these changes."
       }
     },
     "settings_and_account_regressions": {
@@ -299,12 +299,42 @@
         "build_types_format": "Passed.",
         "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "Account tests use a local protocol fixture, not live Supabase token verification. Encryption failures use a test vault. These checks do not prove that every race condition is absent.",
-        "packages_and_ci": "Checks for this batch are pending. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39653399455 passed for 6b94492. Desktop workflow 39653399669 is in progress. Local release packages predate these changes."
+      }
+    },
+    "catalog_and_selection_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/navigation-stories.spec.ts",
+        "apps/desktop/tests/e2e/editor-shortcuts.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/design-service.test.ts"
+      ],
+      "corrected_defects": [
+        "Problem search omitted pattern tags despite the search prompt.",
+        "A failed problem or mode selection write changed the live selection before the disk write completed.",
+        "Saved design selection used the same unsafe write order."
+      ],
+      "verified_behaviors": [
+        "Search includes titles, IDs, tags, and pattern tags and combines with the difficulty filter without changing saved attempts.",
+        "Failed selections keep the previous problem, mode, or design session. Retry saves the selection, and restart restores it.",
+        "Selection writes wait for draft writes in progress and hold new draft writes through write success or failure.",
+        "Editor save shortcuts preserve edits received during a pending write. Test shortcuts send one request and recover from a request error.",
+        "File tabs keep their selection across problem folders and preserve each problem's draft."
+      ],
+      "verification": {
+        "native_regression_stories": "7 passed.",
+        "desktop_unit_and_process": "129 passed, 2 opt-in tests skipped. This includes 6 new service cases.",
+        "native_source_ui": "94 passed with real local Piston. This run includes all 7 new catalog, selection, and keyboard stories.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Checks for this batch are pending. Windows test-result retention was added to obtain evidence for the unresolved settings-close assertions. No assertion timeout was increased."
       }
     },
     "remaining_checks": [
       "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
-      "Catalog filters, file navigation, editor shortcuts, and result states",
+      "Additional catalog and editor interactions, new-attempt write failures, solution exports, and result states",
       "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
@@ -312,10 +342,11 @@
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",
       "Service initialization and reconnection failures, native window resize controls, and panel resizing",
-      "Packaged app tests and platform CI for the final audit changes"
+      "Windows settings-close assertion failures, packaged app tests, and platform CI for the final audit changes"
     ]
   },
   "last_verified": {
+    "scope": "Delivery baseline before the UI audit. See ui_interaction_audit for new fixes and test results.",
     "python": "229 passed, 30 skipped in the default run, including 20 opt-in PostgreSQL tests. All 23 catalog/PostgreSQL tests passed separately. 30 existing datetime deprecation warnings.",
     "desktop_unit_and_process": "74 passed, 2 opt-in tests skipped in the default run. The remote MCP suite passed all 3 tests separately with real Piston. Real managed Docker integration passed earlier.",
     "native_source_ui": "7 passed, including development startup, offline design, exports, practice queue, and real Piston",
