@@ -922,12 +922,14 @@ export class WorkbenchService {
   }
 
   private requestApproval(tool: string, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
     const id = randomUUID();
     return new Promise((resolve) => {
       const settle = (allow: boolean) => {
+        if (!this.approvals.delete(id)) return;
         clearTimeout(timer);
         signal.removeEventListener('abort', cancel);
-        this.approvals.delete(id);
+        this.emit({ type: 'approval-settled', id });
         resolve(allow);
       };
       const cancel = () => settle(false);
@@ -946,6 +948,7 @@ export class WorkbenchService {
     });
   }
 
+  /** Resolve this pending approval. Reject an expired or previously resolved ID without a submission. */
   approve(id: string, allow: boolean): void {
     const pending = this.approvals.get(id);
     if (!pending) throw new Error('Approval has expired');
@@ -1025,7 +1028,7 @@ export class WorkbenchService {
         execute: async (name, args, signal) => {
           if (name === 'start_problem') throw new Error('Open problems from the sidebar');
           if (name === 'submit_solution' && !(await this.requestApproval(name, signal)))
-            throw new Error('User declined submission');
+            throw new Error('Submission approval is necessary');
           signal.throwIfAborted();
           if (design) return this.executeDesign(name, args, design, checkpoint, signal);
           return this.execute(name, args, session, code, signal);

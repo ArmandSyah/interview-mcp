@@ -199,6 +199,34 @@
         "native_source_ui": "55 passed, 1 opt-in Piston execution test skipped. This run includes all 16 close and chat cancellation stories.",
         "build_types_format": "Passed.",
         "documentation": "README rules and dictionary review completed. Local links, sentence lengths, paragraph lengths, and punctuation passed. The close recovery screenshot was inspected.",
+        "packages_and_ci": "Supabase workflow 39644510244 passed for 397f784. Windows package checks passed in Desktop workflow 39644510191. Linux checks are in progress. Local release packages predate these changes."
+      }
+    },
+    "submission_approval_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/approval-stories.spec.ts",
+      "unit_tests": "apps/desktop/tests/service.test.ts",
+      "corrected_defects": [
+        "A failed approval request removed the dialog and prevented a retry. Button failures also caused unhandled rejections.",
+        "Repeated clicks could send three conflicting decisions for one approval before React disabled the controls.",
+        "An expired approval stayed visible until the coach completed its response.",
+        "A response error from a previous approval caused an unhandled rejection while a different approval was visible.",
+        "Keyboard focus could move to the document body after both approval buttons became disabled."
+      ],
+      "verified_behaviors": [
+        "Submit this draft, Keep practicing, and Escape preserve the approval after a transport failure and permit a retry.",
+        "One pending decision prevents more clicks and Escape requests. Backdrop clicks do not choose a decision.",
+        "Expiry and cancellation resolve an approval once, close its dialog, and never submit code.",
+        "A late request for an expired approval cannot submit code or restore the dialog.",
+        "A delayed response or error cannot dismiss a different approval or replace its error state.",
+        "Service tests verify the exact 60-second deadline, reject a second decision, and bind submission to the captured draft after more edits.",
+        "The real Piston story verifies one approved submission and keeps the failed starter attempt incomplete."
+      ],
+      "verification": {
+        "native_regression_stories": "9 passed, including the real local Piston story.",
+        "desktop_unit_and_process": "98 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "65 passed with real local Piston. All 9 approval stories also passed after the last error-message edit.",
+        "build_types_format": "Passed.",
+        "documentation": "Issue 9 rules and dictionary review completed for the new README section. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The approval recovery screenshot was inspected.",
         "packages_and_ci": "Checks for this batch remain pending. Local release packages predate these changes."
       }
     },
@@ -206,12 +234,12 @@
       "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
       "Catalog filters, file navigation, editor shortcuts, and result states",
       "Settings disk-write failures and account changes",
-      "Chat keyboard behavior, repeated sends, submission approval expiry, and approval error recovery",
+      "Chat keyboard behavior, repeated sends, provider failures, and chat history controls",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
       "Recall filters, schedule conflicts, repeated requests, and unavailable saved attempts",
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",
-      "Service initialization and reconnection failures, submission approval dialogs, native window resize controls, and panel resizing",
+      "Service initialization and reconnection failures, native window resize controls, and panel resizing",
       "Packaged app tests and platform CI for the final audit changes"
     ]
   },

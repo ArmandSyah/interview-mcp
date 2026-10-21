@@ -102,6 +102,7 @@ export type AppEvent =
   | { type: 'chat'; item: ChatItem; problemId: string }
   | { type: 'design-chat'; item: ChatItem; sessionId: string }
   | { type: 'approval'; approval: Approval }
+  | { type: 'approval-settled'; id: string }
   | { type: 'sandbox'; status: import('./sandbox').SandboxStatus }
   | { type: 'agent-done'; error?: string }
   | { type: 'flush-before-close' };

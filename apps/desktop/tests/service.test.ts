@@ -8,7 +8,7 @@ import { LocalStore, defaultSettings } from '../src/main/storage';
 import type { McpConnection } from '../src/main/mcp';
 import type { Model } from '../src/main/providers';
 import type { ManagedSandbox } from '../src/main/sandbox';
-import type { AppEvent, Problem } from '../src/shared/types';
+import type { AppEvent, Approval, Problem } from '../src/shared/types';
 
 const problem: Problem = {
   id: '0001-test',
@@ -31,6 +31,7 @@ async function fixture(
   model?: Model | (() => Model),
   vault = memoryVault,
   sandbox?: ManagedSandbox,
+  onEvent?: (event: AppEvent) => void,
 ) {
   const store = new LocalStore(await mkdtemp(join(tmpdir(), 'interview-service-')));
   const events: AppEvent[] = [];
@@ -73,7 +74,10 @@ async function fixture(
     store,
     mcp as unknown as McpConnection,
     vault,
-    (event) => events.push(event),
+    (event) => {
+      events.push(event);
+      onEvent?.(event);
+    },
     typeof model === 'function' ? model : model ? () => model : undefined,
     sandbox,
   );
@@ -257,9 +261,16 @@ it.each([false, true])('agent submission requires explicit approval (allow=%s)',
   expect(mcp.call.mock.calls.some(([name]) => name === 'submit_solution')).toBe(false);
   const event = events.find((event) => event.type === 'approval');
   if (event?.type !== 'approval') throw new Error('Missing approval');
+  await service.saveCode(problem.id, '# newer draft after the approval request');
   service.approve(event.approval.id, allow);
+  expect(() => service.approve(event.approval.id, !allow)).toThrow('Approval has expired');
   await turn;
+  expect(events.filter((event) => event.type === 'approval-settled')).toEqual([
+    { type: 'approval-settled', id: event.approval.id },
+  ]);
   expect(service.snapshot().sessions[0].submitted).toBe(allow);
+  expect(service.snapshot().sessions[0].code).toBe('# newer draft after the approval request');
+  expect(service.snapshot().sessions[0].resultStale).toBe(allow);
   if (allow)
     expect(mcp.call).toHaveBeenCalledWith(
       'submit_solution',
@@ -271,6 +282,66 @@ it.each([false, true])('agent submission requires explicit approval (allow=%s)',
     );
   await service.close();
 });
+
+it.each(['deadline', 'cancellation'] as const)(
+  'approval %s resolves once without submission and rejects a late decision',
+  async (reason) => {
+    let receiveApproval!: (approval: Approval) => void;
+    const approvalReceived = new Promise<Approval>((resolve) => {
+      receiveApproval = resolve;
+    });
+    const provider = deferred();
+    const nextRound = deferred();
+    let round = 0;
+    const model: Model = {
+      complete: async () => {
+        if (++round === 1)
+          return { text: '', calls: [{ id: 'submit', name: 'submit_solution', args: {} }] };
+        nextRound.resolve();
+        await provider.promise;
+        return { text: 'Continue with your draft.', calls: [] };
+      },
+    };
+    const { service, mcp, events } = await fixture(model, memoryVault, undefined, (event) => {
+      if (event.type === 'approval') receiveApproval(event.approval);
+    });
+    await service.startProblem(problem.id);
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const turn = service.chat('Discuss submission.');
+    try {
+      const approval = await approvalReceived;
+      if (reason === 'deadline') {
+        await vi.advanceTimersByTimeAsync(59_999);
+        expect(events.some((event) => event.type === 'approval-settled')).toBe(false);
+        expect(round).toBe(1);
+        await vi.advanceTimersByTimeAsync(1);
+        await nextRound.promise;
+        expect(
+          service.snapshot().busy,
+          'Expiry must close approval before the chat completes',
+        ).toBe(true);
+      } else {
+        service.cancelChat();
+        await turn;
+      }
+      expect(events.filter((event) => event.type === 'approval-settled')).toEqual([
+        { type: 'approval-settled', id: approval.id },
+      ]);
+      expect(() => service.approve(approval.id, true)).toThrow('Approval has expired');
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(events.filter((event) => event.type === 'approval-settled')).toHaveLength(1);
+      expect(mcp.call.mock.calls.some(([name]) => name === 'submit_solution')).toBe(false);
+      expect(service.snapshot().sessions[0].submitted).toBe(false);
+    } finally {
+      vi.useRealTimers();
+      provider.resolve();
+      service.cancelChat();
+      await turn;
+      await service.close();
+    }
+  },
+);
 
 it('a failed final close check keeps the service connected and permits a retry', async () => {
   const { service, store, mcp } = await fixture();

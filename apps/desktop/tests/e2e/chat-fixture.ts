@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 /** A local provider fixture. It never loads a model or sends a paid request. */
-export async function controlledCoach(approval = false) {
+export async function controlledCoach(approval: boolean | number[] = false) {
   const requests: { response: ServerResponse; closed: boolean }[] = [];
   const server = createServer(async (request, response) => {
     for await (const _chunk of request) {
@@ -15,7 +15,11 @@ export async function controlledCoach(approval = false) {
       entry.closed = true;
     });
     response.setHeader('Content-Type', 'application/x-ndjson');
-    if (approval && requests.length === 1) {
+    if (
+      Array.isArray(approval)
+        ? approval.includes(requests.length)
+        : approval && requests.length === 1
+    ) {
       response.end(
         JSON.stringify({
           message: {

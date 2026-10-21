@@ -448,3 +448,51 @@ These tests include close during hints, chat, and submission approval.
 They also include write failures, recovery from dialogs, timer state, and cancellation response sequence.
 A local response fixture supplies the chat messages.
 The tests do not run a model.
+
+### Submission approval tests
+
+Each submission request from the coach must have a different approval.
+Each approval has an ID and one related chat.
+A chat can have no approval or a sequence of approvals.
+Only one approval can be pending at a time.
+The app keeps approvals in memory, not in practice files.
+
+Submit this draft starts tests on the code captured when you sent the message.
+The tests must all pass before the service completes the attempt.
+Edits after that message do not change the code for this submission.
+Keep practicing and Escape reject the request.
+A backdrop click does not select a decision.
+
+The desktop bridge method `approve(id, allow)` returns `Promise<void>`.
+The `id` parameter selects one pending approval.
+The `allow` parameter is `true` for permission and `false` for denial.
+The promise resolves after the service accepts the decision, not after submission tests.
+The method rejects invalid, expired, and previously resolved IDs without a submission.
+Transport failures also reject the promise.
+
+While a decision request is in progress, the dialog prevents more decision requests.
+The dialog shows transport errors before the service accepts a decision.
+You can retry the decision while its approval is pending.
+The approval expires after 60 seconds without a decision at the service.
+Expiry and chat cancellation prevent submission.
+
+The service sends `approval-settled` with the approval ID after a decision, expiry, or chat cancellation.
+This event closes only the dialog for that approval.
+A response or error from a completed approval cannot close a different approval or replace its error.
+Saved drafts, chat history, and account ownership do not change.
+
+After the build, run this command from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/approval-stories.spec.ts
+```
+
+The tests use a local provider fixture, not a model.
+They include transport failures, more than one decision, expiry, and different response sequences.
+Unit tests include the 60-second deadline and submission of the captured draft after more edits.
+
+For the Piston execution test, first start the sandbox.
+Set `INTERVIEW_DESKTOP_TEST_PISTON=1`.
+
+The Piston test submits the starter draft without edits.
+Its checks make sure that failed tests do not complete the attempt.

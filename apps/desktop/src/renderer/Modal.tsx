@@ -47,7 +47,8 @@ export function Modal({
   useLayoutEffect(() => {
     const dialog = element.current!;
     // A disabled form control can move focus to the document body.
-    if (dialog.open && !dialog.contains(document.activeElement)) dialog.focus();
+    const active = document.activeElement;
+    if (dialog.open && (!dialog.contains(active) || active?.matches(':disabled'))) dialog.focus();
   }, [canDismiss]);
   const outside = (x: number, y: number) => {
     const bounds = element.current!.getBoundingClientRect();

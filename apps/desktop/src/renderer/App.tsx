@@ -36,6 +36,7 @@ import { DraftWriter } from './draft-writer';
 import { ActionProvider, useActions } from './actions';
 import { Modal } from './Modal';
 import { useChatStop } from './chat-stop';
+import { ApprovalDialog } from './ApprovalDialog';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 
 function cleanError(error: unknown): string {
@@ -170,6 +171,8 @@ function Workbench() {
             : current,
         );
       if (event.type === 'approval') setApproval(event.approval);
+      if (event.type === 'approval-settled')
+        setApproval((current) => (current?.id === event.id ? null : current));
       if (event.type === 'design-chat')
         setSnapshot((current) =>
           current
@@ -963,40 +966,12 @@ function Workbench() {
         />
       )}
       {approval && (
-        <Modal
-          className="approval-modal"
-          aria-labelledby="approval-title"
-          onDismiss={() => {
-            void window.interview
-              .approve(approval.id, false)
-              .catch((error) => setError(cleanError(error)));
-            setApproval(null);
-          }}
-        >
-          <ShieldCheck size={28} />
-          <h2 id="approval-title">Approve submission?</h2>
-          <p>{approval.description}</p>
-          <div>
-            <button
-              className="secondary"
-              onClick={() => {
-                void window.interview.approve(approval.id, false);
-                setApproval(null);
-              }}
-            >
-              Keep practicing
-            </button>
-            <button
-              className="primary"
-              onClick={() => {
-                void window.interview.approve(approval.id, true);
-                setApproval(null);
-              }}
-            >
-              Submit this draft
-            </button>
-          </div>
-        </Modal>
+        <ApprovalDialog
+          key={approval.id}
+          approval={approval}
+          closing={actions.closing}
+          onResolved={(id) => setApproval((current) => (current?.id === id ? null : current))}
+        />
       )}
       {closeErrorDialog}
     </div>
