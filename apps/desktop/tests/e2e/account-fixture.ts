@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 
 /** Local protocol fixture. This server does not test Supabase token verification. */
-export async function accountServer() {
+export async function accountServer(
+  execution?: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+) {
   let origin = '';
   let failure: 'identity' | 'catalog' | null = null;
   let release: (() => void) | undefined;
@@ -16,6 +18,7 @@ export async function accountServer() {
     'start_problem',
     'get_problem_description',
     'get_hint',
+    ...(execution ? ['run_tests', 'submit_solution'] : []),
   ];
   const server = createServer(async (request, response) => {
     if (request.method !== 'POST') {
@@ -69,6 +72,8 @@ export async function accountServer() {
       if (name === 'get_progress') value = `Fixture progress for ${account}`;
       if (name === 'get_problem_description') value = 'This fixture tests account draft ownership.';
       if (name === 'get_hint') value = { hint: `Fixture hint for ${account}` };
+      if (execution && ['run_tests', 'submit_solution'].includes(name))
+        value = await execution(name, body.params.arguments ?? {});
       if (name === 'start_problem') {
         const contents = `# ${account} starter\n`;
         value = {

@@ -38,6 +38,7 @@ import { Modal } from './Modal';
 import { useChatStop } from './chat-stop';
 import { ApprovalDialog } from './ApprovalDialog';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
+import { parseTestReport } from '../shared/test-report';
 
 function cleanError(error: unknown): string {
   return (error instanceof Error ? error.message : 'Operation failed').replace(
@@ -247,6 +248,7 @@ function Workbench() {
   const active = snapshot?.sessions.find(
     (session) => session.problem.id === snapshot.activeProblemId,
   );
+  const activeResult = savedTestReport(active);
   const chat = active?.chat ?? snapshot?.welcomeChat ?? [];
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: 'smooth' });
@@ -745,11 +747,9 @@ function Workbench() {
                 onClick={() => setBottomTab('tests')}
               >
                 <Terminal size={13} /> TEST RESULTS
-                {active?.result && (
-                  <span
-                    className={active.result.all_passed ? 'result-pill success' : 'result-pill'}
-                  >
-                    {active.result.tests_passed}/{active.result.tests_total}
+                {activeResult && (
+                  <span className={activeResult.all_passed ? 'result-pill success' : 'result-pill'}>
+                    {activeResult.tests_passed}/{activeResult.tests_total}
                   </span>
                 )}
               </button>
@@ -1028,8 +1028,19 @@ export function ChatMessage({ item }: { item: ChatItem }) {
   );
 }
 
+function savedTestReport(session?: PracticeSession) {
+  if (session?.result == null) return null;
+  try {
+    return parseTestReport(session.result, session.attemptId, session.problem.id);
+  } catch {
+    return null;
+  }
+}
+
 function TestResults({ session, busy }: { session?: PracticeSession; busy: boolean }) {
-  const result = session?.result;
+  const result = savedTestReport(session);
+  if (session?.result != null && !result)
+    return <p role="alert">Cannot display the saved test report. Run tests again.</p>;
   if (!result)
     return (
       <div className="tests-empty">

@@ -299,7 +299,7 @@
         "build_types_format": "Passed.",
         "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "Account tests use a local protocol fixture, not live Supabase token verification. Encryption failures use a test vault. These checks do not prove that every race condition is absent.",
-        "packages_and_ci": "Supabase workflow 39653399455 passed for 6b94492. Desktop workflow 39653399669 is in progress. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39653399455 and Desktop workflow 39653399669 passed for 6b94492. Desktop checks include Windows and Linux packages. Local release packages predate these changes."
       }
     },
     "catalog_and_selection_regressions": {
@@ -329,12 +329,48 @@
         "native_source_ui": "94 passed with real local Piston. This run includes all 7 new catalog, selection, and keyboard stories.",
         "build_types_format": "Passed.",
         "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
-        "packages_and_ci": "Checks for this batch are pending. Windows test-result retention was added to obtain evidence for the unresolved settings-close assertions. No assertion timeout was increased."
+        "packages_and_ci": "Supabase workflow 39655983395 and the Linux job in Desktop workflow 39655983365 passed for d3de3e6. Windows had 90 passes, 3 skips, and one startup failure. The uploaded snapshot shows Connecting MCP after the 20-second assertion wait. This failure occurs before the chat story starts. The cause is not yet verified. The artifact contains the test-runner trace but no Electron context trace. The previous settings-close failures also need investigation. No assertion timeout was increased."
+      }
+    },
+    "test_report_and_export_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/result-stories.spec.ts",
+        "apps/desktop/tests/e2e/solution-export.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/test-report.test.ts",
+        "apps/desktop/tests/export-file.test.ts",
+        "apps/desktop/tests/service.test.ts"
+      ],
+      "corrected_defects": [
+        "An invalid MCP test report caused a renderer exception and prevented normal window closure.",
+        "Saved invalid reports could also stop the result display. The result tab also used unchecked counts.",
+        "An export write error replaced an existing solution export with partial data. Design and backup exports used the same write procedure."
+      ],
+      "verified_behaviors": [
+        "Report validation checks fields, counts, unique case indexes, and the attempt and problem IDs before session changes.",
+        "Invalid reports keep the previous report, completion state, draft, and chat history. The controls permit retry.",
+        "Invalid saved reports show an error without removing the report or draft. An accepted report replaces the invalid report.",
+        "A test request uses the captured code. New edits stay in the draft and cause the older-draft label.",
+        "Result details show pass, wrong-answer, and execution-error cases. Output text does not become HTML.",
+        "A test run does not complete an attempt. A subsequent failed submission does not remove its completed state.",
+        "Solution export waits for draft writes, prevents duplicate requests, and keeps edits received during the file dialog.",
+        "Solution, design, and backup export errors preserve the previous file and permit retry. Cancellation preserves the previous solution export.",
+        "Text and byte exports use file replacement. Open, write, sync, close, and replacement errors preserve the previous file. Tests verify temporary file cleanup."
+      ],
+      "verification": {
+        "native_regression_stories": "8 passed. The existing design artifact story also passed with all export formats.",
+        "desktop_unit_and_process": "169 passed, 2 opt-in tests skipped. This includes 40 new cases. The symbolic-link test is platform-skipped on Windows only.",
+        "native_source_ui": "102 passed in 7.3 minutes on an isolated Xvfb display with real local Piston. No tests were skipped. This run used the final build and includes all 8 new stories.",
+        "interrupted_native_runs": "The WSLg run stopped after 42 passes, 4 failures, and 56 tests not run. An Electron connection closed, then three launches timed out. A direct X11 handshake returned EAGAIN, and the WSLg log contained a fatal file-descriptor error. Failure artifacts are in /tmp/interview-native-display-failure-MWKCSC. The first isolated-display run stopped after 29 passes for the final export cleanup correction. Neither interrupted run is a full-suite pass.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
       "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
-      "Additional catalog and editor interactions, new-attempt write failures, solution exports, and result states",
+      "Additional catalog and editor interactions, new-attempt write failures, export dialog errors and long filenames, result states after connection or disk errors, and invalid saved reports in coach context",
       "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
@@ -342,7 +378,7 @@
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",
       "Service initialization and reconnection failures, native window resize controls, and panel resizing",
-      "Windows settings-close assertion failures, packaged app tests, and platform CI for the final audit changes"
+      "Windows settings-close and startup assertion failures, Electron context trace retention, packaged app tests, and platform CI for the final audit changes"
     ]
   },
   "last_verified": {

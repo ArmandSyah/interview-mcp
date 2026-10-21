@@ -11,7 +11,7 @@ import {
 } from 'electron';
 import { join, resolve, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chmod, mkdir, open, readFile, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, open, readFile, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { LocalStore } from './storage';
@@ -20,6 +20,7 @@ import { WorkbenchService, reflectionDraftSchema } from './service';
 import trust from '../../../../server/distribution/trust.json';
 import { ReleaseUpdates } from './updates';
 import { ManagedSandbox } from './sandbox';
+import { writeExport } from './export-file';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -317,7 +318,7 @@ void app.whenReady().then(async () => {
       filters: [{ name: 'Practice backup', extensions: ['json'] }],
     });
     if (result.canceled || !result.filePath) return null;
-    await writeFile(result.filePath, data, { mode: 0o600 });
+    await writeExport(result.filePath, data);
     return result.filePath;
   });
   handler('distribution-info', () => ({
@@ -407,7 +408,7 @@ void app.whenReady().then(async () => {
       filters: [{ name: 'Design export', extensions: [extension] }],
     });
     if (result.canceled || !result.filePath) return null;
-    await writeFile(result.filePath, data, { mode: 0o600 });
+    await writeExport(result.filePath, data);
     return result.filePath;
   });
   handler('reconnect', () => service.reconnect());
@@ -469,7 +470,7 @@ void app.whenReady().then(async () => {
       filters: [{ name: 'Python', extensions: ['py'] }],
     });
     if (result.canceled || !result.filePath) return null;
-    await writeFile(result.filePath, session.code, { encoding: 'utf8', mode: 0o600 });
+    await writeExport(result.filePath, session.code);
     return result.filePath;
   });
   let initialized!: () => void;

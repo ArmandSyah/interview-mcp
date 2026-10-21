@@ -9,6 +9,7 @@ import type { McpConnection } from '../src/main/mcp';
 import type { Model } from '../src/main/providers';
 import type { ManagedSandbox } from '../src/main/sandbox';
 import type { AppEvent, Approval, Problem } from '../src/shared/types';
+import { testReport } from './test-report-fixture';
 
 const problem: Problem = {
   id: '0001-test',
@@ -56,10 +57,11 @@ async function fixture(
     if (name === 'submit_solution')
       return {
         completed: true,
-        test_run: { all_passed: true, tests_total: 1, tests_passed: 1, results: [] },
+        test_run: testReport('owned-attempt', problem.id, true),
+        followup_questions: null,
+        message: 'Attempt completed',
       };
-    if (name === 'run_tests')
-      return { all_passed: false, tests_total: 1, tests_passed: 0, tests: [] };
+    if (name === 'run_tests') return testReport('owned-attempt', problem.id);
     throw new Error(`Unexpected fixture call ${name}`);
   });
   const mcp = {
@@ -95,6 +97,32 @@ function deferred() {
     reject = fail;
   });
   return { promise, resolve, reject };
+}
+
+for (const submit of [false, true]) {
+  it(`keeps saved results and completion after an invalid ${submit ? 'submission' : 'test'} report`, async () => {
+    const { service, store, mcp } = await fixture();
+    await service.startProblem(problem.id);
+    await service.runTests(true);
+    const previous = service.snapshot().sessions[0];
+    const original = mcp.call.getMockImplementation()!;
+    mcp.call.mockImplementation(async (name, args) =>
+      name === (submit ? 'submit_solution' : 'run_tests')
+        ? { completed: true, test_run: { tests: null }, tests: null }
+        : original(name, args),
+    );
+    await expect(service.runTests(submit)).rejects.toThrow(/Invalid .* report/);
+    expect(service.snapshot().sessions[0]).toEqual(previous);
+    expect(service.snapshot().busy).toBe(false);
+    const reload = new LocalStore(store.root);
+    await reload.load();
+    expect(reload.workspace(reload.scope()).sessions[0]).toEqual(previous);
+    mcp.call.mockImplementation(original);
+    await service.runTests(submit);
+    expect(service.snapshot().sessions[0].submitted).toBe(true);
+    expect(service.snapshot().error).toBeNull();
+    await service.close();
+  });
 }
 
 it.each(

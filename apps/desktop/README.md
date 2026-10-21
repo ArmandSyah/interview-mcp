@@ -700,3 +700,85 @@ The Piston stories run code in a local sandbox.
 The Windows workflow uploads its `test-results` files after the native test step, including failure traces.
 This makes the dialog state and operation sequence available when a Windows assertion reports an error.
 The previous Windows run did not upload these files.
+
+### Test reports and export errors
+
+A test report contains the results for one coding attempt and its problem.
+An attempt has no report before its first accepted test request.
+The desktop keeps the last accepted report for each saved attempt.
+The desktop validates each new report before it changes the result, completion state, or chat history.
+This validation examines the report structure.
+It does not test the code.
+
+The report must identify the requested attempt and problem.
+Its test counts must agree with its test cases.
+Each test case has a different nonnegative integer index.
+The summary shows success only when the report contains tests and all tests passed.
+An empty test list has zero counts and `all_passed: false`.
+
+The Python contract supplies defaults for omitted `user_stdout`, `user_stderr`, `error`, `wall_time_ms`, and `actual` fields.
+The desktop uses the same defaults.
+The desktop accepts more report fields, and UUID attempt IDs are not necessary.
+Local execution reports keep their source and verification labels.
+
+`parseTestReport(value, attemptId, problemId)` returns the validated report.
+The `value` parameter contains the received report.
+The `attemptId` and `problemId` parameters identify the requested attempt and problem.
+An invalid report causes an error without state changes.
+
+`parseSubmission(value, attemptId, problemId)` validates the submission fields and its test report.
+Its `value` parameter contains the received submission response.
+The ID parameters have the same meanings as in `parseTestReport`.
+It returns the validated submission or throws an error without state changes.
+The submission must contain a boolean completion value and a text message.
+An omitted follow-up question value defaults to null.
+
+A rejected response keeps the previous report, code draft, completion state, and chat history.
+The desktop shows the error and releases the controls for retry.
+The server can have completed its operation before the desktop rejects a response.
+The desktop does not change server records after this error.
+
+The display also validates saved reports from previous versions.
+An invalid saved report shows an error, not test case data or counts.
+The draft stays available, and a new accepted report can replace the invalid report.
+This display check does not remove the invalid saved report or change the saved data format.
+
+Test requests use the code captured when the request starts.
+Edits during a request stay in the editor and use the usual draft save procedure.
+The result shows `Results are for an older draft` when the saved code is different from the tested code.
+A test report with all tests passed does not complete an attempt without submission.
+A subsequent submission with failed tests does not change an attempt's completed state.
+
+Solution, design, and practice backup exports use `writeExport(path, data)`.
+The `path` parameter identifies the selected output file.
+The `data` parameter contains a UTF-8 string or a byte array.
+The function returns `Promise<void>` after file replacement.
+It writes and syncs a temporary file in the selected directory before it replaces the output file.
+
+A write, sync, close, or replacement error keeps the previous output file unchanged.
+File replacement removes the temporary path after success.
+The function removes its temporary file after failure.
+It also shows a cleanup error if it cannot remove that file.
+New export files use owner-only permissions where the operating system can apply these permissions.
+Replacement changes the selected directory entry, not other hard links or a symbolic link's target.
+
+The desktop export methods return the selected path after success or null after cancellation.
+Cancellation does not change a previous output file.
+Exports wait for draft saves in progress and prevent a second export request.
+A solution export uses the captured draft when the editor receives new text while the file dialog is open.
+Subsequent edits stay in the draft and can use a subsequent export.
+
+After the build, run these tests from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/result-stories.spec.ts tests/e2e/solution-export.spec.ts
+```
+
+The result stories use a local protocol fixture, not a code execution service or a live account.
+They include invalid responses, saved reports, duplicate requests, edits during requests, result displays, progress tabs, restart, and retry.
+The export stories control the native file dialog and cause file writes to return errors in temporary directories.
+Unit tests include report validation and export failures during file open, write, sync, close, and replacement.
+The Piston stories run code in a local sandbox.
+
+Export unit tests also include hard links and symbolic links.
+The symbolic-link test does not run on Windows because link creation can need special operating system permissions.

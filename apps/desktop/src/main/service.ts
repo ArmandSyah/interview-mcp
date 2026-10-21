@@ -4,6 +4,7 @@ import { LocalStore } from './storage';
 import { McpConnection } from './mcp';
 import { ManagedSandbox } from './sandbox';
 import { MANAGED_PISTON_URL, type SandboxStatus } from '../shared/sandbox';
+import { parseSubmission, parseTestReport } from '../shared/test-report';
 import type {
   PracticeKind,
   PracticeQueueItem,
@@ -31,8 +32,6 @@ import type {
   Settings,
   SettingsUpdate,
   Snapshot,
-  Submission,
-  TestRun,
 } from '../shared/types';
 
 export interface Vault {
@@ -976,16 +975,21 @@ export class WorkbenchService {
             : Promise.reject(new Error('The app-managed sandbox is unavailable')))
         : await invoke();
     if (session && (name === 'run_tests' || name === 'submit_solution')) {
-      session.result =
-        name === 'submit_solution' ? (value as Submission).test_run : (value as TestRun);
+      const submission =
+        name === 'submit_solution'
+          ? parseSubmission(value, session.attemptId, session.problem.id)
+          : null;
+      session.result = submission
+        ? submission.test_run
+        : parseTestReport(value, session.attemptId, session.problem.id);
       session.resultStale = session.code !== code;
-      if (name === 'submit_solution') {
-        session.submitted ||= (value as Submission).completed;
-        if ((value as Submission).followup_questions)
+      if (submission) {
+        session.submitted ||= submission.completed;
+        if (submission.followup_questions)
           this.record(session, {
             id: randomUUID(),
             role: 'assistant',
-            text: (value as Submission).followup_questions!,
+            text: submission.followup_questions,
             timestamp: Date.now(),
           });
       }
