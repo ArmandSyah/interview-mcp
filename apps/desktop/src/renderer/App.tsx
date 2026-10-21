@@ -33,6 +33,7 @@ import { SettingsDialog } from './Settings';
 import { DesignWorkbench } from './DesignWorkbench';
 import { PracticeQueueDialog } from './PracticeQueue';
 import { DraftWriter } from './draft-writer';
+import { ActionProvider, useActions } from './actions';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 
 function cleanError(error: unknown): string {
@@ -49,6 +50,15 @@ function updateChat(items: ChatItem[], item: ChatItem): ChatItem[] {
 }
 
 export function App() {
+  return (
+    <ActionProvider>
+      <Workbench />
+    </ActionProvider>
+  );
+}
+
+function Workbench() {
+  const actions = useActions();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [query, setQuery] = useState('');
   const [difficulty, setDifficulty] = useState('all');
@@ -170,12 +180,16 @@ export function App() {
   }, [chat.at(-1)?.text, chat.length]);
 
   async function action(operation: () => Promise<unknown>) {
-    setError('');
+    if (snapshotRef.current?.busy) return false;
     try {
-      await flush();
-      await operation();
+      return await actions.run(async () => {
+        setError('');
+        await flush();
+        await operation();
+      });
     } catch (error) {
       setError(cleanError(error));
+      return false;
     }
   }
   const run = () =>
@@ -209,8 +223,15 @@ export function App() {
     event?.preventDefault();
     const text = suggestion ?? message;
     if (!text.trim() || snapshot?.busy) return;
-    setMessage('');
-    await action(() => window.interview.chat(text));
+    await action(async () => {
+      setMessage((current) => (current === text ? '' : current));
+      try {
+        await window.interview.chat(text);
+      } catch (error) {
+        if (suggestion === undefined) setMessage((current) => current || text);
+        throw error;
+      }
+    });
   }
   function resize(event: React.PointerEvent, target: 'chat' | 'bottom') {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -239,6 +260,7 @@ export function App() {
       </div>
     );
   const connected = snapshot.connection === 'connected';
+  const busy = actions.busy || snapshot.busy;
   const filtered = snapshot.problems.filter(
     (problem) =>
       (difficulty === 'all' || problem.difficulty === difficulty) &&
@@ -261,10 +283,11 @@ export function App() {
     return (
       <>
         <DesignWorkbench
-          snapshot={snapshot}
+          snapshot={{ ...snapshot, error: error || snapshot.error }}
           registerFlush={registerDesignFlush}
           switchMode={() => void action(() => window.interview.setMode('coding'))}
           openQueue={() => void action(async () => setQueueOpen(true))}
+          clearError={() => setError('')}
         />
         {queueDialog}
       </>
@@ -287,14 +310,14 @@ export function App() {
           <span>Your practice workspace</span>
           <button
             className="secondary small"
-            disabled={snapshot.busy}
+            disabled={busy}
             onClick={() => void action(async () => setQueueOpen(true))}
           >
             Practice queue
           </button>
           <button
             className="secondary small"
-            disabled={snapshot.busy}
+            disabled={busy}
             onClick={() => void action(() => window.interview.setMode('design'))}
           >
             System design
@@ -304,7 +327,7 @@ export function App() {
           className="icon-button"
           aria-label="Open settings"
           onClick={() => setSettingsOpen(true)}
-          disabled={snapshot.busy}
+          disabled={busy}
         >
           <Settings2 size={18} />
         </button>
@@ -329,11 +352,7 @@ export function App() {
             <Trophy size={22} />
           </button>
           <div className="activity-spacer" />
-          <button
-            aria-label="Settings"
-            onClick={() => setSettingsOpen(true)}
-            disabled={snapshot.busy}
-          >
+          <button aria-label="Settings" onClick={() => setSettingsOpen(true)} disabled={busy}>
             <Settings2 size={22} />
           </button>
         </nav>
@@ -374,7 +393,7 @@ export function App() {
                     <button
                       key={problem.id}
                       className={`problem-card ${active?.problem.id === problem.id ? 'active' : ''}`}
-                      disabled={snapshot.busy}
+                      disabled={busy}
                       onClick={() =>
                         void action(async () => {
                           setTab('solution');
@@ -415,7 +434,7 @@ export function App() {
                 <div key={session.problem.id}>
                   <button
                     className={`folder-row ${session.problem.id === active?.problem.id ? 'active' : ''}`}
-                    disabled={snapshot.busy}
+                    disabled={busy}
                     onClick={() =>
                       void action(() => window.interview.activateProblem(session.problem.id))
                     }
@@ -492,6 +511,7 @@ export function App() {
                 className="export-button"
                 title="Export solution"
                 aria-label="Export solution"
+                disabled={busy}
                 onClick={() => void action(() => window.interview.exportSolution())}
               >
                 <ArrowDownToLine size={15} />
@@ -512,15 +532,11 @@ export function App() {
                   <button
                     className="secondary small"
                     onClick={() => void action(() => window.interview.hint())}
-                    disabled={snapshot.busy || !connected}
+                    disabled={busy || !connected}
                   >
                     <Lightbulb size={13} /> Hint
                   </button>
-                  <button
-                    className="secondary small"
-                    onClick={run}
-                    disabled={snapshot.busy || !connected}
-                  >
+                  <button className="secondary small" onClick={run} disabled={busy || !connected}>
                     <Play size={13} /> Run tests
                   </button>
                   <button
@@ -531,7 +547,7 @@ export function App() {
                         await window.interview.runTests(true);
                       })
                     }
-                    disabled={snapshot.busy || !connected}
+                    disabled={busy || !connected}
                   >
                     <Check size={13} /> Submit
                   </button>
@@ -658,7 +674,7 @@ export function App() {
             <button
               className="icon-button"
               aria-label="Clear conversation"
-              disabled={snapshot.busy}
+              disabled={busy}
               onClick={() => void action(() => window.interview.clearChat())}
             >
               <Trash2 size={14} />
@@ -708,7 +724,7 @@ export function App() {
                       className="suggestion"
                       key={suggestion}
                       onClick={() => void send(undefined, suggestion)}
-                      disabled={snapshot.busy}
+                      disabled={busy}
                     >
                       {suggestion}
                       <ArrowRight size={13} />
@@ -771,7 +787,10 @@ export function App() {
                     className="send-button"
                     aria-label="Send message"
                     disabled={
-                      !message.trim() || snapshot.settings.provider === 'disabled' || !connected
+                      busy ||
+                      !message.trim() ||
+                      snapshot.settings.provider === 'disabled' ||
+                      !connected
                     }
                   >
                     <Send size={14} />
@@ -788,7 +807,7 @@ export function App() {
           <button
             className="secondary small"
             onClick={() => void action(() => window.interview.reconnect())}
-            disabled={snapshot.busy}
+            disabled={busy}
           >
             Reconnect
           </button>

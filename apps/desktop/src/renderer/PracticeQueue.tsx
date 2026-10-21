@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { DraftWriter } from './draft-writer';
+import { useActions } from './actions';
 import type { Snapshot } from '../shared/types';
 import type {
   PracticeQueueItem,
@@ -28,6 +29,7 @@ const clean = (error: unknown) =>
   );
 
 export function PracticeQueueDialog({ snapshot, beforeAction, registerFlush, onClose }: Props) {
+  const actions = useActions();
   const [state, setState] = useState<PracticeQueueState | null>(null);
   const [filter, setFilter] = useState<'due' | 'upcoming' | 'paused'>('due');
   const [kind, setKind] = useState<'all' | 'coding' | 'design'>('all');
@@ -36,7 +38,8 @@ export function PracticeQueueDialog({ snapshot, beforeAction, registerFlush, onC
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<ReflectionDraft | null>(null);
   const [history, setHistory] = useState<PracticeReflection[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const busy = loading || actions.busy;
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
   const [now, setNow] = useState(Date.now);
@@ -68,7 +71,7 @@ export function PracticeQueueDialog({ snapshot, beforeAction, registerFlush, onC
   }, []);
   useEffect(() => {
     let live = true;
-    setBusy(true);
+    setLoading(true);
     void window.interview
       .practiceQueue()
       .then((value) => {
@@ -81,7 +84,7 @@ export function PracticeQueueDialog({ snapshot, beforeAction, registerFlush, onC
         if (live) setError(clean(error));
       })
       .finally(() => {
-        if (live) setBusy(false);
+        if (live) setLoading(false);
       });
     return () => {
       live = false;
@@ -99,16 +102,15 @@ export function PracticeQueueDialog({ snapshot, beforeAction, registerFlush, onC
     }, 400);
   }
   async function action(operation: () => Promise<void>) {
-    if (busy) return;
-    setBusy(true);
-    setError('');
+    if (loading) return;
     try {
-      await beforeAction();
-      await operation();
+      await actions.run(async () => {
+        setError('');
+        await beforeAction();
+        await operation();
+      });
     } catch (error) {
       setError(clean(error));
-    } finally {
-      setBusy(false);
     }
   }
   async function reload() {

@@ -4,6 +4,7 @@ import type { Settings as SettingsType, SettingsUpdate } from '../shared/types';
 import { DistributionSettings } from './DistributionSettings';
 import { SandboxSettings } from './SandboxSettings';
 import { MANAGED_PISTON_URL } from '../shared/sandbox';
+import { useActions } from './actions';
 
 export function SettingsDialog({
   settings,
@@ -16,6 +17,7 @@ export function SettingsDialog({
   onSave: (settings: SettingsUpdate) => Promise<void>;
   beforeAction: () => Promise<void>;
 }) {
+  const actions = useActions();
   const [values, setValues] = useState<SettingsUpdate>({
     provider: settings.provider,
     model: settings.model,
@@ -28,26 +30,31 @@ export function SettingsDialog({
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const busy = saving || actions.busy;
   const field = (key: keyof SettingsUpdate, value: unknown) =>
     setValues((current) => ({ ...current, [key]: value }));
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
     try {
-      await onSave(values);
-      onClose();
+      await actions.run(async () => {
+        setSaving(true);
+        setError('');
+        try {
+          await onSave(values);
+          onClose();
+        } finally {
+          setSaving(false);
+        }
+      });
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Could not save settings');
-    } finally {
-      setSaving(false);
     }
   }
   return (
     <div
       className="modal-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !saving) onClose();
+        if (event.target === event.currentTarget && !busy) onClose();
       }}
     >
       <section
@@ -65,13 +72,13 @@ export function SettingsDialog({
             className="icon-button"
             aria-label="Close settings"
             onClick={onClose}
-            disabled={saving}
+            disabled={busy}
           >
             <X size={19} />
           </button>
         </header>
         <form onSubmit={submit}>
-          <fieldset>
+          <fieldset disabled={busy}>
             <legend>AI coach</legend>
             <label>
               Provider
@@ -125,6 +132,7 @@ export function SettingsDialog({
                   <input
                     type="password"
                     autoComplete="off"
+                    value={values.apiKey ?? ''}
                     placeholder={
                       settings.hasApiKey
                         ? 'Key saved — leave blank to keep it'
@@ -136,6 +144,7 @@ export function SettingsDialog({
                 <label className="checkbox">
                   <input
                     type="checkbox"
+                    checked={values.clearApiKey ?? false}
                     onChange={(event) => field('clearApiKey', event.target.checked)}
                   />
                   Remove saved API key
@@ -154,7 +163,7 @@ export function SettingsDialog({
               </p>
             )}
           </fieldset>
-          <fieldset>
+          <fieldset disabled={busy}>
             <legend>Interview MCP</legend>
             <label>
               Connection
@@ -180,8 +189,20 @@ export function SettingsDialog({
                       type="button"
                       className="secondary"
                       onClick={async () => {
-                        const path = await window.interview.chooseCorpus();
-                        if (path) field('corpusPath', path);
+                        try {
+                          await actions.run(async () => {
+                            setError('');
+                            await beforeAction();
+                            const path = await window.interview.chooseCorpus();
+                            if (path) field('corpusPath', path);
+                          });
+                        } catch (error) {
+                          setError(
+                            error instanceof Error
+                              ? error.message
+                              : 'Cannot open the directory picker',
+                          );
+                        }
                       }}
                     >
                       <FolderOpen size={16} /> Browse
@@ -209,6 +230,7 @@ export function SettingsDialog({
                   <input
                     type="password"
                     autoComplete="off"
+                    value={values.mcpKey ?? ''}
                     placeholder={
                       settings.hasMcpKey
                         ? 'Credential saved — leave blank to keep it'
@@ -220,6 +242,7 @@ export function SettingsDialog({
                 <label className="checkbox">
                   <input
                     type="checkbox"
+                    checked={values.clearMcpKey ?? false}
                     onChange={(event) => field('clearMcpKey', event.target.checked)}
                   />
                   Remove saved MCP key
@@ -276,7 +299,7 @@ export function SettingsDialog({
                 ? 'Practice records stay on your computer.'
                 : 'Draft files stay local. Remote practice records go to the selected service.'}
             </span>
-            <button className="primary" disabled={saving}>
+            <button className="primary" disabled={busy}>
               {saving ? 'Connecting…' : 'Save & connect'}
             </button>
           </footer>

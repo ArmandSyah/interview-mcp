@@ -125,14 +125,39 @@
         "native_source_ui": "11 passed, 1 opt-in Piston execution test skipped. This run includes all five new save stories.",
         "build_types_format": "Passed.",
         "documentation": "Local links, anchors, sentence lengths, paragraph lengths, and punctuation passed.",
-        "packages_and_ci": "New package and CI verification are still required. The last_verified records below describe the prior delivery."
+        "packages_and_ci": "Desktop workflow 39633649614 passed Windows and Linux package tests for 359f5a2. Linux also passed real Piston integration. Supabase workflow 39633649592 passed."
+      }
+    },
+    "action_and_settings_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/action-races.spec.ts",
+        "apps/desktop/tests/e2e/settings-stories.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/service.test.ts",
+      "verified_behaviors": [
+        "Repeated coding hints, new design attempts, and settings submits produce one request before the service busy event.",
+        "Settings, sandbox checks, directory pickers, and license notices use one UI action lock.",
+        "A failed chat request keeps the unsent message without replacing a newer message in either workspace.",
+        "Credential fields and removal checkboxes agree with the form values after provider or connection changes.",
+        "Directory picker cancellation preserves the path. Picker failure shows an error and releases the action lock.",
+        "Invalid remote and local service URLs do not change the stored connection.",
+        "A failed design mode change shows an error. A later action clears that error.",
+        "Settings changes, coding activation, mode changes, chat clearing, code tests, and hints retain the service lock through their state writes.",
+        "Both successful and failed state writes release the service lock. Subsequent reconnection remains available."
+      ],
+      "verification": {
+        "desktop_unit_and_process": "93 passed, 2 opt-in tests skipped.",
+        "native_regression_stories": "14 passed across action-races.spec.ts and settings-stories.spec.ts.",
+        "native_source_ui": "25 passed, 1 opt-in Piston execution test skipped in the final source run.",
+        "build_types_format": "Passed.",
+        "packages_and_ci": "Verification of this new batch is still required. The earlier package result applies to 359f5a2."
       }
     },
     "remaining_checks": [
-      "Repeated actions before a busy snapshot and settings changes during service operations",
+      "Additional repeated actions, workspace changes during edits, and window close during active operations",
       "Catalog filters, file navigation, editor shortcuts, and result states",
-      "Settings validation, provider changes, credential controls, and file picker cancellation",
-      "Chat input recovery, repeated sends, cancellation, and submission approval",
+      "Settings save failures, account changes, background input while a modal is open, and late initial responses",
+      "Chat keyboard behavior, repeated sends, cancellation, and submission approval",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history or export operations",
       "Recall filters, schedule conflicts, repeated requests, and unavailable saved attempts",
       "Update, archive, content pack, and license dialogs",

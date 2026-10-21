@@ -18,6 +18,7 @@ import { Settings2, Sparkles, Send, Square, X } from 'lucide-react';
 import { Markdown } from './Markdown';
 import { SettingsDialog } from './Settings';
 import { DraftWriter } from './draft-writer';
+import { useActions } from './actions';
 import { ChatMessage } from './App';
 import {
   MAX_DIAGRAM_LABEL_CHARACTERS,
@@ -43,6 +44,7 @@ type Props = {
   registerFlush: (flush: () => Promise<void>) => () => void;
   switchMode: () => void;
   openQueue: () => void;
+  clearError: () => void;
 };
 function errorText(error: unknown): string {
   return (error instanceof Error ? error.message : 'Operation failed').replace(
@@ -70,7 +72,15 @@ function sceneData(
   };
 }
 
-export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue }: Props) {
+export function DesignWorkbench({
+  snapshot,
+  registerFlush,
+  switchMode,
+  openQueue,
+  clearError,
+}: Props) {
+  const actions = useActions();
+  const busy = actions.busy || snapshot.busy;
   const session = snapshot.designSessions.find(
     (item) => item.id === snapshot.activeDesignSessionId,
   );
@@ -162,10 +172,14 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
   }, [session?.chat.at(-1)?.text]);
 
   async function action(operation: () => Promise<unknown>) {
-    setError('');
+    if (snapshot.busy) return;
     try {
-      await flush();
-      await operation();
+      await actions.run(async () => {
+        setError('');
+        clearError();
+        await flush();
+        await operation();
+      });
     } catch (error) {
       setError(errorText(error));
     }
@@ -233,10 +247,10 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
           <span className="local-badge">LOCAL FIRST</span>
         </div>
         <div className="mode-switch">
-          <button className="secondary small" disabled={snapshot.busy} onClick={openQueue}>
+          <button className="secondary small" disabled={busy} onClick={openQueue}>
             Practice queue
           </button>
-          <button className="secondary small" disabled={snapshot.busy} onClick={switchMode}>
+          <button className="secondary small" disabled={busy} onClick={switchMode}>
             Coding
           </button>
           <button className="primary small" aria-pressed="true">
@@ -246,7 +260,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
         <button
           className="icon-button"
           aria-label="Open settings"
-          disabled={snapshot.busy}
+          disabled={busy}
           onClick={() => setSettingsOpen(true)}
         >
           <Settings2 size={18} />
@@ -262,7 +276,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
               <button
                 key={problem.id}
                 className={`problem-card ${session?.problem_id === problem.id ? 'active' : ''}`}
-                disabled={snapshot.busy}
+                disabled={busy}
                 onClick={() => void action(() => window.interview.startDesign(problem.id))}
               >
                 <span className="problem-title">{problem.title}</span>
@@ -306,7 +320,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
               </p>
               <button
                 className="secondary small"
-                disabled={snapshot.busy}
+                disabled={busy}
                 onClick={() =>
                   void action(() => window.interview.startDesign(session.problem_id, true))
                 }
@@ -322,7 +336,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
                 <button
                   className="secondary small"
                   key={item.id}
-                  disabled={snapshot.busy}
+                  disabled={busy}
                   onClick={() => void action(() => window.interview.activateDesign(item.id))}
                 >
                   {item.brief.title} · {item.status === 'completed' ? 'finished' : 'draft'} ·{' '}
@@ -340,7 +354,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
                 <select
                   aria-label="Practice mode"
                   value={draft.practiceMode}
-                  disabled={snapshot.busy || locked}
+                  disabled={busy || locked}
                   onChange={(event) =>
                     change({
                       ...draft,
@@ -361,14 +375,14 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
                 </button>
                 <button
                   className="secondary small"
-                  disabled={snapshot.busy || locked}
+                  disabled={busy || locked}
                   onClick={() => void action(() => window.interview.checkpointDesign())}
                 >
                   Checkpoint
                 </button>
                 <button
                   className="secondary small"
-                  disabled={snapshot.busy}
+                  disabled={busy}
                   onClick={() =>
                     void action(async () => setHistory(await window.interview.designCheckpoints()))
                   }
@@ -378,6 +392,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
                 <select
                   aria-label="Export design"
                   value=""
+                  disabled={busy}
                   onChange={(event) => {
                     const format = event.target.value as 'excalidraw' | 'workspace' | 'png';
                     if (format) void action(() => exportDesign(format));
@@ -518,14 +533,14 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
               )}
               <button
                 className="primary small"
-                disabled={!ready || snapshot.busy || locked}
+                disabled={!ready || busy || locked}
                 onClick={() => void action(() => window.interview.reviewDesign())}
               >
                 Review checkpoint
               </button>
               <button
                 className="secondary small"
-                disabled={!session?.review || stale || snapshot.busy || locked}
+                disabled={!session?.review || stale || busy || locked}
                 onClick={() =>
                   void action(async () => {
                     setRunning(false);
@@ -573,7 +588,12 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
                       void action(async () => {
                         const text = message;
                         setMessage('');
-                        await window.interview.chat(text);
+                        try {
+                          await window.interview.chat(text);
+                        } catch (error) {
+                          setMessage((current) => current || text);
+                          throw error;
+                        }
                       });
                   }}
                 >
@@ -601,6 +621,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
                         className="send-button"
                         aria-label="Send design message"
                         disabled={
+                          busy ||
                           !message.trim() ||
                           !ready ||
                           locked ||
@@ -618,7 +639,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
           <div className="design-panel-actions">
             <button
               className="secondary small"
-              disabled={!ready || snapshot.busy || locked || draft?.practiceMode === 'mock'}
+              disabled={!ready || busy || locked || draft?.practiceMode === 'mock'}
               onClick={() =>
                 void action(async () => {
                   setTab('coach');
@@ -630,7 +651,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
             </button>
             <button
               className="primary small"
-              disabled={!ready || snapshot.busy || locked}
+              disabled={!ready || busy || locked}
               onClick={() =>
                 void action(async () => {
                   await window.interview.reviewDesign();
@@ -648,7 +669,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
           <span>{error || snapshot.error}</span>
           <button
             className="secondary small"
-            disabled={snapshot.busy}
+            disabled={busy}
             onClick={() => void action(() => window.interview.reconnect())}
           >
             Reconnect
@@ -690,6 +711,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
               <button
                 className="icon-button"
                 aria-label="Close history"
+                disabled={busy}
                 onClick={() => setHistory(null)}
               >
                 <X size={18} />
@@ -703,7 +725,7 @@ export function DesignWorkbench({ snapshot, registerFlush, switchMode, openQueue
                 </span>
                 <button
                   className="secondary small"
-                  disabled={snapshot.busy || locked}
+                  disabled={busy || locked}
                   onClick={() =>
                     void action(async () => {
                       const value = await window.interview.restoreDesignCheckpoint(item.id);

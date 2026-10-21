@@ -77,6 +77,65 @@ async function fixture(model?: Model, vault = memoryVault, sandbox?: ManagedSand
   return { service, store, mcp, events };
 }
 
+function deferred() {
+  let resolve!: () => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<void>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
+it.each(
+  (['settings', 'activate', 'mode', 'clear', 'tests', 'hint'] as const).flatMap((operation) =>
+    [false, true].map((failure) => ({ operation, failure })),
+  ),
+)(
+  '$operation keeps the service busy until its state write settles (failure: $failure)',
+  async ({ operation, failure }) => {
+    const { service, store } = await fixture();
+    await service.startProblem(problem.id);
+    const disk = deferred();
+    const persist = vi.spyOn(store, 'persist').mockReturnValueOnce(disk.promise);
+    const running =
+      operation === 'settings'
+        ? service.updateSettings({ ...defaultSettings, provider: 'ollama' })
+        : operation === 'activate'
+          ? service.activateProblem(problem.id)
+          : operation === 'mode'
+            ? service.setMode('design')
+            : operation === 'clear'
+              ? service.clearChat()
+              : operation === 'tests'
+                ? service.runTests(false)
+                : service.hint();
+    const settled = running.then(
+      () => null,
+      (error: Error) => error.message,
+    );
+    try {
+      await vi.waitFor(() => expect(persist).toHaveBeenCalled());
+      expect(service.snapshot().busy, `${operation} must retain the lock during persist()`).toBe(
+        true,
+      );
+      await expect(
+        service.reconnect(),
+        'A connection change must not overlap the state write',
+      ).rejects.toThrow('operation is still running');
+    } finally {
+      if (failure) disk.reject(new Error('Fixture state write failure'));
+      else disk.resolve();
+      expect(await settled, `${operation} must report its disk result`).toBe(
+        failure ? 'Fixture state write failure' : null,
+      );
+      expect(service.snapshot().busy).toBe(false);
+      await service.reconnect();
+      await service.close();
+    }
+  },
+);
+
 it('starts with AI off, resumes drafts, and never exposes credentials in snapshots', async () => {
   const { service, store } = await fixture();
   await expect(service.chat('Help')).rejects.toThrow('Enable a local');

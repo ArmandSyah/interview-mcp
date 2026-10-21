@@ -343,3 +343,25 @@ npm run test:desktop -- tests/e2e/save-races.spec.ts
 Playwright keeps a trace for each failed native test.
 The trace includes the actions and assertions for that test.
 The full UI audit is not completed.
+
+### Action and settings regression tests
+
+An action lock prevents concurrent workspace operations.
+Settings and its dialogs use the same lock.
+Draft autosave does not use this lock.
+Settings controls stay disabled during file requests, sandbox checks, and connection changes.
+
+If the app cannot start a chat request, the unsent message stays available.
+It does not replace another message that you enter during the request.
+Credential fields and removal checkboxes keep their values when you change the provider or connection.
+Saved data formats and credential storage do not change.
+
+After the build, enter this command from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/action-races.spec.ts tests/e2e/settings-stories.spec.ts
+```
+
+These tests include repeated actions before a service response and form values after a selection change.
+They also include incorrect settings, directory picker cancellation, failed requests, and chat text recovery.
+The service tests examine the busy state before each disk write completes and after a write failure.

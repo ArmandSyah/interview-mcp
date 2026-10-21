@@ -177,9 +177,11 @@ export class WorkbenchService {
   }
 
   async reconnect(): Promise<void> {
-    this.idle();
+    await this.practiceAction(() => this.connect());
+  }
+
+  private async connect(): Promise<void> {
     this.practiceOwned.clear();
-    this.busy = true;
     this.connection = 'connecting';
     this.error = null;
     this.publish();
@@ -204,8 +206,6 @@ export class WorkbenchService {
       this.designProblems = [];
       this.error = this.sanitize(error);
     }
-    this.busy = false;
-    this.publish();
   }
 
   async updateSettings(input: SettingsUpdate): Promise<void> {
@@ -237,21 +237,23 @@ export class WorkbenchService {
       )
         throw new Error('Use HTTPS for a remote MCP connection');
     }
-    if (this.store.state.settings.managedSandbox && !settings.managedSandbox)
-      await this.sandbox?.stop();
-    this.store.state.settings = settings;
-    if (clearApiKey) this.apiKey = '';
-    else if (apiKey) this.apiKey = apiKey;
-    if (clearMcpKey) this.mcpKey = '';
-    else if (mcpKey) this.mcpKey = mcpKey;
-    this.store.state.credentials = this.vault.available()
-      ? {
-          ...(this.apiKey ? { apiKey: this.vault.encrypt(this.apiKey) } : {}),
-          ...(this.mcpKey ? { mcpKey: this.vault.encrypt(this.mcpKey) } : {}),
-        }
-      : {};
-    await this.store.persist();
-    await this.reconnect();
+    await this.practiceAction(async () => {
+      if (this.store.state.settings.managedSandbox && !settings.managedSandbox)
+        await this.sandbox?.stop();
+      this.store.state.settings = settings;
+      if (clearApiKey) this.apiKey = '';
+      else if (apiKey) this.apiKey = apiKey;
+      if (clearMcpKey) this.mcpKey = '';
+      else if (mcpKey) this.mcpKey = mcpKey;
+      this.store.state.credentials = this.vault.available()
+        ? {
+            ...(this.apiKey ? { apiKey: this.vault.encrypt(this.apiKey) } : {}),
+            ...(this.mcpKey ? { mcpKey: this.vault.encrypt(this.mcpKey) } : {}),
+          }
+        : {};
+      await this.store.persist();
+      await this.connect();
+    });
   }
 
   sandboxInfo(): SandboxStatus {
@@ -483,13 +485,13 @@ export class WorkbenchService {
   }
 
   async activateProblem(id: string): Promise<void> {
-    this.idle();
-    const workspace = this.store.workspace(this.scope);
-    if (!workspace.sessions.some((session) => session.problem.id === id))
-      throw new Error('No saved attempt for this problem');
-    workspace.activeProblemId = id;
-    await this.store.persist();
-    this.publish();
+    await this.practiceAction(async () => {
+      const workspace = this.store.workspace(this.scope);
+      if (!workspace.sessions.some((session) => session.problem.id === id))
+        throw new Error('No saved attempt for this problem');
+      workspace.activeProblemId = id;
+      await this.store.persist();
+    });
   }
 
   async saveCode(id: string, code: string): Promise<void> {
@@ -508,10 +510,10 @@ export class WorkbenchService {
   }
 
   async setMode(mode: 'coding' | 'design'): Promise<void> {
-    this.idle();
-    this.store.workspace(this.scope).mode = mode;
-    await this.store.persist();
-    this.publish();
+    await this.practiceAction(async () => {
+      this.store.workspace(this.scope).mode = mode;
+      await this.store.persist();
+    });
   }
 
   async installContentPack(packageJson: string, licenseJson: string): Promise<void> {
@@ -548,9 +550,12 @@ export class WorkbenchService {
       this.error = this.sanitize(error);
       throw new Error(this.error);
     } finally {
-      this.busy = false;
-      await this.store.persist();
-      this.publish();
+      try {
+        await this.store.persist();
+      } finally {
+        this.busy = false;
+        this.publish();
+      }
     }
   }
 
@@ -587,11 +592,11 @@ export class WorkbenchService {
   }
 
   async activateDesign(sessionId: string): Promise<void> {
-    this.idle();
-    this.designSession(sessionId);
-    this.store.workspace(this.scope).activeDesignSessionId = sessionId;
-    await this.store.persist();
-    this.publish();
+    await this.practiceAction(async () => {
+      this.designSession(sessionId);
+      this.store.workspace(this.scope).activeDesignSessionId = sessionId;
+      await this.store.persist();
+    });
   }
 
   async loadDesignDraft(sessionId: string): Promise<DesignDraft> {
@@ -819,9 +824,12 @@ export class WorkbenchService {
       this.error = this.sanitize(error);
       throw new Error(this.error);
     } finally {
-      this.busy = false;
-      await this.store.persist();
-      this.publish();
+      try {
+        await this.store.persist();
+      } finally {
+        this.busy = false;
+        this.publish();
+      }
     }
   }
 
@@ -846,9 +854,12 @@ export class WorkbenchService {
       this.error = this.sanitize(error);
       throw new Error(this.error);
     } finally {
-      this.busy = false;
-      await this.store.persist();
-      this.publish();
+      try {
+        await this.store.persist();
+      } finally {
+        this.busy = false;
+        this.publish();
+      }
     }
   }
 
@@ -1028,10 +1039,13 @@ export class WorkbenchService {
       if (!this.agent.signal.aborted) this.error = message;
     } finally {
       this.agent = null;
-      this.busy = false;
-      await this.store.persist();
-      this.publish();
-      this.emit({ type: 'agent-done', ...(this.error ? { error: this.error } : {}) });
+      try {
+        await this.store.persist();
+      } finally {
+        this.busy = false;
+        this.publish();
+        this.emit({ type: 'agent-done', ...(this.error ? { error: this.error } : {}) });
+      }
     }
   }
 
@@ -1039,18 +1053,16 @@ export class WorkbenchService {
     this.agent?.abort();
   }
   async clearChat(): Promise<void> {
-    this.idle();
-    if (this.store.workspace(this.scope).mode === 'design') {
-      this.designSession().chat = [];
+    await this.practiceAction(async () => {
+      if (this.store.workspace(this.scope).mode === 'design') {
+        this.designSession().chat = [];
+      } else {
+        const session = this.active();
+        if (session) session.chat = [];
+        else this.store.workspace(this.scope).chat = [];
+      }
       await this.store.persist();
-      this.publish();
-      return;
-    }
-    const session = this.active();
-    if (session) session.chat = [];
-    else this.store.workspace(this.scope).chat = [];
-    await this.store.persist();
-    this.publish();
+    });
   }
   async close(): Promise<void> {
     this.cancelChat();

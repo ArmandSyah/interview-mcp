@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../shared/types';
 import type { ReleaseChannel, UpdateStatus } from '../shared/updates';
+import { useActions } from './actions';
 
 export function DistributionSettings({ beforeAction }: { beforeAction: () => Promise<void> }) {
+  const actions = useActions();
   const [info, setInfo] = useState<{
     contentSigningConfigured: boolean;
     checkoutConfigured: boolean;
@@ -10,7 +12,8 @@ export function DistributionSettings({ beforeAction }: { beforeAction: () => Pro
   const [packs, setPacks] = useState<Snapshot['installedPacks']>([]);
   const [updates, setUpdates] = useState<UpdateStatus | null>(null);
   const [channel, setChannel] = useState<ReleaseChannel>('stable');
-  const [busy, setBusy] = useState(false);
+  const busy = actions.busy;
+  const [working, setWorking] = useState(false);
   const [message, setMessage] = useState('');
   const [notices, setNotices] = useState('');
   useEffect(() => {
@@ -36,15 +39,19 @@ export function DistributionSettings({ beforeAction }: { beforeAction: () => Pro
     };
   }, []);
   async function action(operation: () => Promise<unknown>) {
-    setBusy(true);
-    setMessage('');
     try {
-      await beforeAction();
-      await operation();
+      await actions.run(async () => {
+        setWorking(true);
+        setMessage('');
+        try {
+          await beforeAction();
+          await operation();
+        } finally {
+          setWorking(false);
+        }
+      });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Operation failed');
-    } finally {
-      setBusy(false);
     }
   }
   return (
@@ -183,7 +190,7 @@ export function DistributionSettings({ beforeAction }: { beforeAction: () => Pro
         </button>
         {notices && <pre className="license-notices">{notices}</pre>}
       </fieldset>
-      {busy && (
+      {working && (
         <p className="form-note" role="status">
           Working… downloads may take a few minutes.
         </p>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { SandboxStatus } from '../shared/sandbox';
+import { useActions } from './actions';
 
 export function SandboxSettings({
   enabled,
@@ -10,8 +11,9 @@ export function SandboxSettings({
   onEnabled: () => void;
   beforeAction: () => Promise<void>;
 }) {
+  const actions = useActions();
   const [status, setStatus] = useState<SandboxStatus | null>(null);
-  const [busy, setBusy] = useState(false);
+  const busy = actions.busy;
   const [error, setError] = useState('');
   useEffect(() => {
     let live = true;
@@ -32,16 +34,15 @@ export function SandboxSettings({
     };
   }, []);
   async function action(operation: () => Promise<SandboxStatus | null>) {
-    setBusy(true);
-    setError('');
     try {
-      await beforeAction();
-      const result = await operation();
-      if (result) setStatus(result);
+      await actions.run(async () => {
+        setError('');
+        await beforeAction();
+        const result = await operation();
+        if (result) setStatus(result);
+      });
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Sandbox action failed');
-    } finally {
-      setBusy(false);
     }
   }
   return (
