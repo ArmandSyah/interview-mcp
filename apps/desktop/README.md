@@ -1103,3 +1103,67 @@ npm run test:desktop -- tests/e2e/design-load-recovery.spec.ts tests/e2e/design-
 These tests use the local MCP engine and temporary data directories.
 They include read errors, retries, history, and responses after a session change.
 They compare saved files and notes before and after recovery.
+
+### Reflection IDs and save retries
+
+A reflection records a recall answer, reflection notes, a next step, and a self-rating.
+Each saved reflection has one ID and cannot change.
+A draft can have an ID without a saved reflection.
+An edit to the answer, notes, next step, or self-rating makes a new ID for the draft.
+An unchanged retry or a schedule-only change keeps that ID.
+A new ID does not add a history record.
+
+A save can complete before the desktop gets its response.
+If you edit that draft, a new ID keeps the saved reflection unchanged.
+A schedule conflict prevents the save.
+Use **Refresh queue** to get the new schedule.
+Then select **Use refreshed schedule**.
+Save the reflection again.
+
+An unchanged retry keeps one history record.
+An edited draft can add a new history record.
+Saved file formats and previous history records do not change.
+This correction does not rewrite drafts from previous app versions.
+These drafts can use an ID from a saved reflection.
+The app makes a new ID when you edit that draft's content.
+
+`editReflectionDraft(previous, next)` prepares the values for a local draft save.
+The `previous` parameter supplies the draft before the edit.
+The `next` parameter supplies the new values.
+The function compares `answer`, `takeaway`, `next_action`, and `self_rating`.
+Spaces and line breaks are part of the text.
+
+A content change returns a new draft object with a new `reflection_id`.
+Without a content change, the function returns `next`.
+The function keeps the supplied `expected_version` and does not change its inputs.
+It does not validate its typed inputs or write files.
+It uses `crypto.randomUUID()`.
+If this call throws an error, the function throws the same error.
+
+### Queue filters and recovery tests
+
+A reminder is due when its due time is at or before the desktop clock time.
+Paused reminders do not show in **Due now** or **Upcoming**.
+The desktop uses the date and practice filters together.
+The **Practice type** filter selects Coding, System design, or Coding & design.
+The **Due now** number includes reminders from the two practice types.
+
+The desktop updates date filters at 30-second intervals without a server request.
+Filter changes do not change saved reminders or history.
+
+A queue item can identify an attempt that this desktop workspace does not contain.
+Recall stays available for that item.
+**Open saved practice** stays disabled.
+The desktop does not open a different attempt.
+
+After the build, run these stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/practice-queue-stories.spec.ts tests/e2e/practice-queue-races.spec.ts
+```
+
+These tests use the local MCP engine and temporary data directories.
+They include practice filters, paused reminders, schedule conflicts, request errors, and save response errors.
+The date test includes a reminder at its due time.
+They also include duplicate clicks, attempts without local drafts, and edited recall after an app restart.
+Unit tests examine ID changes for each content field and unchanged IDs after a schedule change.

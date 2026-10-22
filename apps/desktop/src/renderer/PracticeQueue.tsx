@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { DraftWriter } from './draft-writer';
+import { editReflectionDraft } from './reflection-draft';
 import { useActions } from './actions';
 import { Modal } from './Modal';
 import type { Snapshot } from '../shared/types';
@@ -101,9 +102,10 @@ export function PracticeQueueDialog({
   }, []);
   function change(next: ReflectionDraft) {
     if (actions.draftsFrozen()) return;
-    if (!item) return;
-    setDraft(next);
-    drafts.current.set(item.id, next);
+    if (!item || !draft) return;
+    const current = editReflectionDraft(draft, next);
+    setDraft(current);
+    drafts.current.set(item.id, current);
     setSaved('Unsaved draft');
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
