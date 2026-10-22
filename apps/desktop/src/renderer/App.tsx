@@ -424,7 +424,7 @@ function Workbench() {
           snapshot={{ ...snapshot, error: error || snapshot.error }}
           drafts={designDrafts.current}
           saveDraft={saveDesignDraft}
-          flushDrafts={flushDesign}
+          flushWorkspace={flush}
           saved={designSaveState}
           switchMode={() => void action(() => window.interview.setMode('coding'))}
           openQueue={openQueue}

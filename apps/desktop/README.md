@@ -952,3 +952,57 @@ They then change a draft before autosave starts and release the request.
 They examine the previous attempt before a new action can save its draft.
 They include coding and design edits, new attempts, mode changes, save failures, retry, window close, and restart.
 The tests use the local MCP engine and temporary data directories.
+
+### Account changes with pending code
+
+The desktop keeps each account's practice data in its workspace.
+The server identity identifies the account and the service that authenticates it.
+The desktop uses the server identity to select an account workspace.
+Different accounts can use the same problem ID.
+A problem ID does not identify its account.
+
+A pending draft contains edits without write confirmation.
+System design actions save pending coding, design, and recall drafts before they continue.
+This includes account changes in the settings dialog.
+These actions use the same workspace save procedure as Coding.
+The procedure includes drafts from each view.
+
+A pending code write must complete before the account connection changes.
+If the write fails, the desktop keeps the active account and the pending draft.
+The settings dialog stays open with its entered values and the error.
+A retry saves the draft to its account before the connection changes.
+Saved records keep their previous format.
+This change does not restore code from a previous overwrite.
+
+After the build, run the account stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/account-draft-races.spec.ts tests/e2e/account-settings.spec.ts
+```
+
+The new stories use two accounts with the same coding problem ID.
+They hold a mode change and add a code edit before autosave starts.
+They then change accounts in System design settings.
+The checks include displayed code, workspace IDs, different code files, save failure, duplicate submission, retry, and restart.
+These stories use a local protocol fixture, not Supabase accounts or token verification.
+
+### Settings errors after keyboard submission
+
+The settings dialog keeps entered values after a rejected save.
+A save error does not change saved settings.
+The dialog moves keyboard focus to the error message and scrolls that message into view.
+The Tab key then moves focus to **Save & connect**.
+The Enter key retries the save.
+
+When the save completes, the dialog closes.
+The desktop then moves keyboard focus to **Open settings**.
+
+After the build, run the keyboard stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/settings-error-focus.spec.ts
+```
+
+The stories submit settings with Enter from the Model field in a small window.
+They include Coding and System design.
+The checks include the error position, keyboard focus, saved settings, entered values, keyboard retry, and focus after the dialog closes.

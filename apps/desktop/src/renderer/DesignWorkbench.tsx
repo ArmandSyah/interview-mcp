@@ -45,7 +45,7 @@ type Props = {
   snapshot: Snapshot;
   drafts: DraftWriter<DesignDraft>;
   saveDraft: (id: string, draft: DesignDraft) => void;
-  flushDrafts: () => Promise<void>;
+  flushWorkspace: () => Promise<void>;
   saved: string;
   switchMode: () => void;
   openQueue: () => void;
@@ -81,7 +81,7 @@ export function DesignWorkbench({
   snapshot,
   drafts,
   saveDraft,
-  flushDrafts,
+  flushWorkspace,
   saved,
   switchMode,
   openQueue,
@@ -112,13 +112,13 @@ export function DesignWorkbench({
   const chatEnd = useRef<HTMLDivElement>(null);
   const flush = useCallback(async () => {
     try {
-      await flushDrafts();
+      await flushWorkspace();
       if (!drafts.dirty) setDirty(false);
     } catch (error) {
       setError(errorText(error));
       throw error;
     }
-  }, [drafts, flushDrafts]);
+  }, [drafts, flushWorkspace]);
   useEffect(() => {
     if (saved === 'Saved locally') setDirty(false);
   }, [saved]);

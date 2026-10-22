@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FolderOpen, X } from 'lucide-react';
 import type { Settings as SettingsType, SettingsUpdate } from '../shared/types';
 import { DistributionSettings } from './DistributionSettings';
@@ -30,6 +30,10 @@ export function SettingsDialog({
     mcpUrl: settings.mcpUrl,
   });
   const [error, setError] = useState('');
+  const errorElement = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) errorElement.current?.focus();
+  }, [error]);
   const [saving, setSaving] = useState(false);
   const busy = saving || actions.busy;
   const field = (key: keyof SettingsUpdate, value: unknown) =>
@@ -282,7 +286,7 @@ export function SettingsDialog({
         </fieldset>
         <DistributionSettings beforeAction={beforeAction} />
         {error && (
-          <p className="inline-error" role="alert">
+          <p className="inline-error" role="alert" tabIndex={-1} ref={errorElement}>
             {error}
           </p>
         )}

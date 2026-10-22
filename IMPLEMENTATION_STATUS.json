@@ -435,7 +435,7 @@
         "build_types_format": "Build, TypeScript, and Prettier passed.",
         "documentation": "The new README section was reviewed against Issue 9 writing rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "Server attempt creation can precede a local error. A retry can create a new server attempt. Unreferenced draft files can also remain. The desktop does not remove server records or those files. Saved data formats do not change.",
-        "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39711126421 passed for 88f9915. Linux in Desktop workflow 39711126175 passed source and packaged checks in 28 minutes 31 seconds. Windows reached its 25-minute job limit after 83 passes, 2 skips, 1 interruption, and 22 tests that did not run. The annotation and job log confirm the job timeout. No failed assertion was reported. Local release packages predate these changes."
       }
     },
     "navigation_draft_regressions": {
@@ -462,6 +462,49 @@
         "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
         "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "The saved data format and 600-millisecond design autosave interval do not change. Pending drafts stay in memory until their write succeeds. Forced process termination can still lose unsaved edits.",
+        "packages_and_ci": "Supabase workflow 39713147594 passed for e55c246. Linux in Desktop workflow 39713147595 is in progress. Windows reached its 25-minute job limit after 79 passes, 2 skips, and 33 tests that did not run. The annotation and job log confirm the job timeout. No failed assertion was reported. Local release packages predate these changes."
+      }
+    },
+    "account_draft_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/account-draft-races.spec.ts",
+      "corrected_defects": [
+        "System design settings did not save pending code before they changed accounts.",
+        "The native reproduction overwrote Bob's local code with Alice's pending edit. Alice's file kept its previous code, and restart showed the incorrect Bob file."
+      ],
+      "verified_behaviors": [
+        "DesignWorkbench uses the parent workspace flush for its actions, including settings. It saves pending code, design, and recall drafts.",
+        "An account change saves pending code to its account before the connection changes. An identical problem ID in a different account does not receive the edit.",
+        "A failed code save keeps the active account and entered settings values. It does not start a connection for the new account.",
+        "Duplicate settings submissions share one draft write. Retry uses the same pending code and completes the account change after the save.",
+        "Code files, displayed code, and saved work after restart stay with their accounts."
+      ],
+      "verification": {
+        "native_regression_stories": "Two new stories and seven related account and inactive-design stories passed. The first reproduction also contained an editor display assertion before the paused renderer painted. Advancing the renderer clock by 100 milliseconds corrected that test condition. The separate file and restart assertions had reproduced the data overwrite.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "118 passed in 9.1 minutes on the isolated Xvfb display with real local Piston after the account and settings error-focus fixes. No tests were skipped. The previous 116-story run also passed before the error-focus change.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "These tests use two local protocol-fixture accounts. They do not test live Supabase authentication. The saved data format does not change. The fix does not reconstruct previous overwritten code.",
+        "packages_and_ci": "This change raises the Windows job limit from 25 to 35 minutes after the verified cancellation in run 39711126175. Individual test and assertion timeouts stay unchanged. Platform checks for this batch are pending."
+      }
+    },
+    "settings_keyboard_error_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/settings-error-focus.spec.ts",
+      "corrected_defects": [
+        "A settings save error stayed below the visible scroll area after Enter submitted the form from the Model field. Native keyboard tests reproduced this in Coding and System design."
+      ],
+      "verified_behaviors": [
+        "A rejected settings save puts keyboard focus on the error message and scrolls it into view.",
+        "The failure keeps saved settings and entered form values unchanged.",
+        "Tab moves focus from the error to Save & connect. Enter retries the save.",
+        "After a save without an error, the dialog closes and keyboard focus returns to Open settings."
+      ],
+      "verification": {
+        "native_regression_stories": "Two new keyboard stories and 23 related account, lifecycle, and settings stories passed after the fix. Before the fix, both keyboard stories reproduced an error outside the viewport. The corrected screenshots show the error and its focus outline in a 1040-by-633-pixel viewport.",
+        "native_source_ui": "118 passed in 9.1 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. The previous 116-story run passed before the error-focus change.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped after the final source change.",
+        "build_types_format": "Build, TypeScript, and Prettier passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "This change affects error display and keyboard focus. It does not change saved settings or data formats.",
         "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
       }
     },
