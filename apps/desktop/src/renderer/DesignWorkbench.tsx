@@ -98,6 +98,9 @@ export function DesignWorkbench({
   );
   const [draft, setDraft] = useState<DesignDraft | null>(null);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const loadPending = useRef(false);
   const chatStop = useChatStop(snapshot.chatId, (message) => {
     clearError();
     setError(message);
@@ -133,6 +136,8 @@ export function DesignWorkbench({
     setRunning(false);
     setHistory(null);
     setDirty(false);
+    setLoadError('');
+    loadPending.current = !!session;
     if (session)
       void window.interview
         .loadDesignDraft(session.id)
@@ -142,15 +147,22 @@ export function DesignWorkbench({
           latest.current = current;
           setDraft(current);
           setDirty(designEvidenceChanged(value, current));
-          setError('');
         })
         .catch((error) => {
-          if (live) setError(errorText(error));
+          if (live) setLoadError(errorText(error));
+        })
+        .finally(() => {
+          if (live) loadPending.current = false;
         });
     return () => {
       live = false;
     };
-  }, [session?.id, drafts]);
+  }, [session?.id, drafts, loadAttempt]);
+  function retryLoad() {
+    if (!session || loadPending.current || busy) return;
+    loadPending.current = true;
+    setLoadAttempt((attempt) => attempt + 1);
+  }
   const change = useCallback(
     (value: DesignDraft) => {
       if (draftsFrozen()) return;
@@ -463,7 +475,7 @@ export function DesignWorkbench({
                 <Sparkles size={28} />
                 <h1>Make your reasoning visible.</h1>
                 <p>Choose a brief, sketch your architecture, and explain the tradeoffs.</p>
-                {session && !error && <p>Loading saved canvas…</p>}
+                {session && !loadError && !error && <p>Loading saved canvas…</p>}
               </div>
             )}
           </div>
@@ -670,16 +682,23 @@ export function DesignWorkbench({
           </div>
         </aside>
       </div>
-      {(error || snapshot.error) && (
+      {(loadError || error || snapshot.error) && (
         <div className="error-bar" role="alert">
-          <span>{error || snapshot.error}</span>
-          <button
-            className="secondary small"
-            disabled={busy}
-            onClick={() => void action(() => window.interview.reconnect())}
-          >
-            Reconnect
-          </button>
+          <span>{[loadError, error || snapshot.error].filter(Boolean).join(' · ')}</span>
+          {loadError && (
+            <button className="secondary small" disabled={busy} onClick={retryLoad}>
+              Retry canvas load
+            </button>
+          )}
+          {(error || snapshot.error) && (
+            <button
+              className="secondary small"
+              disabled={busy}
+              onClick={() => void action(() => window.interview.reconnect())}
+            >
+              Reconnect
+            </button>
+          )}
         </div>
       )}
       <footer className="statusbar">

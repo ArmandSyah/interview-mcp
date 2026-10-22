@@ -484,7 +484,7 @@
         "native_source_ui": "118 passed in 9.1 minutes on the isolated Xvfb display with real local Piston after the account and settings error-focus fixes. No tests were skipped. The previous 116-story run also passed before the error-focus change.",
         "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "These tests use two local protocol-fixture accounts. They do not test live Supabase authentication. The saved data format does not change. The fix does not reconstruct previous overwritten code.",
-        "packages_and_ci": "This change raises the Windows job limit from 25 to 35 minutes after the verified cancellation in run 39711126175. Individual test and assertion timeouts stay unchanged. Platform checks for this batch are pending."
+        "packages_and_ci": "Desktop workflow 39715837526 passed Windows and Linux checks for 7c98ec5. Supabase workflow 39715837466 also passed. The Windows job limit changed from 25 to 35 minutes. Individual test and assertion timeouts stay unchanged. The previous Windows assertion failures still need investigation."
       }
     },
     "settings_keyboard_error_regressions": {
@@ -505,7 +505,7 @@
         "build_types_format": "Build, TypeScript, and Prettier passed.",
         "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "This change affects error display and keyboard focus. It does not change saved settings or data formats.",
-        "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
+        "packages_and_ci": "Desktop workflow 39715837526 passed Windows and Linux checks for 7c98ec5. Supabase workflow 39715837466 also passed. Local release packages predate these changes."
       }
     },
     "design_account_and_review_regressions": {
@@ -533,6 +533,32 @@
         "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
         "documentation": "The new README sections were reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The review and account-error screenshots were inspected.",
         "scope": "The account tests use a local protocol fixture, not Supabase authentication. Unsent questions stay in memory and disappear on app close. Saved formats and checkpoint hashes do not change. The correction does not rewrite reviews that a previous save invalidated.",
+        "packages_and_ci": "Supabase workflow 39718216094 passed for 24aa0a3. Desktop workflow 39718216048 is in progress. Local release packages predate these changes."
+      }
+    },
+    "design_load_recovery_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/design-load-recovery.spec.ts",
+        "apps/desktop/tests/e2e/design-load-races.spec.ts"
+      ],
+      "corrected_defects": [
+        "After a design draft read error, Reconnect did not read the same session again. The canvas stayed unavailable.",
+        "A design draft response without an error could clear an error from a different action."
+      ],
+      "verified_behaviors": [
+        "Retry canvas load reads the same session without a connection change. More clicks before the response do not start a new retry.",
+        "Read errors preserve the saved draft. A response without an error restores the notes and canvas.",
+        "A previous session's retry response or error cannot replace the selected session's draft. Edits stay with their session.",
+        "A draft response without an error keeps an error from a different action visible.",
+        "A history read error keeps the draft. Retry opens one checkpoint dialog. Escape closes it and restores History focus."
+      ],
+      "verification": {
+        "native_regression_stories": "Five new stories passed. Six existing design account stories also passed with the correction. The initial retry story reproduced the missing read before the correction.",
+        "desktop_unit_and_process": "186 passed, 2 opt-in tests skipped. The first run had 185 passes, two skips, and one failure because the isolated checkout lacked its backend executable. The executable build completed before the next run.",
+        "native_source_ui": "129 passed in 9.6 minutes on an isolated Xvfb display. The two optional Piston stories were skipped to keep port 2000 available for the user's trial. This run includes all five new stories.",
+        "build_types_format": "Backend build, desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The retry error screenshot was examined.",
+        "scope": "Tests use a different checkout and temporary practice data. They do not change the user's trial checkout. Saved draft formats and connection behavior do not change. Retry cannot repair a damaged draft file.",
         "packages_and_ci": "Platform checks for this batch have not started. Local release packages predate these changes."
       }
     },
@@ -541,7 +567,7 @@
       "Additional catalog and editor interactions, export dialog errors, and result states after connection or disk errors",
       "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
-      "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
+      "Design timer, guided and mock modes, canvas controls, additional load transitions, and failed export operations",
       "Recall filters, schedule conflicts, repeated requests, and unavailable saved attempts",
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",

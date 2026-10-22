@@ -1073,3 +1073,33 @@ The stories include a mode change and app restart after a review.
 They compare the canvas elements, evidence digest, and immutable review.
 They also add a component and use **Review checkpoint** and **Finish practice**.
 Unit tests include empty bindings, added and removed bindings, other element edits, element sequence, and external links.
+
+### Design load recovery tests
+
+The desktop reads a saved design draft when you open its session.
+If the app cannot read that draft, the error bar shows **Retry canvas load**.
+This button reads the same session again without a connection change.
+More clicks before the response do not start a new retry.
+The retry does not change the saved draft or its format.
+
+You can select a different session while a draft read is in progress.
+A response or error from the previous session cannot replace the new session's draft or error display.
+A draft read without an error does not clear an error from a different action.
+Connection errors keep the **Reconnect** button.
+A retry does not repair a damaged draft file.
+
+If the app cannot read checkpoint history, it keeps the draft and shows an error.
+The **History** button retries that read.
+More clicks before the response do not start a new history request.
+After a response without an error, one history dialog opens.
+Escape closes the dialog and puts keyboard focus on **History**.
+
+After the build, run these stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/design-load-recovery.spec.ts tests/e2e/design-load-races.spec.ts
+```
+
+These tests use the local MCP engine and temporary data directories.
+They include read errors, retries, history, and responses after a session change.
+They compare saved files and notes before and after recovery.
