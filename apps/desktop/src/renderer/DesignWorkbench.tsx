@@ -21,6 +21,7 @@ import type { DraftWriter } from './draft-writer';
 import { useActions } from './actions';
 import { Modal } from './Modal';
 import { useChatStop } from './chat-stop';
+import { canvasElements } from './canvas-elements';
 import { ChatMessage } from './App';
 import {
   MAX_DIAGRAM_LABEL_CHARACTERS,
@@ -47,6 +48,8 @@ type Props = {
   saveDraft: (id: string, draft: DesignDraft) => void;
   flushWorkspace: () => Promise<void>;
   saved: string;
+  message: string;
+  setMessage: (value: string | ((previous: string) => string)) => void;
   switchMode: () => void;
   openQueue: () => void;
   clearError: () => void;
@@ -61,12 +64,10 @@ function sceneData(
   elements: readonly ExcalidrawElement[],
   state: AppState,
   files: BinaryFiles,
+  previous: DesignScene,
 ): DesignScene {
   return {
-    elements: elements.map((element) => ({
-      ...element,
-      link: null,
-    })) as unknown as DesignScene['elements'],
+    elements: canvasElements(elements as unknown as DesignScene['elements'], previous.elements),
     appState: {
       viewBackgroundColor: state.viewBackgroundColor,
       scrollX: state.scrollX,
@@ -83,6 +84,8 @@ export function DesignWorkbench({
   saveDraft,
   flushWorkspace,
   saved,
+  message,
+  setMessage,
   switchMode,
   openQueue,
   clearError,
@@ -101,7 +104,6 @@ export function DesignWorkbench({
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<'notes' | 'review' | 'coach'>('notes');
-  const [message, setMessage] = useState('');
   const [history, setHistory] = useState<DesignCheckpoint[] | null>(null);
   const historyButton = useRef<HTMLButtonElement>(null);
   const [running, setRunning] = useState(false);
@@ -433,7 +435,7 @@ export function DesignWorkbench({
                 initialData={draft.scene as unknown as ExcalidrawInitialDataState}
                 onChange={(elements, state, files) => {
                   if (locked || !latest.current) return;
-                  const scene = sceneData(elements, state, files);
+                  const scene = sceneData(elements, state, files, latest.current.scene);
                   if (JSON.stringify(scene) !== JSON.stringify(latest.current.scene))
                     change({ ...latest.current, scene });
                 }}

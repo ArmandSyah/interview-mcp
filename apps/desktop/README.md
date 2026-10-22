@@ -1006,3 +1006,70 @@ npm run test:desktop -- tests/e2e/settings-error-focus.spec.ts
 The stories submit settings with Enter from the Model field in a small window.
 They include Coding and System design.
 The checks include the error position, keyboard focus, saved settings, entered values, keyboard retry, and focus after the dialog closes.
+
+### Design data during account changes
+
+An unsent design question is text in the coach input field, not a saved chat message.
+`Workbench` keeps one input value for each account workspace and practice mode.
+The field can be empty.
+Coding and System design use different values.
+
+A token replacement for the same account keeps its unsent question.
+An account change shows the new account's question, if available.
+A change to Coding and back keeps the design question.
+These questions stay in memory only.
+App close discards them.
+Saved messages and drafts keep their previous formats.
+
+Design notes and canvas elements also stay with their account.
+After an account connection error, the desktop must not show the previous account's draft.
+A draft load or error from the previous account must not replace the selected account's data or error display.
+The account tests use a local protocol fixture, not Supabase authentication.
+
+After the build, run these stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/design-accounts.spec.ts
+```
+
+The stories include token replacement, account changes, mode changes, connection errors, draft loads after account changes, and restart.
+They compare each account's saved notes and canvas elements.
+They also examine unsent questions in the two practice modes.
+
+### Reviews after a canvas load
+
+A canvas binding connects one element to a different element, such as a label to its shape.
+An element can have no bindings.
+Excalidraw uses `null` or an empty list for that condition.
+Its load procedure changes `null` to an empty list.
+The load procedure must not invalidate a review if the canvas and notes do not change.
+
+`canvasElements(elements, previous)` makes the element records for a saved scene.
+The `elements` parameter supplies the new canvas records.
+The `previous` parameter supplies the records from the active draft.
+The function uses element IDs to find previous records.
+It returns new records and does not change its inputs.
+
+If the new binding list is empty, the function keeps a previous `null` value for that element ID.
+Without that condition, it keeps the new binding value.
+It keeps added elements, removals, element sequence, and changes to other fields.
+It removes external links, as before.
+The canvas and validated draft supply these typed inputs.
+The function does not validate its inputs or write files.
+
+Saved drafts and checkpoint hashes keep their previous formats.
+The correction does not change previous checkpoints or reviews.
+It does not restore a review that a previous save invalidated.
+A new review checkpoint is then necessary.
+Changes to diagram content continue to invalidate the review until the user makes a new review checkpoint.
+
+After the build, run these stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/design-review-navigation.spec.ts
+```
+
+The stories include a mode change and app restart after a review.
+They compare the canvas elements, evidence digest, and immutable review.
+They also add a component and use **Review checkpoint** and **Finish practice**.
+Unit tests include empty bindings, added and removed bindings, other element edits, element sequence, and external links.

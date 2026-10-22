@@ -89,6 +89,15 @@ function Workbench() {
       [id]: typeof value === 'function' ? value(previous[id] ?? '') : value,
     }));
   }
+  const [designMessages, setDesignMessages] = useState<Record<string, string>>({});
+  function setDesignMessage(value: string | ((previous: string) => string)) {
+    const id = snapshot?.workspaceId;
+    if (!id) return;
+    setDesignMessages((previous) => ({
+      ...previous,
+      [id]: typeof value === 'function' ? value(previous[id] ?? '') : value,
+    }));
+  }
   const [error, setError] = useState('');
   const [closeError, setCloseError] = useState('');
   const chatStop = useChatStop(snapshot?.chatId ?? null, setError);
@@ -426,6 +435,8 @@ function Workbench() {
           saveDraft={saveDesignDraft}
           flushWorkspace={flush}
           saved={designSaveState}
+          message={designMessages[snapshot.workspaceId] ?? ''}
+          setMessage={setDesignMessage}
           switchMode={() => void action(() => window.interview.setMode('coding'))}
           openQueue={openQueue}
           clearError={() => setError('')}

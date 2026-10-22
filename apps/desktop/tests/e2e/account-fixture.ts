@@ -1,16 +1,32 @@
 import { createServer } from 'node:http';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
+import { noteSections, type DesignBrief } from '../../src/shared/design';
 
 /** Local protocol fixture. This server does not test Supabase token verification. */
 export async function accountServer(
   execution?: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+  options: { design?: boolean } = {},
 ) {
   let origin = '';
   let failure: 'identity' | 'catalog' | null = null;
   let release: (() => void) | undefined;
   let identityGate: Promise<void> | undefined;
   const requests: { name: string; account: string; args: Record<string, unknown> }[] = [];
+  const brief: DesignBrief = {
+    id: 'fixture-design',
+    title: 'Account design fixture',
+    difficulty: 'easy',
+    tags: [],
+    brief_md: 'This fixture tests account ownership of design drafts.',
+    requirements: ['Keep each account draft in its workspace.'],
+    constraints: [],
+    scenarios: [],
+    rubric: noteSections.map(({ key, title }) => ({ key, title, prompt: 'Record fixture notes.' })),
+    time_budget_minutes: 40,
+    revision: 'a'.repeat(64),
+    pack_id: 'fixture',
+  };
   const names = [
     'get_connection_identity',
     'list_problems',
@@ -19,6 +35,7 @@ export async function accountServer(
     'get_problem_description',
     'get_hint',
     ...(execution ? ['run_tests', 'submit_solution'] : []),
+    ...(options.design ? ['list_design_problems', 'start_design_session'] : []),
   ];
   const server = createServer(async (request, response) => {
     if (request.method !== 'POST') {
@@ -72,6 +89,16 @@ export async function accountServer(
       if (name === 'get_progress') value = `Fixture progress for ${account}`;
       if (name === 'get_problem_description') value = 'This fixture tests account draft ownership.';
       if (name === 'get_hint') value = { hint: `Fixture hint for ${account}` };
+      if (options.design && name === 'list_design_problems') value = [brief];
+      if (options.design && name === 'start_design_session')
+        value = {
+          id: randomUUID(),
+          problem_id: brief.id,
+          brief,
+          status: 'in_progress',
+          started_at: '2026-01-01T00:00:00Z',
+          completed_at: null,
+        };
       if (execution && ['run_tests', 'submit_solution'].includes(name))
         value = await execution(name, body.params.arguments ?? {});
       if (name === 'start_problem') {
@@ -138,6 +165,8 @@ export async function connectAccount(page: Page, url: string, token: string, pro
   await dialog.getByLabel('MCP bearer key or account token', { exact: true }).fill(token);
   await dialog.getByRole('button', { name: 'Save & connect' }).click();
   await expect(dialog).toHaveCount(0);
+  // An account change can replace the view before its connection completes.
+  await expect(page.getByRole('button', { name: 'Open settings' })).toBeEnabled();
 }
 
 export async function pasteAccountDraft(page: Page, code: string) {

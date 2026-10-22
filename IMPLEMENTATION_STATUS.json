@@ -462,7 +462,7 @@
         "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
         "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "The saved data format and 600-millisecond design autosave interval do not change. Pending drafts stay in memory until their write succeeds. Forced process termination can still lose unsaved edits.",
-        "packages_and_ci": "Supabase workflow 39713147594 passed for e55c246. Linux in Desktop workflow 39713147595 is in progress. Windows reached its 25-minute job limit after 79 passes, 2 skips, and 33 tests that did not run. The annotation and job log confirm the job timeout. No failed assertion was reported. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39713147594 passed for e55c246. Linux in Desktop workflow 39713147595 passed in 34 minutes 4 seconds, including source and packaged UI tests. Windows reached its 25-minute job limit after 79 passes, 2 skips, and 33 tests that did not run. The annotation and job log confirm the job timeout. No failed assertion was reported. Local release packages predate these changes."
       }
     },
     "account_draft_regressions": {
@@ -506,6 +506,34 @@
         "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "scope": "This change affects error display and keyboard focus. It does not change saved settings or data formats.",
         "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
+      }
+    },
+    "design_account_and_review_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/design-accounts.spec.ts",
+        "apps/desktop/tests/e2e/design-review-navigation.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/canvas-elements.test.ts",
+      "corrected_defects": [
+        "An unsent design question could appear under a different account. Token replacement and mode changes could discard the question.",
+        "An unchanged canvas could invalidate its review after a mode change or restart. Excalidraw changed an element's empty boundElements representation from null to an empty list. That format change changed the saved evidence digest and disabled Finish practice."
+      ],
+      "verified_behaviors": [
+        "Workbench keeps unsent coding and design questions in different values for each account workspace. Token replacement and mode changes preserve the selected account's question.",
+        "Notes and full canvas element records stay with their accounts through token replacement, account changes, and restart.",
+        "An identity or catalog error hides the previous account's design data. Reconnection restores that account's saved data without disclosure to the other account.",
+        "A previous account's delayed design load or load error cannot replace the new account's draft or error display. Subsequent edits save to the new account.",
+        "Canvas serialization preserves a saved null binding value when Excalidraw supplies an empty list for the same element ID. It preserves actual binding changes and edits to other fields.",
+        "A mode change and restart keep an unchanged review valid. The canvas records, evidence digest, and immutable review stay unchanged. Adding a component invalidates the review, and a new review permits practice completion."
+      ],
+      "verification": {
+        "native_regression_stories": "Eight new stories and five existing account stories passed in the focused run. Before correction, native tests reproduced the unsent-question defect and false review staleness. Initial connection-error assertions needed the documented identity error text and a wait for connection completion, not only dialog closure.",
+        "desktop_unit_and_process": "186 passed, 2 opt-in tests skipped. Four new canvas serialization tests passed. All three remote MCP tests also passed in a separate run with real local Piston.",
+        "native_source_ui": "126 passed in 9.2 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. This includes all eight new account and review stories.",
+        "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
+        "documentation": "The new README sections were reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The review and account-error screenshots were inspected.",
+        "scope": "The account tests use a local protocol fixture, not Supabase authentication. Unsent questions stay in memory and disappear on app close. Saved formats and checkpoint hashes do not change. The correction does not rewrite reviews that a previous save invalidated.",
+        "packages_and_ci": "Platform checks for this batch have not started. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
