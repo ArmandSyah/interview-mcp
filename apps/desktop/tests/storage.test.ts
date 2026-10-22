@@ -25,32 +25,40 @@ describe('workspace persistence', () => {
     await new LocalStore(root).load();
     expect(await readdir(join(root, 'backups'))).toHaveLength(1);
   });
-  it('saves drafts, sessions and active problem across restarts', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'interview-store-'));
-    const store = new LocalStore(root);
-    await store.load();
-    const scope = store.scope();
-    const session: PracticeSession = {
-      problem: { id: '0001-test', title: 'Test', difficulty: 'easy', tags: [], pattern_tags: [] },
-      attemptId: 'attempt',
-      code: '# my draft',
-      description: 'Description',
-      chat: [],
-      result: null,
-      resultStale: false,
-      submitted: false,
-      hintDepth: 0,
-      updatedAt: 1,
-    };
-    store.workspace(scope).sessions.push(session);
-    store.workspace(scope).activeProblemId = session.problem.id;
-    await store.saveCode(scope, session);
-    const restored = new LocalStore(root);
-    await restored.load();
-    expect(restored.workspace(scope).sessions[0].code).toBe('# my draft');
-    expect(restored.workspace(scope).activeProblemId).toBe('0001-test');
-    expect(await readFile(store.path(scope, '0001-test'), 'utf8')).toBe('# my draft');
-  });
+  it.each([false, true])(
+    'saves drafts and sessions across restarts with staged state=%s',
+    async (staged) => {
+      const root = await mkdtemp(join(tmpdir(), 'interview-store-'));
+      const store = new LocalStore(root);
+      await store.load();
+      const scope = store.scope();
+      const session: PracticeSession = {
+        problem: { id: '0001-test', title: 'Test', difficulty: 'easy', tags: [], pattern_tags: [] },
+        attemptId: 'attempt',
+        code: '# my draft',
+        description: 'Description',
+        chat: [],
+        result: null,
+        resultStale: false,
+        submitted: false,
+        hintDepth: 0,
+        updatedAt: 1,
+      };
+      store.workspace(scope);
+      const state = staged ? structuredClone(store.state) : store.state;
+      state.workspaces[scope].sessions.push(session);
+      state.workspaces[scope].activeProblemId = session.problem.id;
+      if (staged) await store.saveCode(scope, session, state);
+      else await store.saveCode(scope, session);
+      expect(store.workspace(scope).sessions).toHaveLength(staged ? 0 : 1);
+      expect(store.workspace(scope).activeProblemId).toBe(staged ? null : session.problem.id);
+      const restored = new LocalStore(root);
+      await restored.load();
+      expect(restored.workspace(scope).sessions[0].code).toBe('# my draft');
+      expect(restored.workspace(scope).activeProblemId).toBe('0001-test');
+      expect(await readFile(store.path(scope, '0001-test'), 'utf8')).toBe('# my draft');
+    },
+  );
   it('rejects traversal and separates remote keys and servers', async () => {
     const store = new LocalStore(await mkdtemp(join(tmpdir(), 'interview-store-')));
     await store.load();

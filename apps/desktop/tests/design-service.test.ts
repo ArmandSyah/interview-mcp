@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, it, vi } from 'vitest';
@@ -7,6 +7,119 @@ import { LocalStore, defaultSettings } from '../src/main/storage';
 import { WorkbenchService } from '../src/main/service';
 import { emptyDesignDraft } from '../src/shared/design';
 import type { Model } from '../src/main/providers';
+
+it('a new design attempt write failure keeps the previous attempt and permits retry', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'interview-design-create-'));
+  const store = new LocalStore(root);
+  const service = new WorkbenchService(
+    store,
+    new McpConnection(resolve('../..'), root),
+    { available: () => false, encrypt: () => '', decrypt: () => '' },
+    () => {},
+  );
+  try {
+    await service.initialize();
+    await service.startDesign('design-link-aliases');
+    const draft = emptyDesignDraft();
+    draft.notes.requirements = 'Preserve the previous attempt.';
+    await service.saveDesignDraft(service.snapshot().activeDesignSessionId!, draft);
+    const before = service.snapshot();
+    const previous = await readFile(join(root, 'workspace.json'), 'utf8');
+    vi.spyOn(store, 'persist').mockRejectedValueOnce(new Error('Fixture creation write failure'));
+    await expect(service.startDesign('design-link-aliases', true)).rejects.toThrow(
+      'Fixture creation write failure',
+    );
+    expect(service.snapshot().activeDesignSessionId).toBe(before.activeDesignSessionId);
+    expect(service.snapshot().designSessions).toEqual(before.designSessions);
+    expect(service.snapshot().busy).toBe(false);
+    expect(await readFile(join(root, 'workspace.json'), 'utf8')).toBe(previous);
+    expect((await service.loadDesignDraft(before.activeDesignSessionId!)).notes).toEqual(
+      draft.notes,
+    );
+    await service.startDesign('design-link-aliases', true);
+    expect(service.snapshot().designSessions).toHaveLength(2);
+    expect(service.snapshot().activeDesignSessionId).not.toBe(before.activeDesignSessionId);
+  } finally {
+    await service.close();
+  }
+});
+
+it.each([false, true])(
+  'new design attempts preserve earlier and queued notes after a write failure=%s',
+  async (failure) => {
+    const root = await mkdtemp(join(tmpdir(), 'interview-design-create-race-'));
+    const store = new LocalStore(root);
+    const service = new WorkbenchService(
+      store,
+      new McpConnection(resolve('../..'), root),
+      { available: () => false, encrypt: () => '', decrypt: () => '' },
+      () => {},
+    );
+    let releaseEarlier!: () => void;
+    let releaseWrite!: () => void;
+    let rejectWrite!: (error: Error) => void;
+    const earlier = new Promise<void>((resolve) => {
+      releaseEarlier = resolve;
+    });
+    const writing = new Promise<void>((resolve, reject) => {
+      releaseWrite = resolve;
+      rejectWrite = reject;
+    });
+    let first: Promise<string> | undefined;
+    let next: Promise<string> | undefined;
+    let creation: Promise<string | null> | undefined;
+    try {
+      await service.initialize();
+      await service.startDesign('design-link-aliases');
+      const previousId = service.snapshot().activeDesignSessionId!;
+      const originalPersist = store.persist.bind(store);
+      const persist = vi
+        .spyOn(store, 'persist')
+        .mockImplementationOnce(async (...args) => {
+          await earlier;
+          await originalPersist(...args);
+        })
+        .mockImplementationOnce(async (...args) => {
+          await writing;
+          await originalPersist(...args);
+        });
+      const draft = emptyDesignDraft();
+      draft.notes.requirements = 'Notes before creation';
+      first = service.saveDesignDraft(previousId, draft);
+      await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+      creation = service.startDesign('design-link-aliases', true).then(
+        () => null,
+        (error: Error) => error.message,
+      );
+      releaseEarlier();
+      await first;
+      await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(2));
+      expect(service.snapshot()).toMatchObject({ busy: true, activeDesignSessionId: previousId });
+      expect(service.snapshot().designSessions).toHaveLength(1);
+      const latest = emptyDesignDraft();
+      latest.notes.requirements = 'Notes during creation';
+      next = service.saveDesignDraft(previousId, latest);
+      expect(persist).toHaveBeenCalledTimes(2);
+      if (failure) rejectWrite(new Error('Fixture design creation failure'));
+      else releaseWrite();
+      expect(await creation).toBe(failure ? 'Fixture design creation failure' : null);
+      await next;
+      const restored = new LocalStore(root);
+      await restored.load();
+      const saved = restored.workspace(store.scope());
+      expect(saved.designSessions).toHaveLength(failure ? 1 : 2);
+      expect(saved.activeDesignSessionId).toBe(failure ? previousId : saved.designSessions[1].id);
+      expect((await service.loadDesignDraft(previousId)).notes).toEqual(latest.notes);
+      expect(service.snapshot().designSessions).toEqual(saved.designSessions);
+      expect(service.snapshot().busy).toBe(false);
+    } finally {
+      releaseEarlier();
+      releaseWrite();
+      await Promise.allSettled([first, next, creation]);
+      await service.close();
+    }
+  },
+);
 
 it.each(
   ['history', 'settings', 'selection'].flatMap((operation) =>

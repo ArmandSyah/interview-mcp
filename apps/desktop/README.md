@@ -848,3 +848,70 @@ On Linux without a display, use `xvfb-run -a` before the first command.
 The trace tests keep all output in `test-results-diagnostics`, including the two expected failures.
 The Linux and Windows workflows run these tests, examine the files, and upload the trace directories.
 The application tests are also necessary.
+
+### New attempt write failures
+
+The desktop saves a new attempt before it changes the selected attempt.
+The workspace record contains saved sessions and the selected session IDs.
+A local write error keeps the previous selection and saved session list.
+The error does not remove previous drafts, chat history, test reports, or design checkpoints.
+The desktop shows the error, and you can retry.
+Previous saved records keep their data format.
+
+New attempt writes wait for draft writes in progress.
+Edits received during the new attempt write wait for that write to stop.
+Each edit keeps the ID of its problem or design session.
+The desktop saves them to the previous attempt after success or failure of the new attempt write.
+A selection change does not move a queued draft to a different attempt.
+
+`startProblem(id)` opens a coding problem from the connected catalog.
+The `id` parameter identifies that problem.
+If the workspace contains an attempt for this problem, the method selects that attempt without new scaffold files.
+If no saved attempt is available, it requests an attempt, description, and a progress report from the server.
+It then saves the starter code and new workspace record before it changes the selection.
+A progress request error prevents this local save and selection change.
+
+`startDesign(problemId, newAttempt = false)` opens a design brief from the connected catalog.
+The `problemId` parameter identifies the brief.
+With `newAttempt: false`, the method selects the last saved session in progress for that brief, if available.
+With `newAttempt: true`, or without a saved session in progress, it creates a new session.
+It saves an empty design draft and the workspace record before it selects that session.
+
+The two start methods return `Promise<void>`.
+The promise resolves after selection or rejects on error.
+
+A server can create its attempt before a description request or local write fails.
+The desktop can contain draft files with no saved session reference after a local write error.
+The desktop does not remove these server records or files.
+A retry can create a new server attempt.
+
+`LocalStore.saveCode(scope, session, state)` writes the code file and workspace record and does not change memory.
+The `scope` parameter identifies the desktop workspace.
+The `session` parameter supplies the problem ID and code.
+The optional `state` parameter supplies the workspace snapshot and defaults to the active state.
+The method returns `Promise<void>` after the two writes or rejects on an error.
+New attempt creation changes the selected attempt only after the two writes complete without errors.
+
+`DesignStore.load(scope, sessionId)` waits for previous writes, then reads the saved draft for that workspace and session.
+The `scope` parameter has the same meaning as in `LocalStore.saveCode`.
+The `sessionId` parameter identifies the design session.
+The method returns the saved design draft or an empty draft for a file-not-found error.
+It rejects invalid IDs or damaged data.
+It does not replace the file after these errors.
+
+A previous write failure does not prevent this read or a new draft save.
+The read does not clear the previous write error from `flush()`.
+After a subsequent write without an error, `flush()` returns without an error.
+
+After the build, run the creation stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/attempt-creation.spec.ts
+```
+
+The four native stories cause draft and workspace write errors in coding and design practice.
+They include duplicate clicks, edits during the write, error displays, retry, and restart.
+They use the local MCP engine and temporary data directories.
+Service tests include previous writes and queued edits during a new attempt write.
+They include write success and failure.
+Storage tests include supplied state snapshots and recovery after a failed design write.

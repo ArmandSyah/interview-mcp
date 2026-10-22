@@ -232,7 +232,8 @@ export class DesignStore {
     }
   }
   async load(scope: string, sessionId: string): Promise<DesignDraft> {
-    await this.writes;
+    // Reads use saved data. A previous write error must not prevent a new save.
+    await this.writes.catch(() => {});
     const path = this.path(scope, sessionId);
     const draft = await this.read(scope, sessionId);
     this.loaded.add(path);

@@ -99,6 +99,144 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+it('a new coding attempt write failure keeps the previous workspace and permits retry', async () => {
+  const { service, store } = await fixture();
+  try {
+    await store.persist();
+    const before = service.snapshot();
+    const previous = await readFile(join(store.root, 'workspace.json'), 'utf8');
+    vi.spyOn(store, 'saveCode').mockRejectedValueOnce(new Error('Fixture creation write failure'));
+    await expect(service.startProblem(problem.id)).rejects.toThrow(
+      'Fixture creation write failure',
+    );
+    expect(service.snapshot().activeProblemId).toBe(before.activeProblemId);
+    expect(service.snapshot().sessions).toEqual(before.sessions);
+    expect(service.snapshot().busy).toBe(false);
+    expect(await readFile(join(store.root, 'workspace.json'), 'utf8')).toBe(previous);
+    await service.startProblem(problem.id);
+    expect(service.snapshot().activeProblemId).toBe(problem.id);
+    expect(service.snapshot().sessions).toHaveLength(1);
+    expect(await readFile(store.path(store.scope(), problem.id), 'utf8')).toBe(code);
+  } finally {
+    await service.close();
+  }
+});
+
+it.each([false, true])(
+  'new coding attempts preserve earlier and queued drafts after a write failure=%s',
+  async (failure) => {
+    const { service, store, mcp } = await fixture();
+    const second = { ...problem, id: '0002-test', title: 'Second fixture' };
+    const originalCall = mcp.call.getMockImplementation()!;
+    mcp.call.mockImplementation(async (name, args) => {
+      if (name === 'list_problems') return [problem, second];
+      if (name === 'start_problem' && args.problem_id === second.id)
+        return {
+          attempt_id: 'second-attempt',
+          mode: 'remote',
+          files_to_create: [
+            {
+              relative_path: `${second.id}/solution.py`,
+              contents: '# New starter',
+              sha256: createHash('sha256').update('# New starter').digest('hex'),
+            },
+          ],
+        };
+      return originalCall(name, args);
+    });
+    const earlier = deferred();
+    const writing = deferred();
+    let first: Promise<void> | undefined;
+    let next: Promise<void> | undefined;
+    let creation: Promise<string | null> | undefined;
+    try {
+      await service.reconnect();
+      await service.startProblem(problem.id);
+      const originalSave = store.saveCode.bind(store);
+      let oldWrites = 0;
+      let newWrites = 0;
+      vi.spyOn(store, 'saveCode').mockImplementation(async (...args) => {
+        if (args[1].problem.id === second.id) {
+          newWrites += 1;
+          await writing.promise;
+        } else if (++oldWrites === 1) await earlier.promise;
+        await originalSave(...args);
+      });
+      first = service.saveCode(problem.id, '# Edit before creation');
+      creation = service.startProblem(second.id).then(
+        () => null,
+        (error: Error) => error.message,
+      );
+      await vi.waitFor(() =>
+        expect(mcp.call).toHaveBeenCalledWith('get_problem_description', {
+          attempt_id: 'second-attempt',
+        }),
+      );
+      expect(newWrites).toBe(0);
+      earlier.resolve();
+      await first;
+      await vi.waitFor(() => expect(newWrites).toBe(1));
+      expect(service.snapshot()).toMatchObject({ busy: true, activeProblemId: problem.id });
+      expect(service.snapshot().sessions).toHaveLength(1);
+      next = service.saveCode(problem.id, '# Edit during creation');
+      expect(oldWrites).toBe(1);
+      expect(service.snapshot().sessions[0].code).toBe('# Edit before creation');
+      if (failure) writing.reject(new Error('Fixture creation write failure'));
+      else writing.resolve();
+      expect(await creation).toBe(failure ? 'Fixture creation write failure' : null);
+      await next;
+      const restored = new LocalStore(store.root);
+      await restored.load();
+      const saved = restored.workspace(store.scope());
+      expect(saved.activeProblemId).toBe(failure ? problem.id : second.id);
+      expect(saved.sessions).toHaveLength(failure ? 1 : 2);
+      expect(saved.sessions[0].code).toBe('# Edit during creation');
+      expect(await readFile(store.path(store.scope(), problem.id), 'utf8')).toBe(
+        '# Edit during creation',
+      );
+      expect(service.snapshot().sessions).toEqual(saved.sessions);
+      expect(service.snapshot().busy).toBe(false);
+    } finally {
+      earlier.resolve();
+      writing.resolve();
+      await Promise.allSettled([first, next, creation]);
+      await service.close();
+    }
+  },
+);
+
+it('a progress request failure does not publish or save a new coding attempt', async () => {
+  const { service, store, mcp } = await fixture();
+  try {
+    await store.persist();
+    const before = service.snapshot();
+    const previous = await readFile(join(store.root, 'workspace.json'), 'utf8');
+    const original = mcp.call.getMockImplementation()!;
+    mcp.call.mockImplementation(async (name, args) => {
+      if (name === 'get_progress') throw new Error('Fixture progress request failure');
+      return original(name, args);
+    });
+    await expect(service.startProblem(problem.id)).rejects.toThrow(
+      'Fixture progress request failure',
+    );
+    expect(service.snapshot()).toMatchObject({
+      busy: false,
+      activeProblemId: before.activeProblemId,
+    });
+    expect(service.snapshot().sessions).toEqual(before.sessions);
+    expect(service.snapshot().progress).toBe(before.progress);
+    expect(await readFile(join(store.root, 'workspace.json'), 'utf8')).toBe(previous);
+    await expect(readFile(store.path(store.scope(), problem.id))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    mcp.call.mockImplementation(original);
+    await service.startProblem(problem.id);
+    expect(service.snapshot().sessions).toHaveLength(1);
+  } finally {
+    await service.close();
+  }
+});
+
 for (const submit of [false, true]) {
   it(`keeps saved results and completion after an invalid ${submit ? 'submission' : 'test'} report`, async () => {
     const { service, store, mcp } = await fixture();

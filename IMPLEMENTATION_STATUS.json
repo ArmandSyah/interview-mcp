@@ -401,12 +401,46 @@
         "trace_diagnostics": "The two expected-failure probes and artifact verification passed on the final harness. Both explicit settings screenshots were inspected and show the dialog. The trace checks verify document snapshots, JPEG files, PNG headers, expected assertion messages, and exclusion of the sentinel name and value.",
         "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
         "documentation": "The new README sections were reviewed against Issue 9 writing rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
-        "packages_and_ci": "Platform checks for this batch are pending. The workflow now includes trace probes, artifact verification, and uploads on Linux and Windows. The Linux job limit is 35 minutes because the previous 25-minute limit cancelled the second full UI suite. Individual test and assertion timeouts are unchanged. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39665381181 and Desktop workflow 39665381086 passed for 8ee694e. Desktop checks include Windows and Linux packages, trace probes, and artifact verification. Linux completed in 32 minutes 32 seconds under the 35-minute job limit. Individual test and assertion timeouts are unchanged. Local release packages predate these changes."
+      }
+    },
+    "new_attempt_creation_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/attempt-creation.spec.ts",
+      "unit_tests": [
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/design-service.test.ts",
+        "apps/desktop/tests/storage.test.ts",
+        "apps/desktop/tests/design-storage.test.ts"
+      ],
+      "corrected_defects": [
+        "A failed new coding attempt write changed the selected problem and added an unsaved session to memory.",
+        "A failed new design attempt write changed the selected design session and kept an unsaved session in memory.",
+        "A failed design write prevented later draft loads and blocked creation of a different design draft.",
+        "A progress request failure occurred after the desktop saved and selected a new coding attempt. The progress request now precedes the local commit."
+      ],
+      "verified_behaviors": [
+        "New coding and design attempts become selected only after the draft and workspace writes succeed.",
+        "Draft and workspace write errors keep the previous selection and session count. Retry creates one new local session, and restart restores it.",
+        "Edits during a failed creation request stay with the previous problem or design session and survive restart.",
+        "Creation waits for previous draft writes. Queued edits wait through the creation write and preserve their owner after success or failure.",
+        "A progress request error does not write or publish a new local coding attempt.",
+        "An explicit state snapshot lets LocalStore.saveCode write a staged workspace without changing memory. Omitted snapshots retain the default behavior.",
+        "DesignStore.load reads saved data after a previous write error. It does not clear that error from flush. A subsequent accepted save permits flush to complete.",
+        "Creation error text stays within the window and is not covered by another element. Direct error-text screenshots confirm the displayed message."
+      ],
+      "verification": {
+        "native_regression_stories": "4 passed in the final focused run, including error-text visibility assertions and direct screenshots. The first native run had two design assertion failures because restart used the coding status label. The corrected run passed all four. Coding and design failure screenshots were inspected.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped. This includes nine new cases.",
+        "native_source_ui": "108 passed in 7.8 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. The four new creation stories also passed after the final test-only visibility assertions were added.",
+        "build_types_format": "Build, TypeScript, and Prettier passed.",
+        "documentation": "The new README section was reviewed against Issue 9 writing rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "Server attempt creation can precede a local error. A retry can create a new server attempt. Unreferenced draft files can also remain. The desktop does not remove server records or those files. Saved data formats do not change.",
+        "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
       "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
-      "Additional catalog and editor interactions, new-attempt write failures, export dialog errors, and result states after connection or disk errors",
+      "Additional catalog and editor interactions, export dialog errors, and result states after connection or disk errors",
       "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
       "Design timer, guided and mock modes, canvas controls, late loads, and failed history loads or export operations",
@@ -414,7 +448,7 @@
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",
       "Service initialization and reconnection failures, native window resize controls, and panel resizing",
-      "Windows settings-close and startup assertion failures, packaged trace verification, packaged app tests, and platform CI for the final audit changes"
+      "Windows settings-close and startup assertion failures, packaged app tests, and platform CI for the final audit changes"
     ]
   },
   "last_verified": {

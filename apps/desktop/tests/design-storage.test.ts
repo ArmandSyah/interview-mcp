@@ -100,6 +100,25 @@ it('does not overwrite damaged drafts or checkpoints', async () => {
   await expect(fresh.save(scope, id, emptyDesignDraft())).rejects.toThrow('not been overwritten');
   expect(await readFile(path, 'utf8')).toBe('{broken');
 });
+it('a failed write does not block a different design draft while flush still reports the failure', async () => {
+  const { store, id } = await fixture();
+  const draft = emptyDesignDraft();
+  draft.notes.requirements = 'Keep the previous draft.';
+  await store.save(scope, id, draft);
+  const checkpoint = randomUUID();
+  await store.checkpoint(scope, id, checkpoint);
+  await expect(store.checkpoint(scope, id, checkpoint)).rejects.toThrow();
+  await expect(store.flush()).rejects.toThrow();
+  await expect(store.load(scope, id)).resolves.toEqual(draft);
+  await expect(store.flush()).rejects.toThrow();
+  const next = randomUUID();
+  await expect(store.save(scope, next, emptyDesignDraft())).resolves.toBe(
+    designDigest(emptyDesignDraft()),
+  );
+  await expect(store.flush()).resolves.toBeUndefined();
+  expect(await store.load(scope, id)).toEqual(draft);
+  expect(await store.load(scope, next)).toEqual(emptyDesignDraft());
+});
 it('rejects path traversal, embeds, remote images, missing images and duplicate IDs', async () => {
   const { store, id } = await fixture();
   await expect(store.load(scope, '../../unsafe')).rejects.toThrow();

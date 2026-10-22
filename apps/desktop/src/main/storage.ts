@@ -199,12 +199,17 @@ export class LocalStore {
     return path;
   }
 
-  async saveCode(scope: string, session: PracticeSession): Promise<void> {
+  /** Save code and the supplied state. Do not change memory. Default: the active state. */
+  async saveCode(
+    scope: string,
+    session: PracticeSession,
+    state: StoredState = this.state,
+  ): Promise<void> {
     if (!this.loaded) throw new Error('Workspace could not be loaded; saving is disabled');
     const path = this.path(scope, session.problem.id);
     await mkdir(resolve(path, '..'), { recursive: true, mode: 0o700 });
     const code = session.code;
-    const data = JSON.stringify(this.state, null, 2);
+    const data = JSON.stringify(state, null, 2);
     return this.enqueue(async () => {
       await this.atomicWrite(path, code);
       await this.atomicWrite(join(this.root, 'workspace.json'), data);

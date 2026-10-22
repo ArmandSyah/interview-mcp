@@ -535,10 +535,16 @@ export class WorkbenchService {
         hintDepth: 0,
         updatedAt: Date.now(),
       };
-      workspace.sessions.push(session);
-      workspace.activeProblemId = id;
-      await this.store.saveCode(this.scope, session);
-      this.progress = await this.mcp.call<string>('get_progress', {});
+      const progress = await this.mcp.call<string>('get_progress', {});
+      await this.withDraftBarrier(async () => {
+        const next = structuredClone(this.store.state);
+        next.workspaces[this.scope].sessions.push(session);
+        next.workspaces[this.scope].activeProblemId = id;
+        await this.store.saveCode(this.scope, session, next);
+        workspace.sessions.push(session);
+        workspace.activeProblemId = id;
+        this.progress = progress;
+      });
     } catch (error) {
       this.error = this.sanitize(error);
       throw new Error(this.error);
@@ -644,7 +650,10 @@ export class WorkbenchService {
     if (existing && !newAttempt) return this.activateDesign(existing.id);
     if (!this.designProblems.some((item) => item.id === problemId))
       throw new Error('Brief is not in the connected catalog');
-    await this.designAction(async () => {
+    this.busy = true;
+    this.error = null;
+    this.publish();
+    try {
       const record = await this.mcp.call<
         Pick<
           DesignSession,
@@ -660,11 +669,24 @@ export class WorkbenchService {
         draftDigest: '',
         updatedAt: Date.now(),
       };
-      session.draftDigest = await this.designs.save(this.scope, session.id, emptyDesignDraft());
-      workspace.designSessions.push(session);
-      workspace.activeDesignSessionId = session.id;
-      workspace.mode = 'design';
-    });
+      await this.withDraftBarrier(async () => {
+        session.draftDigest = await this.designs.save(this.scope, session.id, emptyDesignDraft());
+        const next = structuredClone(this.store.state);
+        next.workspaces[this.scope].designSessions.push(session);
+        next.workspaces[this.scope].activeDesignSessionId = session.id;
+        next.workspaces[this.scope].mode = 'design';
+        await this.store.persist(next);
+        workspace.designSessions.push(session);
+        workspace.activeDesignSessionId = session.id;
+        workspace.mode = 'design';
+      });
+    } catch (error) {
+      this.error = this.sanitize(error);
+      throw new Error(this.error);
+    } finally {
+      this.busy = false;
+      this.publish();
+    }
   }
 
   async activateDesign(sessionId: string): Promise<void> {
