@@ -1167,3 +1167,32 @@ They include practice filters, paused reminders, schedule conflicts, request err
 The date test includes a reminder at its due time.
 They also include duplicate clicks, attempts without local drafts, and edited recall after an app restart.
 Unit tests examine ID changes for each content field and unchanged IDs after a schedule change.
+
+### Queue creation and read recovery
+
+After **Add to queue**, the desktop selects a date filter from the refreshed reminder.
+The practice-type filter changes only if it does not show that reminder.
+If the desktop does not get an add response, a retry can return the saved reminder.
+The retry does not change that reminder's due time or paused state.
+Use **Move reminder** to change its due time.
+**Reminder delay (days)** accepts integers from 0 to 365.
+
+After an initial queue read error, you can close and open the dialog again.
+If the app cannot refresh the queue, it keeps the selected recall and its draft.
+The app reads recall drafts and history before it changes the selected item.
+If one read returns an error, the previous selection stays.
+A response after the error cannot replace the next selection or its notes.
+
+When the connected engine does not have queue tools, the dialog does not show local reminders or recall.
+In local mode, you can use the saved local draft again.
+Saved file formats, schedules, and history records do not change.
+
+After the build, run these stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/practice-queue-create.spec.ts tests/e2e/practice-queue-loads.spec.ts
+```
+
+These tests use the local MCP engine, temporary practice data, and a local remote-account fixture.
+They include add retries, input validation, concurrent schedule changes, queue read errors, and recall responses after an error.
+The connection test does not use Supabase accounts or change local notes.

@@ -256,10 +256,20 @@ export function PracticeQueueDialog({
                       (value) => `${value.kind}:${value.id}` === source,
                     );
                     if (!value) throw new Error('Choose a saved attempt');
-                    await window.interview.addPracticeReview(value.kind, value.id, delay);
+                    const added = await window.interview.addPracticeReview(
+                      value.kind,
+                      value.id,
+                      delay,
+                    );
                     setSource('');
-                    await reload();
-                    setFilter(delay === 0 ? 'due' : 'upcoming');
+                    const refreshed = await reload();
+                    const item = refreshed.items.find((item) => item.id === added.id) ?? added;
+                    const time = Date.now();
+                    setNow(time);
+                    setFilter(
+                      item.paused ? 'paused' : Date.parse(item.due_at) <= time ? 'due' : 'upcoming',
+                    );
+                    if (kind !== 'all' && kind !== item.source_kind) setKind(item.source_kind);
                   })
                 }
               >

@@ -559,7 +559,7 @@
         "build_types_format": "Backend build, desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
         "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The retry error screenshot was examined.",
         "scope": "Tests use a different checkout and temporary practice data. They do not change the user's trial checkout. Saved draft formats and connection behavior do not change. Retry cannot repair a damaged draft file.",
-        "packages_and_ci": "Supabase workflow 39720225925 passed for 62d432a. Desktop workflow 39720225930 is in progress. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39720225925 passed for 62d432a. In Desktop workflow 39720225930, Windows had 126 passes, three skips, and two settings-close assertion failures. Artifact 12401906512 passed its SHA-256 check. In the validation story, a snapshot 31 milliseconds after the failed assertion shows the connection complete and the dialog absent. The small-viewport trace still shows Connecting MCP after six seconds. The cause of that delay is unproven. Linux passed 131 source UI tests in 16.5 minutes, managed sandbox integration, and three remote Piston tests. GitHub cancelled Linux at its 35-minute job limit during packaged tests. The job annotation confirms the time limit. That packaged result is incomplete. Local release packages predate these changes."
       }
     },
     "practice_queue_recovery_regressions": {
@@ -586,7 +586,34 @@
         "build_types_format": "Desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
         "documentation": "The new README sections were reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The screenshot shows the original and new reflections after recovery.",
         "scope": "The correction does not change saved file formats or previous history records. Old drafts keep their ID until their content changes. Tests use the isolated checkout and temporary practice data. The user's trial checkout stays unchanged.",
-        "packages_and_ci": "This batch raises the Linux job limit from 35 to 45 minutes after the verified cancellation in run 39718216048. Individual test and assertion timeouts stay unchanged. The Windows job limit stays at 35 minutes. Platform checks for this batch have not started. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39722436631 passed for a9f6ae0. Desktop workflow 39722436646 is in progress. This batch raises the Linux job limit from 35 to 45 minutes after the verified cancellation in run 39718216048. Individual test and assertion timeouts stay unchanged. The Windows job limit stays at 35 minutes. Local release packages predate these changes."
+      }
+    },
+    "practice_queue_creation_and_read_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/practice-queue-create.spec.ts",
+        "apps/desktop/tests/e2e/practice-queue-loads.spec.ts"
+      ],
+      "corrected_defects": [
+        "After an add retry, the requested delay could select a date filter that hid the saved reminder. A concurrent schedule change could also hide it.",
+        "The previous practice-type filter could hide a new reminder of a different type."
+      ],
+      "verified_behaviors": [
+        "Add selects filters from the refreshed reminder. A practice-type filter that shows the reminder stays unchanged.",
+        "Duplicate add clicks start one request. Invalid delay values disable Add and Move reminder.",
+        "An add retry after a response error returns the same reminder without a change to its schedule or paused state.",
+        "After an initial queue read error, the user can close and open the dialog again. A refresh error keeps the selected recall and draft.",
+        "A draft or history read error keeps the previous selection. Its response cannot replace a new selection or notes.",
+        "A connected engine without queue tools does not show local recall. Local mode lets the user access the saved draft again."
+      ],
+      "verification": {
+        "native_regression_stories": "All ten new stories and eight previous queue stories passed. Before correction, four stories reproduced hidden reminders. One assertion needed the disabled property for an option element. The option was disabled, but the matcher reported it as enabled.",
+        "desktop_unit_and_process": "193 passed, 2 opt-in tests skipped. No unit tests changed in this batch.",
+        "native_source_ui": "147 passed in 10.4 minutes on the isolated Xvfb display. The two optional Piston tests were skipped to keep port 2000 available for the user's trial. This run includes all ten new queue stories.",
+        "build_types_format": "Desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The design and paused-reminder screenshots show the returned item with the correct filters.",
+        "scope": "Saved file formats, schedules, history records, and previous drafts stay unchanged. Tests use temporary data and a local protocol fixture, not Supabase accounts. The user's trial checkout stays at 24aa0a3.",
+        "packages_and_ci": "Platform checks for this batch have not started. The previous Windows startup and settings assertions need further investigation. Local release packages predate these changes."
       }
     },
     "remaining_checks": [
@@ -595,7 +622,7 @@
       "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
       "Design timer, guided and mock modes, canvas controls, additional load transitions, and failed export operations",
-      "Additional recall history loads, reminder creation failures, input validation, and account transitions",
+      "Recall account transitions with queue-capable remote engines, large queues, long reflection history, and draft recovery after more disk errors",
       "Update, archive, content pack, and license dialogs",
       "Sandbox consent, status changes, cancellation, and failures",
       "Service initialization and reconnection failures, native window resize controls, and panel resizing",

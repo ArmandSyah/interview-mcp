@@ -32,3 +32,19 @@ export async function repeatedClick(button: Locator) {
     element.click();
   });
 }
+
+export async function secondCodingSource(page: Page) {
+  const initial = await codingReminder(page);
+  await initial.dialog.getByRole('button', { name: 'Close practice queue', exact: true }).click();
+  await page.getByRole('button', { name: /Training Mix Segment/ }).click();
+  await expect
+    .poll(async () => (await page.evaluate(() => window.interview.snapshot())).sessions.length)
+    .toBe(2);
+  const snapshot = await page.evaluate(() => window.interview.snapshot());
+  const source = snapshot.sessions.find(
+    (session) => session.problem.title === 'Training Mix Segment',
+  )!;
+  const dialog = await openPracticeQueue(page);
+  await dialog.getByLabel('Practice to revisit').selectOption(`coding:${source.attemptId}`);
+  return { dialog, existing: initial.item, source };
+}
