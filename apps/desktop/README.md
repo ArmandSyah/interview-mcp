@@ -915,3 +915,40 @@ They use the local MCP engine and temporary data directories.
 Service tests include previous writes and queued edits during a new attempt write.
 They include write success and failure.
 Storage tests include supplied state snapshots and recovery after a failed design write.
+
+### Edits during navigation
+
+Navigation changes the selected attempt or practice mode.
+Each navigation action first saves pending edits.
+The user can change a draft while the navigation request waits.
+That edit must keep its previous attempt ID if the design view closes before autosave starts.
+
+`Workbench` is the parent component for the Coding and System design views.
+It keeps pending design drafts and their autosave timer.
+A design draft contains the canvas, notes, practice mode, and elapsed time for one design session.
+The design view reads and changes that draft, but does not remove pending writes when it closes.
+
+Each pending draft has one session ID.
+A session can have no pending draft after its writes complete.
+After a read, the design view uses the pending draft for that session, if available.
+Without a pending draft, it uses the saved draft.
+The autosave interval stays at 600 milliseconds after the last edit.
+
+A change to Coding does not cancel the pending design save.
+The desktop shows a save error in the active view, including Coding.
+It keeps the pending draft after an error.
+A subsequent navigation or window-close request retries the save.
+If that retry fails, the requested navigation or window close does not occur.
+Saved records keep their previous format, and no data migration is necessary.
+
+After the build, run these stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/late-draft-navigation.spec.ts tests/e2e/inactive-design-drafts.spec.ts
+```
+
+The stories hold a navigation request after its first draft save.
+They then change a draft before autosave starts and release the request.
+They examine the previous attempt before a new action can save its draft.
+They include coding and design edits, new attempts, mode changes, save failures, retry, window close, and restart.
+The tests use the local MCP engine and temporary data directories.

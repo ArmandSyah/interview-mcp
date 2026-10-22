@@ -438,8 +438,35 @@
         "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
       }
     },
+    "navigation_draft_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/late-draft-navigation.spec.ts",
+        "apps/desktop/tests/e2e/inactive-design-drafts.spec.ts"
+      ],
+      "corrected_defects": [
+        "A change from System design to Coding canceled the autosave timer and discarded notes entered after the first navigation flush."
+      ],
+      "verified_behaviors": [
+        "Workbench owns pending design drafts and the autosave timer. The design view no longer removes them when it closes.",
+        "Coding and design edits after the first navigation flush keep their previous attempt ID during new attempt creation and mode changes.",
+        "The new coding attempt does not receive the previous code edit. The new design attempt keeps empty requirements notes.",
+        "Autosave writes the edit without a subsequent navigation or close request. Restart restores the saved edit.",
+        "A design save error in Coding shows an error and keeps the pending notes. The saved file keeps its previous contents.",
+        "Navigation and window close retry pending design saves. A second error prevents the requested navigation or close.",
+        "A third save can succeed with the same notes. The notes survive restart."
+      ],
+      "verification": {
+        "native_regression_stories": "Six new stories passed in the final focused run, including new-attempt isolation assertions and screenshots. Nine related save and creation stories also passed. Before the fix, the design-to-coding story reproduced lost notes. The other three initial navigation stories passed. Save-error and close-error screenshots were inspected.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "114 passed in 8.5 minutes on the isolated Xvfb display with real local Piston. No tests were skipped.",
+        "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "The saved data format and 600-millisecond design autosave interval do not change. Pending drafts stay in memory until their write succeeds. Forced process termination can still lose unsaved edits.",
+        "packages_and_ci": "Platform checks for this batch are pending. Local release packages predate these changes."
+      }
+    },
     "remaining_checks": [
-      "Additional repeated actions, workspace changes during edits, and close during startup, sandbox operations, exports, and updates",
+      "Additional repeated actions and account changes during edits, plus close during startup, sandbox operations, exports, and updates",
       "Additional catalog and editor interactions, export dialog errors, and result states after connection or disk errors",
       "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
       "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",

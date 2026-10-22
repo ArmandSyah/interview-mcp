@@ -17,7 +17,7 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { Settings2, Sparkles, Send, Square, X } from 'lucide-react';
 import { Markdown } from './Markdown';
 import { SettingsDialog } from './Settings';
-import { DraftWriter } from './draft-writer';
+import type { DraftWriter } from './draft-writer';
 import { useActions } from './actions';
 import { Modal } from './Modal';
 import { useChatStop } from './chat-stop';
@@ -43,7 +43,10 @@ const palette = [
 ] as const;
 type Props = {
   snapshot: Snapshot;
-  registerFlush: (flush: () => Promise<void>) => () => void;
+  drafts: DraftWriter<DesignDraft>;
+  saveDraft: (id: string, draft: DesignDraft) => void;
+  flushDrafts: () => Promise<void>;
+  saved: string;
   switchMode: () => void;
   openQueue: () => void;
   clearError: () => void;
@@ -76,7 +79,10 @@ function sceneData(
 
 export function DesignWorkbench({
   snapshot,
-  registerFlush,
+  drafts,
+  saveDraft,
+  flushDrafts,
+  saved,
   switchMode,
   openQueue,
   clearError,
@@ -93,7 +99,6 @@ export function DesignWorkbench({
     clearError();
     setError(message);
   });
-  const [saved, setSaved] = useState('Saved locally');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<'notes' | 'review' | 'coach'>('notes');
   const [message, setMessage] = useState('');
@@ -104,26 +109,19 @@ export function DesignWorkbench({
   const api = useRef<ExcalidrawImperativeAPI | null>(null);
   const latest = useRef<DesignDraft | null>(null);
   const activeId = useRef<string | null>(null);
-  const drafts = useRef(
-    new DraftWriter<DesignDraft>((id, draft) => window.interview.saveDesignDraft(id, draft)),
-  );
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
   const flush = useCallback(async () => {
-    if (timer.current) clearTimeout(timer.current);
     try {
-      await drafts.current.flush();
-      if (!drafts.current.dirty) {
-        setSaved('Saved locally');
-        setDirty(false);
-      }
+      await flushDrafts();
+      if (!drafts.dirty) setDirty(false);
     } catch (error) {
-      setSaved('Save failed');
       setError(errorText(error));
       throw error;
     }
-  }, []);
-  useEffect(() => registerFlush(flush), [flush, registerFlush]);
+  }, [drafts, flushDrafts]);
+  useEffect(() => {
+    if (saved === 'Saved locally') setDirty(false);
+  }, [saved]);
   useEffect(() => {
     let live = true;
     activeId.current = session?.id ?? null;
@@ -138,9 +136,10 @@ export function DesignWorkbench({
         .loadDesignDraft(session.id)
         .then((value) => {
           if (!live) return;
-          latest.current = value;
-          setDraft(value);
-          setSaved('Saved locally');
+          const current = drafts.get(session.id) ?? value;
+          latest.current = current;
+          setDraft(current);
+          setDirty(designEvidenceChanged(value, current));
           setError('');
         })
         .catch((error) => {
@@ -148,9 +147,8 @@ export function DesignWorkbench({
         });
     return () => {
       live = false;
-      if (timer.current) clearTimeout(timer.current);
     };
-  }, [session?.id]);
+  }, [session?.id, drafts]);
   const change = useCallback(
     (value: DesignDraft) => {
       if (draftsFrozen()) return;
@@ -159,14 +157,9 @@ export function DesignWorkbench({
       if (latest.current && designEvidenceChanged(latest.current, value)) setDirty(true);
       latest.current = value;
       setDraft(value);
-      drafts.current.set(id, value);
-      setSaved('Saving…');
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        void flush().catch(() => {});
-      }, 600);
+      saveDraft(id, value);
     },
-    [flush, draftsFrozen],
+    [saveDraft, draftsFrozen],
   );
   useEffect(() => {
     if (!running || actions.closing) return;

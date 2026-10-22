@@ -39,6 +39,7 @@ import { useChatStop } from './chat-stop';
 import { ApprovalDialog } from './ApprovalDialog';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 import { parseTestReport } from '../shared/test-report';
+import type { DesignDraft } from '../shared/design';
 
 function cleanError(error: unknown): string {
   return (error instanceof Error ? error.message : 'Operation failed').replace(
@@ -97,9 +98,13 @@ function Workbench() {
   const [bottomHeight, setBottomHeight] = useState(220);
   const drafts = useRef(new DraftWriter<string>((id, code) => window.interview.saveCode(id, code)));
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const designDrafts = useRef(
+    new DraftWriter<DesignDraft>((id, draft) => window.interview.saveDesignDraft(id, draft)),
+  );
+  const designSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [designSaveState, setDesignSaveState] = useState('Saved locally');
   const chatEnd = useRef<HTMLDivElement>(null);
   const snapshotRef = useRef(snapshot);
-  const designFlush = useRef<() => Promise<void>>(async () => {});
   const queueFlush = useRef<() => Promise<void>>(async () => {});
   const registerQueueFlush = useCallback((callback: () => Promise<void>) => {
     queueFlush.current = callback;
@@ -107,16 +112,33 @@ function Workbench() {
       queueFlush.current = async () => {};
     };
   }, []);
-  const registerDesignFlush = useCallback((callback: () => Promise<void>) => {
-    designFlush.current = callback;
-    return () => {
-      designFlush.current = async () => {};
-    };
+  // Keep design drafts and their timer when the design view closes or changes its attempt.
+  const flushDesign = useCallback(async () => {
+    if (designSaveTimer.current) clearTimeout(designSaveTimer.current);
+    try {
+      await designDrafts.current.flush();
+      if (!designDrafts.current.dirty) setDesignSaveState('Saved locally');
+    } catch (error) {
+      setDesignSaveState('Save failed');
+      setError(cleanError(error));
+      throw error;
+    }
   }, []);
+  const saveDesignDraft = useCallback(
+    (id: string, draft: DesignDraft) => {
+      designDrafts.current.set(id, draft);
+      setDesignSaveState('Saving…');
+      if (designSaveTimer.current) clearTimeout(designSaveTimer.current);
+      designSaveTimer.current = setTimeout(() => {
+        void flushDesign().catch(() => {});
+      }, 600);
+    },
+    [flushDesign],
+  );
   snapshotRef.current = snapshot;
 
   const flush = useCallback(async () => {
-    await designFlush.current();
+    await flushDesign();
     await queueFlush.current();
     if (saveTimer.current) clearTimeout(saveTimer.current);
     if (drafts.current.dirty) setSaveState('saving');
@@ -128,7 +150,7 @@ function Workbench() {
       setError(cleanError(error));
       throw error;
     }
-  }, []);
+  }, [flushDesign]);
 
   const loadWorkspace = useCallback(async () => {
     if (loadPending.current) return;
@@ -242,6 +264,7 @@ function Workbench() {
       loadPending.current = false;
       unsubscribe();
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (designSaveTimer.current) clearTimeout(designSaveTimer.current);
     };
   }, [flush, loadWorkspace, beginClose, cancelClose, freezeDrafts]);
 
@@ -399,7 +422,10 @@ function Workbench() {
       <>
         <DesignWorkbench
           snapshot={{ ...snapshot, error: error || snapshot.error }}
-          registerFlush={registerDesignFlush}
+          drafts={designDrafts.current}
+          saveDraft={saveDesignDraft}
+          flushDrafts={flushDesign}
+          saved={designSaveState}
           switchMode={() => void action(() => window.interview.setMode('coding'))}
           openQueue={openQueue}
           clearError={() => setError('')}
