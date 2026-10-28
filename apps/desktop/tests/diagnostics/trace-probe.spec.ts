@@ -12,7 +12,10 @@ for (const nativeClose of [false, true]) {
     try {
       const page = await app.firstWindow();
       await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
-      await page.getByRole('button', { name: 'Open settings' }).click();
+      // This probe tests trace artifacts. Interaction stories test native pointer clicks.
+      await page
+        .getByRole('button', { name: 'Open settings' })
+        .evaluate((button) => (button as HTMLButtonElement).click());
       await expect(page.getByRole('dialog', { name: 'Workbench settings' })).toBeVisible();
       await page.screenshot({ path: test.info().outputPath('settings.png') });
       if (nativeClose) {
