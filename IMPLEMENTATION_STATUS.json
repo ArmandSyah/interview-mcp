@@ -132,9 +132,9 @@
       "mechanism": "The command selects question prose, reads the official Issue 9 dictionary, records word references and rule checks, and audits a new candidate. Optional local Ollama calls propose changes.",
       "protection": "The source stays unchanged. Code, tests, metadata, unselected items, literals, formulas, and resource references keep their values. Explicit prose hyphen declarations remove formula protection for those words only outside code and quoted text.",
       "checks": "The full backend and authoring suite passed 333 tests with 30 optional skips before the last review corrections. The current focused suite passed 94 tests, including the local official PDF. Ruff lint, formatting, and strict mypy for server and tools passed.",
-      "independent_review": "An independent reviewer confirmed the dictionary fixes and escaped-quotation fix. Further review found multiline quotation protection and a mandatory-edit rule that used approximate word counts. The corrections and regression tests now pass. Independent verification of these last corrections is pending.",
+      "independent_review": "An independent reviewer confirmed the dictionary fixes, quoted-text protection, and removal of mandatory edits from approximate counts. Their final run passed 94 tests, including the official PDF. They found no further concrete protocol validation defect.",
       "model_limit": "Real local qwen3:4b-instruct calls repeated source text and paths. The tool rejected duplicate paths. These calls do not show reliable automatic rewrites. No automatic conformity or content approval is issued.",
-      "remaining": "Independently verify the last corrections, examine a corrected question against Part 1 and Part 2, and verify useful model rewrites before claiming that part complete.",
+      "remaining": "Examine a corrected question against Part 1 and Part 2, and verify useful model rewrites before claiming that part complete.",
       "data_effect": "No installed question, saved attempt, content approval, or runtime schema changed. New prose invalidates previous content approval."
     },
     "independent_verification": {
