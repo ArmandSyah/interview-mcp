@@ -13,6 +13,7 @@ Docker and a hosting account are not necessary for these features.
 
 Select **System design** to open the built-in whiteboard. Select **Coding** to open the editor.
 See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
+For Windows installation, follow the [preview installation guide](docs/windows-install.md).
 See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
 Account registration and checkout are proposals, not available app features.
 

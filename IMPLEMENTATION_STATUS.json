@@ -100,9 +100,13 @@
   },
   "expanded_delivery_work": {
     "windows_installation": {
-      "status": "inspection_completed",
+      "status": "implemented_pending_windows_ci",
       "existing": "Electron Builder creates an NSIS installer. The Windows workflow tests the unpacked app.",
-      "required": "Test actual installation, saved practice after restart, and removal without loss of practice data. Supply GitHub build, download, and installation instructions."
+      "required": "Test actual installation, saved practice after restart, and removal without loss of practice data. Supply GitHub build, download, and installation instructions.",
+      "implementation": "The Windows installer preview workflow builds an x64 NSIS installer. A dedicated lifecycle test installs it in a path with spaces, uses the bundled engine with an invalid host-Python path, saves code and design work, removes the app, compares saved data, and reinstalls it. Default data-directory markers must survive removal. NSIS data retention is explicit.",
+      "artifacts": "The download contains an installer, SHA-256 checksum, build identity, and standalone instructions. Generated guide links identify the source commit when GitHub supplies it. Artifacts are development previews with 30-day retention, not a published installer release.",
+      "local_verification": "TypeScript, formatting, installer test discovery, workflow YAML parsing, metadata byte counts, checksum generation, and standalone guide links passed. No Windows installation or removal ran locally.",
+      "independent_review": "A subagent independently examined the workflow, lifecycle test, PowerShell arguments, data-retention checks, artifact generator, and Issue 9 writing. It found broken relative links in the extracted guide and compound procedural instructions. The corrections passed independent metadata and source review. Windows execution remains pending CI."
     },
     "download_website": {
       "status": "requested_after_windows_installation",

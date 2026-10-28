@@ -66,6 +66,8 @@ Do not disable the Electron sandbox to bypass a setup error.
 
 ## Use a packaged app
 
+For the Windows preview, follow the [installation guide](../../docs/windows-install.md).
+
 The desktop workflow creates Windows NSIS installers and Linux AppImage and deb packages.
 These packages include Python, the MCP engine, and the public examples.
 Node.js, uv, and the source checkout are not necessary to start these packages.
