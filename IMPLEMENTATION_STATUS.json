@@ -699,7 +699,6 @@
     "remaining_checks": [
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
       "Startup and close: close during engine initialization, a native file picker, and sandbox installation",
-      "Content packs/licenses/checkout: native cancellation, read/validation errors, valid installation/catalog refresh, and configured checkout success/error with a shell fixture",
       "Recall: Open saved practice for coding/design, activation error, field limits, and a queue-enabled remote account transition",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Credential recovery: visible startup decryption error and recovery with fixture credentials",
@@ -756,6 +755,18 @@
       "tested_head": "81a0ac7f3ce00a798f22504ea383b19ce52ad392",
       "evidence": "All 12 check runs passed, including both Linux and Windows desktop jobs, Windows installer checks, remote integration, Supabase, container build, and backend CI. The merge completed after both Linux runs finished.",
       "scope": "The desktop preview is on main. Subsequent shutdown fixes and UI stories remain on test/desktop-remaining-interactions until their checks pass. The full goal is still active."
+    },
+    "content_distribution_stories": {
+      "status": "passed_native_source",
+      "tests": [
+        "apps/desktop/tests/e2e/content-stories.spec.ts",
+        "apps/desktop/tests/e2e/content-fixture.ts"
+      ],
+      "coverage": "Preview installation is disabled and checkout is absent. Configured selection cancellation preserves both catalogs, installed packs, and an existing attempt. File-count, missing-file, envelope, and signature errors permit retry. A valid signed pack updates both catalogs and installed metadata. Duplicate clicks issue one request. Checkout errors permit retry of the exact configured URL.",
+      "mechanism": "An ephemeral public key replaces trust in the source bundle and the temporary backend process. The real backend checks signatures and writes its isolated database. Native picker and browser boundaries use fixtures. The checked-in trust file and bundle do not change.",
+      "checks": "All three native stories passed in the final run in 9.5 seconds. Type checks and formatting passed. The final run checks the temporary helper database and immediate cancellation assertions.",
+      "independent_review": "An independent agent found that the manifest helper inherited the default database directory. The helper now uses a temporary directory. The reviewer found no remaining concrete issue in the fixture or assertions.",
+      "limits": "Configured fixtures skip packaged executables. These stories have run on Linux source, not Windows source. They do not open a browser, make a purchase, or publish content."
     }
   },
   "last_verified": {
