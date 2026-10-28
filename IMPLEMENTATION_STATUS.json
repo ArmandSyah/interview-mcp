@@ -694,7 +694,7 @@
     "coverage_review": {
       "method": "An independent subagent mapped the renderer components and native handlers to existing native, unit, and process tests. This is a source coverage review, not a claim that the remaining interactions passed.",
       "scope_corrections": "There is no archive-restore UI. Timer start/pause, guided/mock selection, reflection history expansion, coding error dismissal, and account isolation have coverage. The remaining list names specific uncovered actions rather than indefinite additional testing.",
-      "race_candidates": "The initial sandbox response race is corrected and verified. Close during sandbox setup may wait for the active operation before it can cancel setup. That path needs controlled native reproduction."
+      "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
     },
     "remaining_checks": [
       "Signed updates: configured channel/check/download/retry, installer confirmation, backup error, duplicate actions, and close during download",
@@ -712,9 +712,16 @@
     ],
     "design_completion_story": {
       "result": "passed_native_source",
-      "evidence": "The new native story passed in 5.4 seconds. It uses real renderer controls, preload, service, backend, and saved practice data. An IPC gate supplies one controlled failure before the backend call. It checks duplicate clicks, unchanged attempt after failure, retry, completion, restart, locked notes, and a fresh attempt that preserves the completed record.",
+      "evidence": "The new native story passed in 5.4 seconds. It uses real renderer controls, preload, service, backend, and saved practice data. An IPC gate supplies one controlled failure before the backend call. It checks duplicate clicks, unchanged attempt after failure, retry, completion, restart, locked notes, and a fresh attempt that preserves the completed record. The independent review requested stronger duplicate-count and canvas assertions. The updated native story passed, including unchanged saved notes/canvas and an empty canvas for the new attempt.",
       "limits": "The injected failure occurs before the backend completion call. It does not cover a backend commit followed by a local state write failure.",
       "test": "apps/desktop/tests/e2e/design-finish.spec.ts"
+    },
+    "sandbox_close_cancellation": {
+      "status": "verified_local_pending_independent_review",
+      "behavior": "A native close request cancels the active sandbox command before the renderer waits for active work. The manager creates a new cancellation controller after the operation ends, so a failed draft save can permit another inspection. Final shutdown still validates ownership before stopping containers.",
+      "evidence": "Before the fix, the native test failed its five-second close check while Docker --version waited for its ten-second timeout. After the fix, the story passed in 2.5 seconds. All 11 related native stories passed. All 245 desktop unit/process tests passed with 2 optional skips. The build passed.",
+      "scope": "The native fixture replaces Docker with a temporary Linux executable. It does not start or stop a real container. The manager unit test verifies inspection after cancellation. Native close during image/runtime installation and final owned-container cleanup remains to be tested.",
+      "data_effect": "Draft-save checks and saved data formats have no changes. A failed save still prevents closure."
     }
   },
   "last_verified": {

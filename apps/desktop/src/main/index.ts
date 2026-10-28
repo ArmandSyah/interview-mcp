@@ -142,6 +142,7 @@ void app.whenReady().then(async () => {
     if (draftFlushed || !service) return;
     event.preventDefault();
     closeRequested = true;
+    service.cancelSandboxSetup();
     window?.webContents.send('workbench:event', { type: 'flush-before-close' });
   });
   const vault = {

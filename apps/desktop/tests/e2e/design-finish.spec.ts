@@ -29,6 +29,10 @@ test('finish failure permits retry, rejects duplicate clicks, and preserves the 
       (item) => item.id === before.activeDesignSessionId,
     )!;
     const gate = await gateIpc(app, 'design-finish');
+    const originalDraft = await page.evaluate(
+      (id) => window.interview.loadDesignDraft(id),
+      original.id,
+    );
     try {
       await finish.evaluate((button) => {
         (button as HTMLButtonElement).click();
@@ -42,6 +46,7 @@ test('finish failure permits retry, rejects duplicate clicks, and preserves the 
       ).toBeVisible();
       await expect(finish).toBeEnabled();
       const failed = await page.evaluate(() => window.interview.snapshot());
+      expect(await gate.calls()).toHaveLength(1);
       expect(failed.designSessions.find((item) => item.id === original.id)).toEqual(original);
       await finish.click();
       await expect.poll(async () => (await gate.calls()).length).toBe(2);
@@ -49,6 +54,7 @@ test('finish failure permits retry, rejects duplicate clicks, and preserves the 
       await expect(
         page.getByRole('button', { name: 'Session finished', exact: true }),
       ).toBeDisabled();
+      expect(await gate.calls()).toHaveLength(2);
     } finally {
       await gate.restore();
     }
@@ -83,6 +89,14 @@ test('finish failure permits retry, rejects duplicate clicks, and preserves the 
     const fresh = next.designSessions.find((item) => item.id === next.activeDesignSessionId)!;
     expect(fresh.review).toBeFalsy();
     expect(fresh.completed_at).toBeFalsy();
+    const retainedDraft = await page.evaluate(
+      (id) => window.interview.loadDesignDraft(id),
+      original.id,
+    );
+    expect(retainedDraft.scene.elements).toEqual(originalDraft.scene.elements);
+    expect(retainedDraft.notes).toEqual(originalDraft.notes);
+    const freshDraft = await page.evaluate((id) => window.interview.loadDesignDraft(id), fresh.id);
+    expect(freshDraft.scene.elements).toEqual([]);
     await page.getByRole('button', { name: 'notes', exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Requirements', exact: true })).toBeEnabled();
     await expect(page.getByRole('textbox', { name: 'Requirements', exact: true })).toHaveValue('');

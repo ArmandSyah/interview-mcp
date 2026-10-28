@@ -59,7 +59,7 @@ export class ManagedSandbox {
   private leases = 0;
   private ownsLifecycle = false;
   private closed = false;
-  private readonly abort = new AbortController();
+  private abort = new AbortController();
 
   constructor(
     root: string,
@@ -381,6 +381,7 @@ export class ManagedSandbox {
       })
       .finally(() => {
         this.operation = null;
+        if (this.abort.signal.aborted && !this.closed) this.abort = new AbortController();
       });
     this.operation = pending;
     return pending;
@@ -460,5 +461,10 @@ export class ManagedSandbox {
     // volume is removed, including after a partial image/runtime download.
     if (this.operation) await this.operation.catch(() => {});
     await this.stopOwned(true).catch(() => {});
+  }
+
+  // A close request can fail to save drafts. Cancel setup without disabling retries.
+  cancelPending(): void {
+    if (this.operation) this.abort.abort();
   }
 }

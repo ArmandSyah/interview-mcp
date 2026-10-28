@@ -32,59 +32,61 @@ function fixture(
   const state = { running: false, owned: false, python: false, foreign: false, ...initial };
   const statuses: SandboxStatus[] = [];
   let manager: ManagedSandbox;
-  const run = vi.fn(async (raw: string[], options: { env: NodeJS.ProcessEnv }) => {
-    const args = raw[0] === '--host' ? raw.slice(2) : raw;
-    if (args[0] === '--version') return 'Docker version 28';
-    if (args[0] === 'context' && args[1] === 'show') return 'desktop-linux';
-    if (args[0] === 'context' && args[1] === 'inspect')
-      return JSON.stringify(initial.host ?? 'unix:///var/run/docker.sock');
-    if (args[0] === 'info')
-      return JSON.stringify({
-        OSType: 'linux',
-        Architecture: initial.architecture ?? 'x86_64',
-        CgroupVersion: '2',
-      });
-    if (args[0] === 'compose' && args[1] === 'version') return '2.42.0';
-    if (args[0] === 'ps') return state.owned || state.foreign ? id : '';
-    if (args[0] === 'inspect')
-      return JSON.stringify([
-        {
-          Id: id,
-          Config: {
-            Image: PISTON_IMAGE,
-            Env: ['PISTON_DISABLE_NETWORKING=true'],
-            Labels: {
-              'io.github.armandsyah.interview-workbench.owner': state.foreign
-                ? 'someone-else'
-                : manager.owner,
-              'com.docker.compose.project': manager.project,
-              'com.docker.compose.service': 'piston',
+  const run = vi.fn(
+    async (raw: string[], options: { env: NodeJS.ProcessEnv; signal?: AbortSignal }) => {
+      const args = raw[0] === '--host' ? raw.slice(2) : raw;
+      if (args[0] === '--version') return 'Docker version 28';
+      if (args[0] === 'context' && args[1] === 'show') return 'desktop-linux';
+      if (args[0] === 'context' && args[1] === 'inspect')
+        return JSON.stringify(initial.host ?? 'unix:///var/run/docker.sock');
+      if (args[0] === 'info')
+        return JSON.stringify({
+          OSType: 'linux',
+          Architecture: initial.architecture ?? 'x86_64',
+          CgroupVersion: '2',
+        });
+      if (args[0] === 'compose' && args[1] === 'version') return '2.42.0';
+      if (args[0] === 'ps') return state.owned || state.foreign ? id : '';
+      if (args[0] === 'inspect')
+        return JSON.stringify([
+          {
+            Id: id,
+            Config: {
+              Image: PISTON_IMAGE,
+              Env: ['PISTON_DISABLE_NETWORKING=true'],
+              Labels: {
+                'io.github.armandsyah.interview-workbench.owner': state.foreign
+                  ? 'someone-else'
+                  : manager.owner,
+                'com.docker.compose.project': manager.project,
+                'com.docker.compose.service': 'piston',
+              },
             },
+            HostConfig: {
+              Privileged: true,
+              Memory: 2 * 1024 ** 3,
+              NanoCpus: 1_500_000_000,
+              PortBindings: { '2000/tcp': [{ HostIp: '127.0.0.1', HostPort: '2000' }] },
+            },
+            State: { Running: state.running },
           },
-          HostConfig: {
-            Privileged: true,
-            Memory: 2 * 1024 ** 3,
-            NanoCpus: 1_500_000_000,
-            PortBindings: { '2000/tcp': [{ HostIp: '127.0.0.1', HostPort: '2000' }] },
-          },
-          State: { Running: state.running },
-        },
-      ]);
-    if (args[0] === 'compose') {
-      expect(options.env.INTERVIEW_SANDBOX_OWNER).toBe(manager.owner);
-      expect(options.env.ANTHROPIC_API_KEY).toBeUndefined();
-      state.owned = true;
-      state.running = true;
-      if (state.failStart) throw new Error('registry-secret-should-never-be-shown');
-      return '';
-    }
-    if (args[0] === 'stop') {
-      expect(args).toEqual(['stop', '--time', '10', id]);
-      state.running = false;
-      return id;
-    }
-    throw new Error(`Unexpected Docker fixture command: ${args.join(' ')}`);
-  });
+        ]);
+      if (args[0] === 'compose') {
+        expect(options.env.INTERVIEW_SANDBOX_OWNER).toBe(manager.owner);
+        expect(options.env.ANTHROPIC_API_KEY).toBeUndefined();
+        state.owned = true;
+        state.running = true;
+        if (state.failStart) throw new Error('registry-secret-should-never-be-shown');
+        return '';
+      }
+      if (args[0] === 'stop') {
+        expect(args).toEqual(['stop', '--time', '10', id]);
+        state.running = false;
+        return id;
+      }
+      throw new Error(`Unexpected Docker fixture command: ${args.join(' ')}`);
+    },
+  );
   const request = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     expect(String(url).startsWith('http://127.0.0.1:2000/api/v2/')).toBe(true);
     expect(init?.redirect).toBe('error');
@@ -127,6 +129,33 @@ it('does nothing on construction and inspection never starts a container', async
   expect(mutations()).toEqual([]);
   await manager.close();
   expect(mutations()).toEqual([]);
+});
+
+it('cancels a pending command and permits another inspection if window closure fails', async () => {
+  const { manager, run, mutations } = fixture();
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  run.mockImplementationOnce(
+    (_args, options) =>
+      new Promise<string>((_resolve, reject) => {
+        options.signal!.addEventListener(
+          'abort',
+          () => reject(new Error('Cancelled fixture command')),
+          { once: true },
+        );
+        entered();
+      }),
+  );
+  const inspect = manager.inspect();
+  const rejected = expect(inspect).rejects.toThrow();
+  await started;
+  manager.cancelPending();
+  await rejected;
+  expect((await manager.inspect()).phase).toBe('stopped');
+  expect(mutations()).toEqual([]);
+  await manager.close();
 });
 
 it('starts the pinned app-owned sandbox, installs Python, checks execution, and stops without deleting data', async () => {
