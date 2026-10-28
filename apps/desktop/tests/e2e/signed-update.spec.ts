@@ -72,15 +72,34 @@ test('signed update rejects tampering, retries downloads, and requires confirmat
     ).toBeVisible();
     expect((await state()).opened).toEqual([]);
     await unlink(join(data, 'backups'));
+    await app.evaluate(() => {
+      (globalThis as typeof globalThis & { updateFixture: UpdateFixture }).updateFixture.openError =
+        'Fixture installer open failure';
+    });
     await install.click();
     await expect.poll(async () => (await state()).opened.length).toBe(1);
+    await expect(
+      dialog.getByRole('status').filter({ hasText: 'Fixture installer open failure' }),
+    ).toBeVisible();
+    await expect(install).toBeEnabled();
+    await app.evaluate(() => {
+      (globalThis as typeof globalThis & { updateFixture: UpdateFixture }).updateFixture.openError =
+        undefined;
+    });
+    await install.click();
+    await expect.poll(async () => (await state()).opened.length).toBe(2);
+    await expect(
+      dialog.getByRole('status').filter({ hasText: 'Fixture installer open failure' }),
+    ).toHaveCount(0);
     expect((await state()).opened).toEqual([
       join(data, 'updates', '99.0.0', fixture.installerName),
+      join(data, 'updates', '99.0.0', fixture.installerName),
     ]);
-    expect((await state()).backupsAtOpen).toHaveLength(1);
-    expect((await state()).backupsAtOpen[0]).toContain(before.sessions[0]!.attemptId);
+    expect((await state()).backupsAtOpen).toHaveLength(2);
+    for (const backup of (await state()).backupsAtOpen)
+      expect(backup).toContain(before.sessions[0]!.attemptId);
     const backups = await readdir(join(data, 'backups'));
-    expect(backups).toHaveLength(1);
+    expect(backups).toHaveLength(2);
     const backup = await readFile(join(data, 'backups', backups[0]!), 'utf8');
     expect(backup).toContain(before.sessions[0]!.attemptId);
     expect((await page.evaluate(() => window.interview.snapshot())).sessions).toEqual(

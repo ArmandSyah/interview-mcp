@@ -9,6 +9,7 @@ export type UpdateFixture = {
   confirmations: number;
   opened: string[];
   backupsAtOpen: string[];
+  openError?: string;
   hold?: 'metadata' | 'download' | 'consent' | 'hash';
   held?: boolean;
   releaseHeld?: () => void;
@@ -113,7 +114,7 @@ electron.shell.openPath = async (file) => {
   state.backupsAtOpen = fs.readdirSync(directory).map(name => fs.readFileSync(path.join(directory, name), 'utf8'));
   state.opened.push(file);
   fs.writeFileSync(${JSON.stringify(join(directory, 'installer-opened'))}, file);
-  return '';
+  return state.openError ?? '';
 };
 const original = ${JSON.stringify(resolve('dist/main/index.cjs'))};
 let source = fs.readFileSync(original, 'utf8');

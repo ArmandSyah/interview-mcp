@@ -697,14 +697,12 @@
       "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
     },
     "remaining_checks": [
-      "Signed updates: shell-open failure recovery",
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
-      "Startup and close: close during engine initialization, a native file picker, update download, and sandbox setup",
+      "Startup and close: close during engine initialization, a native file picker, and sandbox installation",
       "Content packs/licenses/checkout: native cancellation, read/validation errors, valid installation/catalog refresh, and configured checkout success/error with a shell fixture",
       "Recall: Open saved practice for coding/design, activation error, field limits, and a queue-enabled remote account transition",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Credential recovery: visible startup decryption error and recovery with fixture credentials",
-      "Progress view: displayed content and empty state",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes",
       "Design completion: backend completion followed by a local state write failure and recovery"
@@ -734,8 +732,8 @@
     "signed_update_native_story": {
       "status": "passed_native_source_pending_independent_review",
       "mechanism": "The test compiles the real source bundle with one temporary release public key. It supplies signed fixture responses through fetch and intercepts the native confirmation and installer launch. IPC handlers, signature and checksum checks, downloaded files, and backup creation remain real. The fixture never executes installer bytes or publishes a release.",
-      "coverage": "The story rejects an invalid signature, removes a corrupt download, permits retry, preserves practice after confirmation cancellation, blocks installer launch after backup-directory failure, and retries after that error. At installer-open time, the fixture reads the backup and verifies the saved attempt.",
-      "checks": "Seven combined native distribution and shutdown stories passed in 17.5 seconds. The final backup-at-open assertion passed in a focused native run. Type checks and formatting passed.",
+      "coverage": "The story rejects an invalid signature, removes a corrupt download, permits retry, preserves practice after confirmation cancellation, blocks installer launch after backup-directory failure, and retries after that error. At installer-open time, the fixture reads the backup and verifies the saved attempt. The shell-open fixture now returns an error on one attempt. The native story verifies its error message, retry, the verified path on both calls, and a completed backup before each call.",
+      "checks": "Seven combined native distribution and shutdown stories passed in 17.5 seconds. The final backup-at-open assertion passed in a focused native run. Type checks and formatting passed. The extended shell-open failure/retry story passed in 3.6 seconds.",
       "limits": "The source fixture uses a temporary release public key and skips packaged executables. The separate update-close story covers metadata, download, consent, and cached-file verification cancellation.",
       "test": "apps/desktop/tests/e2e/signed-update.spec.ts"
     },
@@ -746,6 +744,11 @@
       "cleanup": "Interrupted downloads close acquired files and remove partial files. A test verifies response cancellation if creating the file fails. Installer verification uses a cancellable read stream.",
       "independent_review": "The reviewer passed all 8 update unit tests and independently reproduced actual file-hash cancellation with ABORT_ERR followed by a successful retry. They found and reviewed the hash/confirmation boundary and response cleanup correction. Their final fixture-sensitivity correction was applied and passed.",
       "data_effect": "Practice save checks and saved formats have no changes. A verified download can remain cached. No installer opens after a successful close request."
+    },
+    "progress_view_story": {
+      "status": "passed_native_source",
+      "evidence": "The native story supplies empty and populated progress through snapshot events. It checks the Show progress control, PROGRESS tab, empty message, rendered heading/body, switching to test results, and an unchanged backend snapshot. The baseline includes a saved coding attempt. The final story passed in 2.7 seconds. Existing result-stories also verify backend fixture progress after a real run action.",
+      "test": "apps/desktop/tests/e2e/progress-view.spec.ts"
     }
   },
   "last_verified": {
