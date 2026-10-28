@@ -29,6 +29,7 @@ test('a failed design draft load preserves the saved file and permits a retry', 
       .fill('Keep this saved requirement.');
     await page.getByRole('button', { name: '+ Database', exact: true }).click();
     await page.getByRole('button', { name: 'Coding', exact: true }).click();
+    await expect(page.getByRole('heading', { name: /Your next interview/ })).toBeVisible();
     const before = await page.evaluate(() => window.interview.snapshot());
     const draftPath = join(
       data,

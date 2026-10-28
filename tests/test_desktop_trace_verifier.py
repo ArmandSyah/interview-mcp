@@ -24,6 +24,12 @@ import pytest
         ("sentinel_key", "unrelated environment value"),
         ("sentinel_value", "unrelated environment value"),
         ("assertion", "did not record the intentional assertion failure"),
+        ("connection_missing", "Expected one connection record"),
+        ("connection_duplicate", "Expected one connection record"),
+        ("connection_version", "Unexpected connection record format or truncation"),
+        ("connection_truncated", "Unexpected connection record format or truncation"),
+        ("connection_state", "no connected snapshot"),
+        ("connection_sentinel", "unrelated environment value"),
     ],
 )
 def test_trace_verifier_rejects_missing_evidence(
@@ -69,6 +75,23 @@ def test_trace_verifier_rejects_missing_evidence(
             (raw / "context.trace").write_bytes(encoded(context))
             (raw / "screencast/frame.jpeg").write_bytes(image)
         else:
+            connection = {
+                "version": 1,
+                "truncated": False,
+                "entries": [{"event": "snapshot", "connection": "connected"}],
+            }
+            if damage == "connection_version":
+                connection["version"] = 2
+            elif damage == "connection_truncated":
+                connection["truncated"] = True
+            elif damage == "connection_state":
+                connection["entries"] = [{"event": "snapshot", "connection": "connecting"}]
+            elif damage == "connection_sentinel":
+                connection["extra"] = "fixture-value-must-not-enter-launch-options"
+            if damage != "connection_missing":
+                (directory / "electron-fixture-connection.json").write_text(json.dumps(connection))
+            if damage == "connection_duplicate":
+                (directory / "electron-other-connection.json").write_text(json.dumps(connection))
             with ZipFile(directory / "electron-fixture.zip", "w") as archive:
                 archive.writestr("trace.trace", encoded(context))
                 archive.writestr("screencast/frame.jpeg", image)

@@ -40,6 +40,21 @@ for path in runner_paths:
     if archives:
         archived += 1
         context_path = archives[0]
+        connection_paths = list(path.parent.glob("electron-*-connection.json"))
+        assert len(connection_paths) == 1, (
+            f"Expected one connection record, found {connection_paths}"
+        )
+        connection = json.loads(connection_paths[0].read_text())
+        assert connection["version"] == 1 and not connection["truncated"], (
+            f"Unexpected connection record format or truncation: {connection_paths[0]}"
+        )
+        assert any(
+            row["event"] == "snapshot" and row.get("connection") == "connected"
+            for row in connection["entries"]
+        ), f"The connection record has no connected snapshot: {connection_paths[0]}"
+        assert "fixture-value-must-not-enter-launch-options" not in json.dumps(connection), (
+            f"The connection record contains an unrelated environment value: {connection_paths[0]}"
+        )
     else:
         raw = list(path.parent.glob("electron-*-raw/context.trace"))
         assert len(raw) == 1, f"Expected one raw trace after native close, found {raw}"

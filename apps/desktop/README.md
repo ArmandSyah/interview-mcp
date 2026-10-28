@@ -1196,3 +1196,39 @@ npm run test:desktop -- tests/e2e/practice-queue-create.spec.ts tests/e2e/practi
 These tests use the local MCP engine, temporary practice data, and a local remote-account fixture.
 They include add retries, input validation, concurrent schedule changes, queue read errors, and recall responses after an error.
 The connection test does not use Supabase accounts or change local notes.
+
+### Connection records in UI tests
+
+The native test harness starts Electron and uses the desktop UI.
+An observer records process and connection events for this harness.
+Before Electron closes, the harness writes `electron-<id>-connection.json`.
+
+The `elapsedMs` field gives milliseconds since the observer starts.
+This file records times in milliseconds, engine process events, input and output byte counts, and connection state.
+It also records names of known startup methods and counts of available problems.
+The file contains no request arguments, response text, child logs, credentials, workspace paths, or practice text.
+
+Records stop after 1,000 events.
+The `truncated` field is `true` when the harness does not write more events.
+A `child-spawn-request` timestamp records the time before synchronous process creation.
+
+When the harness finds an engine after launch, it records `child-observed-existing`.
+That record gives the observation time.
+The engine start time is unknown.
+A native window close can stop Electron before the harness saves this file.
+
+The native trace probe examines the JSON file after `app.close()` saves it.
+The probe also examines snapshot data for the connected state.
+Tests for saved design drafts wait for the Coding welcome page before they select System design.
+This wait completes the previous mode change before the next action.
+Limits for previous assertions do not change.
+
+After the build, run the connection test from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/connection-evidence.spec.ts
+```
+
+The test uses the local engine and temporary practice data.
+It examines initial connection, reconnection, saved code, and the contents of connection records.
+The new reconnection assertion has a 20-second limit.

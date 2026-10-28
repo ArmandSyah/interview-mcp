@@ -98,6 +98,31 @@
     "status": "not_started",
     "condition": "Finish and hand off the current desktop and Supabase work first. No billing is active."
   },
+  "expanded_delivery_work": {
+    "windows_installation": {
+      "status": "inspection_completed",
+      "existing": "Electron Builder creates an NSIS installer. The Windows workflow tests the unpacked app.",
+      "required": "Test actual installation, saved practice after restart, and removal without loss of practice data. Supply GitHub build, download, and installation instructions."
+    },
+    "download_website": {
+      "status": "requested_after_windows_installation",
+      "required": "Prepare a website deployment plan with installer downloads and build identity. No provider purchase or website deployment is authorized by this planning requirement."
+    },
+    "low_cost_ai": {
+      "status": "requested",
+      "existing": "Curated hints work with AI off. The desktop supports optional Ollama and a personal Claude API key.",
+      "required": "Provide an inexpensive or free assistance and grading mechanism. Define its evidence, rubric, model limits, and relationship to actual code-test results."
+    },
+    "question_language_review": {
+      "status": "requested",
+      "existing": "The private draft validator checks structure and binds release approval to content hashes.",
+      "required": "Add a repeatable review and rewrite mechanism for AI-authored questions using ASD-STE100 Issue 9 rules and dictionary checks. Preserve exercise requirements and test behavior."
+    },
+    "independent_verification": {
+      "status": "in_progress",
+      "required": "A subagent independently examines functionality and language rewrites. Record its findings and verify each correction."
+    }
+  },
   "ui_interaction_audit": {
     "status": "in_progress",
     "prior_delivery_commit": "38257228803b971caedb1d1ac90d0d0534f9ddc0",
@@ -586,7 +611,7 @@
         "build_types_format": "Desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
         "documentation": "The new README sections were reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The screenshot shows the original and new reflections after recovery.",
         "scope": "The correction does not change saved file formats or previous history records. Old drafts keep their ID until their content changes. Tests use the isolated checkout and temporary practice data. The user's trial checkout stays unchanged.",
-        "packages_and_ci": "Supabase workflow 39722436631 passed for a9f6ae0. Desktop workflow 39722436646 is in progress. This batch raises the Linux job limit from 35 to 45 minutes after the verified cancellation in run 39718216048. Individual test and assertion timeouts stay unchanged. The Windows job limit stays at 35 minutes. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39722436631 and the Linux job in Desktop workflow 39722436646 passed for a9f6ae0. Windows had 133 passes, three skips, and three assertion failures. Two saved-design test setups continued before Coding mode appeared. The third assertion waited five seconds for the Requirements field. Artifact 12401964835 passed its SHA-256 check. The Windows job limit stayed at 35 minutes. Linux used the 45-minute job limit after the verified cancellation in run 39718216048. Local release packages predate these changes."
       }
     },
     "practice_queue_creation_and_read_regressions": {
@@ -613,7 +638,34 @@
         "build_types_format": "Desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
         "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The design and paused-reminder screenshots show the returned item with the correct filters.",
         "scope": "Saved file formats, schedules, history records, and previous drafts stay unchanged. Tests use temporary data and a local protocol fixture, not Supabase accounts. The user's trial checkout stays at 24aa0a3.",
-        "packages_and_ci": "Platform checks for this batch have not started. The previous Windows startup and settings assertions need further investigation. Local release packages predate these changes."
+        "packages_and_ci": "Supabase workflow 39724534652 and the Linux job in Desktop workflow 39724534668 passed for 16fa34a. Windows had 144 passes, three skips, and two settings-close assertion failures. Artifact 12403429084 passed its SHA-256 check. A recorded frame after one expired assertion shows the dialog closed. The other trace still shows the settings dialog. The connection delay needs more investigation. Local release packages predate these changes."
+      }
+    },
+    "connection_diagnostics_and_mode_setup": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/connection-evidence.spec.ts",
+        "apps/desktop/tests/diagnostics/trace-probe.spec.ts",
+        "apps/desktop/tests/e2e/design-load-races.spec.ts",
+        "apps/desktop/tests/e2e/design-load-recovery.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/connection-evidence.test.ts",
+      "changes": [
+        "The native test harness writes bounded connection records with elapsed times, engine process phases, byte counts, and connection snapshots.",
+        "Connection records contain no request arguments, response text, child logs, credentials, workspace paths, or practice text.",
+        "The trace verifier examines the saved JSON file after normal helper close. Native window close can end Electron before this file is available.",
+        "Saved-design tests wait for the Coding welcome page before their next mode change. Previously, a click could select the active System design button before Coding appeared."
+      ],
+      "verification": {
+        "focused_native": "Seven native stories passed after the independent review corrections. The initial setup correction incorrectly waited for a code editor without an open coding attempt. Four setup assertions failed before that correction. The Coding welcome-page prerequisite fixes the setup.",
+        "trace_probes": "Two expected assertion failures and the artifact verifier passed. An earlier display-start error produced two expected failures at the wrong location. That result was discarded. After display repair, the verifier confirmed the intended assertion messages, native screenshots, context traces, and connection JSON.",
+        "observer_unit": "All 16 observer tests passed, including an independent verifier run. They include privacy, bounded records, process selection, timestamp accuracy, snapshot counts, and unchanged write and error behavior.",
+        "desktop_unit_and_process": "209 passed, 2 opt-in tests skipped after the independent review corrections.",
+        "documentation": "The main agent and independent verifier examined the new README section against Issue 9 rules and dictionary meanings, parts of speech, and forms. They corrected vocabulary, participle placement, the timing origin, and an ambiguous pronoun. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "python_trace_verifier": "All 15 CLI verifier cases passed locally and in the independent review. The initial commit check found nine old fixtures without the new JSON evidence. The common fixture now includes it. Six new cases reject missing, duplicate, wrong-version, truncated, disconnected, and disclosed-sentinel records.",
+        "native_source_ui": "148 passed in 10.5 minutes on the isolated display. The two optional Piston tests were skipped because Docker is unavailable in the resumed session. This full run preceded the final two harness corrections from independent review. Seven focused native tests and the two trace probes passed with those corrections. Platform CI must still test the full final harness.",
+        "independent_review": "A subagent found two harness defects and language issues. errorMonitor preserves unhandled child errors. An independent guard prevents connection-file errors from suppressing the Electron trace. Native tests reproduced a connection-file write error and kept the context trace. The verifier confirmed the code corrections and all 16 observer unit tests. README corrections use active language, approved general vocabulary, and a defined timing origin.",
+        "scope": "Only test code and documentation change. Existing assertion time limits stay unchanged. The new reconnection probe has a 20-second connection wait. The user's trial checkout stays at 24aa0a3.",
+        "packages_and_ci": "Platform checks for this batch have not started. Windows startup, settings-close, and first canvas-load delays remain unresolved."
       }
     },
     "remaining_checks": [

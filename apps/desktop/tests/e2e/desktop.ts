@@ -1,7 +1,9 @@
 import { _electron as electron, test, type ElectronApplication } from '@playwright/test';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { writeFile } from 'node:fs/promises';
 import { desktopEnvironment } from '../desktop-environment';
+import { captureConnectionEvidence, connectionEvidence } from '../connection-evidence';
 
 export async function launch(data: string, developmentUrl = ''): Promise<ElectronApplication> {
   const info = test.info();
@@ -20,6 +22,7 @@ export async function launch(data: string, developmentUrl = ''): Promise<Electro
   });
   const trace = app.context().tracing;
   try {
+    await app.evaluate(captureConnectionEvidence, undefined);
     await (await app.firstWindow()).waitForLoadState('domcontentloaded');
     await trace.start({
       name: 'context',
@@ -36,6 +39,24 @@ export async function launch(data: string, developmentUrl = ''): Promise<Electro
   let closing: Promise<void> | undefined;
   app.close = () => {
     closing ??= (async () => {
+      try {
+        const evidence = await connectionEvidence(app).catch(() => undefined);
+        if (evidence) {
+          const path = info.outputPath(`${name}-connection.json`);
+          await writeFile(path, JSON.stringify(evidence, null, 2));
+          await info.attach(`${name}-connection`, {
+            path,
+            contentType: 'application/json',
+          });
+        }
+      } catch {
+        await info
+          .attach(`${name}-connection-error`, {
+            body: 'Connection artifact could not be saved.',
+            contentType: 'text/plain',
+          })
+          .catch(() => {});
+      }
       try {
         const path = info.outputPath(`${name}.zip`);
         await trace.stop({ path });

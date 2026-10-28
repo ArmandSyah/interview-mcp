@@ -16,6 +16,7 @@ async function savedDesign(page: Page) {
     .getByRole('textbox', { name: 'Requirements', exact: true })
     .fill('Previous session notes.');
   await page.getByRole('button', { name: 'Coding', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /Your next interview/ })).toBeVisible();
   return page.evaluate(() => window.interview.snapshot());
 }
 
