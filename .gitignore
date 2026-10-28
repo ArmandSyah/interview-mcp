@@ -31,6 +31,7 @@ apps/desktop/dist/
 apps/desktop/release/
 apps/desktop/backend/
 apps/desktop/test-results/
+apps/desktop/test-results-source-distribution/
 apps/desktop/test-results-diagnostics/
 apps/desktop/test-results-installer/
 apps/desktop/playwright-report/

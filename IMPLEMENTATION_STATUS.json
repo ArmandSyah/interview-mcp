@@ -766,7 +766,8 @@
       "mechanism": "An ephemeral public key replaces trust in the source bundle and the temporary backend process. The real backend checks signatures and writes its isolated database. Native picker and browser boundaries use fixtures. The checked-in trust file and bundle do not change.",
       "checks": "All three native stories passed in the final run in 9.5 seconds. Type checks and formatting passed. The final run checks the temporary helper database and immediate cancellation assertions.",
       "independent_review": "An independent agent found that the manifest helper inherited the default database directory. The helper now uses a temporary directory. The reviewer found no remaining concrete issue in the fixture or assertions.",
-      "limits": "Configured fixtures skip packaged executables. These stories have run on Linux source, not Windows source. They do not open a browser, make a purchase, or publish content."
+      "limits": "Configured fixtures skip packaged executables. These stories have run on Linux source, not Windows source. They do not open a browser, make a purchase, or publish content.",
+      "windows_check": "The Windows workflow now runs content, signed-update, and update-close source fixtures before packaging. Results remain pending until that branch completes CI. Packaged tests still check the preview configuration."
     }
   },
   "last_verified": {
