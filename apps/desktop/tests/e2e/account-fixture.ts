@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
-import { noteSections, type DesignBrief } from '../../src/shared/design';
+import { noteSections, type DesignBrief, type DesignSession } from '../../src/shared/design';
 
 /** Local protocol fixture. This server does not test Supabase token verification. */
 export async function accountServer(
@@ -13,6 +13,7 @@ export async function accountServer(
   let release: (() => void) | undefined;
   let identityGate: Promise<void> | undefined;
   const requests: { name: string; account: string; args: Record<string, unknown> }[] = [];
+  const designSessions = new Map<string, { account: string; record: Partial<DesignSession> }>();
   const brief: DesignBrief = {
     id: 'fixture-design',
     title: 'Account design fixture',
@@ -35,7 +36,9 @@ export async function accountServer(
     'get_problem_description',
     'get_hint',
     ...(execution ? ['run_tests', 'submit_solution'] : []),
-    ...(options.design ? ['list_design_problems', 'start_design_session'] : []),
+    ...(options.design
+      ? ['list_design_problems', 'start_design_session', 'get_design_session']
+      : []),
   ];
   const server = createServer(async (request, response) => {
     if (request.method !== 'POST') {
@@ -63,7 +66,7 @@ export async function accountServer(
       const name = body.params.name;
       requests.push({ name, account, args: body.params.arguments ?? {} });
       if (name === 'get_connection_identity') await identityGate;
-      const failed =
+      let failed =
         (failure === 'identity' && name === 'get_connection_identity') ||
         (failure === 'catalog' && name === 'list_problems');
       let value: unknown;
@@ -90,8 +93,8 @@ export async function accountServer(
       if (name === 'get_problem_description') value = 'This fixture tests account draft ownership.';
       if (name === 'get_hint') value = { hint: `Fixture hint for ${account}` };
       if (options.design && name === 'list_design_problems') value = [brief];
-      if (options.design && name === 'start_design_session')
-        value = {
+      if (options.design && name === 'start_design_session') {
+        const record: Partial<DesignSession> = {
           id: randomUUID(),
           problem_id: brief.id,
           brief,
@@ -99,6 +102,14 @@ export async function accountServer(
           started_at: '2026-01-01T00:00:00Z',
           completed_at: null,
         };
+        designSessions.set(record.id!, { account, record });
+        value = record;
+      }
+      if (options.design && name === 'get_design_session') {
+        const stored = designSessions.get(body.params.arguments?.session_id);
+        if (!stored || stored.account !== account) failed = true;
+        else value = stored.record;
+      }
       if (execution && ['run_tests', 'submit_solution'].includes(name))
         value = await execution(name, body.params.arguments ?? {});
       if (name === 'start_problem') {

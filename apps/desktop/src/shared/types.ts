@@ -86,6 +86,8 @@ export type Snapshot = {
   designProblems: import('./design').DesignSummary[];
   designSessions: import('./design').DesignSession[];
   activeDesignSessionId: string | null;
+  designSessionVerified: boolean;
+  designStatusRevision: number;
   settings: Settings;
   problems: Problem[];
   sessions: PracticeSession[];

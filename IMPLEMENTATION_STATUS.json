@@ -703,8 +703,7 @@
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Credential recovery: visible startup decryption error and recovery with fixture credentials",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
-      "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes",
-      "Design completion: backend completion followed by a local state write failure and recovery"
+      "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
     ],
     "design_completion_story": {
       "result": "passed_native_source",
@@ -768,6 +767,23 @@
       "independent_review": "An independent agent found that the manifest helper inherited the default database directory. The helper now uses a temporary directory. The reviewer found no remaining concrete issue in the fixture or assertions.",
       "limits": "Configured fixtures skip packaged executables. These stories have run on Linux source, not Windows source. They do not open a browser, make a purchase, or publish content.",
       "windows_check": "The Windows workflow now runs content, signed-update, and update-close source fixtures before packaging. Results remain pending until that branch completes CI. Packaged tests still check the preview configuration."
+    },
+    "design_completion_recovery": {
+      "status": "local_verified_platform_and_cloud_checks_pending",
+      "requirements": "Read the owned backend status before editing a saved design session. Keep local notes, scene, review, chat, and IDs. Lock uncertain sessions after a lost completion response. Finish must wait for accepted reads and writes. Concurrent Finish requests must keep the first saved completion time.",
+      "changes": "The new get_design_session tool returns the existing session shape. The desktop validates identity and completion fields, saves status locally, and exposes retry after errors. A transient connection revision forces a status refresh after token replacement. The existing draft barrier orders completion after pending drafts and before subsequent edits. Both backends preserve completed_at with an atomic COALESCE update.",
+      "data_effect": "No saved workspace fields change. Existing content and practice records stay intact. Earlier completion times keep their stored values. Older servers without the owned-read tool cannot unlock saved design drafts. The new Supabase migration replaces the private dispatcher while preserving the public local-execution wrapper.",
+      "tests": [
+        "apps/desktop/tests/design-recovery.test.ts",
+        "apps/desktop/tests/e2e/design-completion-recovery.spec.ts",
+        "tests/test_design_practice.py",
+        "tests/test_cloud_store.py",
+        "supabase/functions/interview-mcp/practice_test.ts"
+      ],
+      "verification": "Desktop build, type checks, and formatting passed. The full desktop suite passed 255 tests with two optional skips. All 14 selected native stories passed, including account isolation, token replacement, restart recovery, lost response, load errors, and finish retry. The stronger held-read assertion passed its focused rerun. Python design/cloud checks passed 19 tests with 20 PostgreSQL tests skipped. Deno lint, type checks, and all 14 protocol tests passed.",
+      "independent_review": "Independent probes reproduced the stale-read and accepted-write races. The final barrier waits for both operations. A lost response remains locked until an owned read completes. The reviewer found no further blocking issue in the reviewed lifecycle, ownership, SQL, or permissions. Another agent reviewed the new documentation with the official Issue 9 rules and dictionary.",
+      "remaining": "Run full platform and PostgreSQL CI. Apply the Supabase migration and deploy its function after checks pass. The remote project has not received this change.",
+      "limits": "The lost-response native fixture uses a source bootstrap and skips packaged executables. Windows CI now runs that source test before packaging. Local native tests ran on Linux."
     }
   },
   "last_verified": {

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from uuid import uuid4
 
 import pytest
@@ -192,6 +194,35 @@ def test_finish_requires_a_review_of_the_selected_checkpoint():
     repo.evaluate(session.id, first.id)
     with pytest.raises(ValueError, match="Review this checkpoint"):
         repo.finish(session.id, second.id)
+
+
+def test_concurrent_finish_retries_keep_the_first_completion_time(tmp_path, monkeypatch):
+    engine = create_engine(f"sqlite:///{tmp_path / 'completion.db'}")
+    Base.metadata.create_all(engine)
+    monkeypatch.setattr(base, "engine", engine)
+    monkeypatch.setattr(base, "SessionLocal", sessionmaker(bind=engine, autoflush=False))
+    try:
+        session = repo.start("design-link-aliases")
+        saved = make_checkpoint(session.id)
+        repo.evaluate(session.id, saved.id)
+        ready = Barrier(2)
+
+        def finish():
+            ready.wait(timeout=5)
+            return repo.finish(session.id, saved.id)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first, second = [
+                future.result(timeout=10) for future in [pool.submit(finish), pool.submit(finish)]
+            ]
+        assert first.completed_at is not None
+        assert second == first, (
+            f"Concurrent finish({session.id}, {saved.id}) changed completion: {first} -> {second}"
+        )
+        assert repo.get(session.id) == first
+        assert repo.finish(session.id, saved.id) == first
+    finally:
+        engine.dispose()
 
 
 @pytest.mark.parametrize(

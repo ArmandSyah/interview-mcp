@@ -73,8 +73,13 @@ Deno.test('MCP dispatch validates practice arguments and does not advertise unav
         requestInit: { headers: { Authorization: 'Bearer account-token' } },
       }),
     );
-    const tools = (await client.listTools()).tools.map((tool) => tool.name);
-    assertEquals(tools.length, 19);
+    const advertised = (await client.listTools()).tools;
+    const tools = advertised.map((tool) => tool.name);
+    assertEquals(tools.length, 20);
+    assertEquals(
+      advertised.find((tool) => tool.name === 'get_design_session')?.annotations?.readOnlyHint,
+      true,
+    );
     for (
       const missing of [
         'run_tests',

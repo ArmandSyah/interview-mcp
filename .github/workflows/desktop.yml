@@ -115,8 +115,8 @@ jobs:
       - run: npm run backend
       - run: npm run build
       - run: npm test
-      - name: Test configured Windows distribution flows
-        run: npx playwright test tests/e2e/content-stories.spec.ts tests/e2e/signed-update.spec.ts tests/e2e/update-close.spec.ts --output=test-results-source-distribution
+      - name: Test configured Windows source flows
+        run: npx playwright test tests/e2e/content-stories.spec.ts tests/e2e/signed-update.spec.ts tests/e2e/update-close.spec.ts tests/e2e/design-completion-recovery.spec.ts --output=test-results-source-distribution
       - run: npx electron-builder --win --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
