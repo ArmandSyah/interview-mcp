@@ -74,6 +74,9 @@ test('signed update rejects tampering, retries downloads, and requires confirmat
     await unlink(join(data, 'backups'));
     await install.click();
     await expect.poll(async () => (await state()).opened.length).toBe(1);
+    expect((await state()).opened).toEqual([
+      join(data, 'updates', '99.0.0', fixture.installerName),
+    ]);
     expect((await state()).backupsAtOpen).toHaveLength(1);
     expect((await state()).backupsAtOpen[0]).toContain(before.sessions[0]!.attemptId);
     const backups = await readdir(join(data, 'backups'));
