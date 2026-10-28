@@ -220,6 +220,11 @@ npm run test:desktop
 
 Tests include model tool requests, incorrect IDs, saved draft selection, one-hint limits, cancellation, and submission approval.
 Native tests include coding, design checkpoints, image exports, saved work, and recall.
+
+Sandbox tests include reply sequences, status events, operation errors, and retries.
+An initial sandbox reply cannot change the panel after a status event or an accepted sandbox operation.
+After an initial read error, users can retry the sandbox check or close and reopen the settings dialog.
+
 Model tests use local fixtures. They do not make paid API calls.
 Docker tests start only with a user opt-in. See [the desktop test guide](apps/desktop/README.md#build-and-check).
 

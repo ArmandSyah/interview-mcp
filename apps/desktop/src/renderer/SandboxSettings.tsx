@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SandboxStatus } from '../shared/sandbox';
 import { useActions } from './actions';
 
@@ -15,18 +15,24 @@ export function SandboxSettings({
   const [status, setStatus] = useState<SandboxStatus | null>(null);
   const busy = actions.busy;
   const [error, setError] = useState('');
+  const revision = useRef(0);
   useEffect(() => {
     let live = true;
+    const initialRevision = revision.current;
     void window.interview
       .sandboxInfo()
       .then((value) => {
-        if (live) setStatus(value);
+        if (live && revision.current === initialRevision) setStatus(value);
       })
       .catch((error) => {
-        if (live) setError(error instanceof Error ? error.message : 'Cannot load sandbox settings');
+        if (live && revision.current === initialRevision)
+          setError(error instanceof Error ? error.message : 'Cannot load sandbox settings');
       });
     const unsubscribe = window.interview.onEvent((event) => {
-      if (event.type === 'sandbox') setStatus(event.status);
+      if (live && event.type === 'sandbox') {
+        revision.current += 1;
+        setStatus(event.status);
+      }
     });
     return () => {
       live = false;
@@ -36,6 +42,7 @@ export function SandboxSettings({
   async function action(operation: () => Promise<SandboxStatus | null>) {
     try {
       await actions.run(async () => {
+        revision.current += 1;
         setError('');
         await beforeAction();
         const result = await operation();

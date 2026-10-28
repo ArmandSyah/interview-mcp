@@ -675,14 +675,22 @@
         "packages_and_ci": "Desktop workflow 40685687810 passed for 19c813e on Windows and Linux. Windows passed 148 packaged UI stories with three platform skips. Linux passed 151 source stories, 150 packaged stories with one development-server skip, managed sandbox integration, and three remote Piston tests. Supabase workflow 40685687778 passed. Desktop workflow 40688491295 also passed on Windows and Linux for 9224097. Its Windows job passed 148 packaged stories with three skips. Supabase workflow 40688491274 passed. The previous Windows startup/settings/canvas failures did not recur in these two Windows runs. Their earlier timing causes remain unproven."
       }
     },
+    "sandbox_status_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/sandbox-status-races.spec.ts",
+      "corrected_defect": "An initial sandbox status or error could replace panel state after a sandbox event or accepted operation.",
+      "behavior": "An accepted operation invalidates the initial read before it waits. A refused concurrent operation does not invalidate that read. Status events also invalidate the initial read. A fresh settings dialog reads status again.",
+      "verification": "All eight ordering cases reproduced the original overwrite. Nine corrected sandbox stories and six previous settings stories passed. The desktop unit/process suite passed 209 tests with two optional skips. An earlier restricted-process run had backend timeouts and was stopped. The suite passed with fixture loopback access.",
+      "independent_review": "A subagent examined the revision guard and response barrier. It identified missing pending-operation cases and a control-state assertion. Those cases now pass. It confirmed the eight original failures and examined the README against Issue 9 rules and dictionary entries.",
+      "scope": "Saved data, sandbox consent, and manager behavior do not change. Native stories use controlled IPC and temporary data. They do not start Docker."
+    },
     "coverage_review": {
       "method": "An independent subagent mapped the renderer components and native handlers to existing native, unit, and process tests. This is a source coverage review, not a claim that the remaining interactions passed.",
       "scope_corrections": "There is no archive-restore UI. Timer start/pause, guided/mock selection, reflection history expansion, coding error dismissal, and account isolation have coverage. The remaining list names specific uncovered actions rather than indefinite additional testing.",
-      "race_candidates": "A late initial sandbox status response can replace a newer event in SandboxSettings. Close during sandbox setup may wait for the active action before it can cancel setup. These paths need controlled native reproduction."
+      "race_candidates": "The initial sandbox response race is corrected and verified. Close during sandbox setup may wait for the active operation before it can cancel setup. That path needs controlled native reproduction."
     },
     "remaining_checks": [
       "Signed updates: configured channel/check/download/retry, installer confirmation, backup error, duplicate actions, and close during download",
-      "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, opt-out persistence, and initial-response/event order",
+      "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
       "Startup and close: close during engine initialization, a native file picker, update download, and sandbox setup",
       "Design completion: Finish practice success/error/retry, completed controls/restart, and New attempt from completion",
       "Distribution dialogs: initial read error/reopen, successful notices display, and backup-picker cancellation",
