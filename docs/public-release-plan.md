@@ -158,6 +158,7 @@ Do not put signing keys or payment API secrets in the app or source repository.
 
 The first public release consists of installer downloads and documentation.
 Use GitHub Releases for installer assets. See [GitHub release documentation](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
+The [download website plan](download-site-plan.md) proposes static hosting and versioned installer links.
 The update verifier accepts assets from this repository's GitHub Releases only.
 A verifier change and new tests are necessary before the app can use a different download host.
 

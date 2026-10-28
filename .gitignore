@@ -15,6 +15,7 @@ docs/*
 !docs/supabase-hosting.md
 !docs/terminology.md
 !docs/windows-install.md
+!docs/download-site-plan.md
 !docs/media/
 docs/media/*
 !docs/media/README.md

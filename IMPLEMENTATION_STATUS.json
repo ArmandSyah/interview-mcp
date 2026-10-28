@@ -100,17 +100,20 @@
   },
   "expanded_delivery_work": {
     "windows_installation": {
-      "status": "implemented_pending_windows_ci",
+      "status": "verified_windows_preview",
       "existing": "Electron Builder creates an NSIS installer. The Windows workflow tests the unpacked app.",
       "required": "Test actual installation, saved practice after restart, and removal without loss of practice data. Supply GitHub build, download, and installation instructions.",
       "implementation": "The Windows installer preview workflow builds an x64 NSIS installer. A dedicated lifecycle test installs it in a path with spaces, uses the bundled engine with an invalid host-Python path, saves code and design work, removes the app, compares saved data, and reinstalls it. Default data-directory markers must survive removal. NSIS data retention is explicit.",
       "artifacts": "The download contains an installer, SHA-256 checksum, build identity, and standalone instructions. Generated guide links identify the source commit when GitHub supplies it. Artifacts are development previews with 30-day retention, not a published installer release.",
       "local_verification": "TypeScript, formatting, installer test discovery, workflow YAML parsing, metadata byte counts, checksum generation, and standalone guide links passed. No Windows installation or removal ran locally.",
-      "independent_review": "A subagent independently examined the workflow, lifecycle test, PowerShell arguments, data-retention checks, artifact generator, and Issue 9 writing. It found broken relative links in the extracted guide and compound procedural instructions. The corrections passed independent metadata and source review. Windows execution remains pending CI."
+      "independent_review": "A subagent independently examined the workflow, lifecycle test, PowerShell arguments, data-retention checks, artifact generator, and Issue 9 writing. It found broken relative links in the extracted guide and compound procedural instructions. The corrections passed independent metadata and source review.",
+      "windows_ci": "Windows installer preview workflow 40688491316 passed for 9224097. The actual Windows installation, removal, and reinstallation test passed in 56.6 seconds. Preview artifact 12816695170 and evidence artifact 12815564364 were uploaded. The downloaded archives passed their published SHA-256 checks. The preview expires on 2026-11-27. The installer has 158124386 bytes and SHA-256 69e9a0724f61c66784970d569fd95d07614251e1833d369d5753bc739b5df2bb. Its build identity identifies 9224097ac5743a52bedee907e74bb80c58ef431d. The final Windows screenshot shows the retained code after reinstallation. The Windows and Linux jobs in Desktop workflow 40688491295 also passed."
     },
     "download_website": {
-      "status": "requested_after_windows_installation",
-      "required": "Prepare a website deployment plan with installer downloads and build identity. No provider purchase or website deployment is authorized by this planning requirement."
+      "status": "plan_reviewed",
+      "required": "Prepare a website deployment plan with installer downloads and build identity. No provider purchase or website deployment is authorized by this planning requirement.",
+      "proposal": "docs/download-site-plan.md proposes Cloudflare Pages Free for static pages and GitHub Releases for installers. It defines release metadata, publication gates, download tests, and a USD 0 website budget within provider limits. No account, domain, or site has been provisioned.",
+      "independent_review": "The subagent examined the provider facts and Issue 9 wording. It found an impossible anonymous-download test before draft publication. The plan now examines draft files with repository write access, obtains owner approval, publishes the release, tests anonymous downloads, then publishes the website. Vocabulary and part-of-speech corrections were applied. The final independent review found no further concrete issues."
     },
     "low_cost_ai": {
       "status": "requested",
@@ -666,23 +669,30 @@
         "desktop_unit_and_process": "209 passed, 2 opt-in tests skipped after the independent review corrections.",
         "documentation": "The main agent and independent verifier examined the new README section against Issue 9 rules and dictionary meanings, parts of speech, and forms. They corrected vocabulary, participle placement, the timing origin, and an ambiguous pronoun. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
         "python_trace_verifier": "All 15 CLI verifier cases passed locally and in the independent review. The initial commit check found nine old fixtures without the new JSON evidence. The common fixture now includes it. Six new cases reject missing, duplicate, wrong-version, truncated, disconnected, and disclosed-sentinel records.",
-        "native_source_ui": "148 passed in 10.5 minutes on the isolated display. The two optional Piston tests were skipped because Docker is unavailable in the resumed session. This full run preceded the final two harness corrections from independent review. Seven focused native tests and the two trace probes passed with those corrections. Platform CI must still test the full final harness.",
+        "native_source_ui": "148 passed in 10.5 minutes on the isolated display. The two optional Piston tests were skipped because Docker is unavailable in the resumed session. This full run preceded the final two harness corrections from independent review. Seven focused native tests and the two trace probes passed with those corrections. Desktop workflow 40685687810 then passed the final harness on Windows and Linux. Linux passed 151 source stories with real Piston.",
         "independent_review": "A subagent found two harness defects and language issues. errorMonitor preserves unhandled child errors. An independent guard prevents connection-file errors from suppressing the Electron trace. Native tests reproduced a connection-file write error and kept the context trace. The verifier confirmed the code corrections and all 16 observer unit tests. README corrections use active language, approved general vocabulary, and a defined timing origin.",
         "scope": "Only test code and documentation change. Existing assertion time limits stay unchanged. The new reconnection probe has a 20-second connection wait. The user's trial checkout stays at 24aa0a3.",
-        "packages_and_ci": "Platform checks for this batch have not started. Windows startup, settings-close, and first canvas-load delays remain unresolved."
+        "packages_and_ci": "Desktop workflow 40685687810 passed for 19c813e on Windows and Linux. Windows passed 148 packaged UI stories with three platform skips. Linux passed 151 source stories, 150 packaged stories with one development-server skip, managed sandbox integration, and three remote Piston tests. Supabase workflow 40685687778 passed. Desktop workflow 40688491295 also passed on Windows and Linux for 9224097. Its Windows job passed 148 packaged stories with three skips. Supabase workflow 40688491274 passed. The previous Windows startup/settings/canvas failures did not recur in these two Windows runs. Their earlier timing causes remain unproven."
       }
     },
+    "coverage_review": {
+      "method": "An independent subagent mapped the renderer components and native handlers to existing native, unit, and process tests. This is a source coverage review, not a claim that the remaining interactions passed.",
+      "scope_corrections": "There is no archive-restore UI. Timer start/pause, guided/mock selection, reflection history expansion, coding error dismissal, and account isolation have coverage. The remaining list names specific uncovered actions rather than indefinite additional testing.",
+      "race_candidates": "A late initial sandbox status response can replace a newer event in SandboxSettings. Close during sandbox setup may wait for the active action before it can cancel setup. These paths need controlled native reproduction."
+    },
     "remaining_checks": [
-      "Additional repeated actions and account changes during edits, plus close during startup, sandbox operations, exports, and updates",
-      "Additional catalog and editor interactions, export dialog errors, and result states after connection or disk errors",
-      "Additional settings interactions, native credential-vault failures, and design/recall account transitions",
-      "Chat error dismissal, history scrolling and limits, pending-approval keyboard navigation, and operating system input methods",
-      "Design timer, guided and mock modes, canvas controls, additional load transitions, and failed export operations",
-      "Recall account transitions with queue-capable remote engines, large queues, long reflection history, and draft recovery after more disk errors",
-      "Update, archive, content pack, and license dialogs",
-      "Sandbox consent, status changes, cancellation, and failures",
-      "Service initialization and reconnection failures, native window resize controls, and panel resizing",
-      "Windows settings-close and startup assertion failures, packaged app tests, and platform CI for the final audit changes"
+      "Signed updates: configured channel/check/download/retry, installer confirmation, backup error, duplicate actions, and close during download",
+      "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, opt-out persistence, and initial-response/event order",
+      "Startup and close: close during engine initialization, a native file picker, update download, and sandbox setup",
+      "Design completion: Finish practice success/error/retry, completed controls/restart, and New attempt from completion",
+      "Distribution dialogs: initial read error/reopen, successful notices display, and backup-picker cancellation",
+      "Content packs/licenses/checkout: native cancellation, read/validation errors, valid installation/catalog refresh, and configured checkout success/error with a shell fixture",
+      "Recall: Open saved practice for coding/design, activation error, field limits, and a queue-enabled remote account transition",
+      "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
+      "Credential recovery: visible startup decryption error and recovery with fixture credentials",
+      "Progress view: displayed content and empty state",
+      "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
+      "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
     ]
   },
   "last_verified": {
