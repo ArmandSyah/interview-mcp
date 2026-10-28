@@ -60,6 +60,7 @@ export class ManagedSandbox {
   private ownsLifecycle = false;
   private closed = false;
   private abort = new AbortController();
+  private generation = 0;
 
   constructor(
     root: string,
@@ -91,6 +92,8 @@ export class ManagedSandbox {
     discovering = false,
     cleanup = false,
   ): Promise<string> {
+    if (!cleanup && this.abort.signal.aborted)
+      return Promise.reject(new Error('Sandbox operation cancelled'));
     return this.run(discovering ? args : ['--host', this.host, ...args], {
       timeout,
       env: this.dockerEnv,
@@ -265,6 +268,7 @@ export class ManagedSandbox {
         ),
       };
     } catch {
+      if (this.abort.signal.aborted) throw new Error('Sandbox operation cancelled');
       return null;
     }
   }
@@ -364,9 +368,12 @@ export class ManagedSandbox {
       managed,
     );
   }
-  private exclusive(operation: () => Promise<void>): Promise<void> {
+  private exclusive(operation: () => Promise<void>, generation = this.generation): Promise<void> {
     if (this.closed) return Promise.reject(new Error('Sandbox manager is closing'));
-    if (this.operation) return this.operation.catch(() => {}).then(() => this.exclusive(operation));
+    if (generation !== this.generation)
+      return Promise.reject(new Error('Sandbox operation cancelled'));
+    if (this.operation)
+      return this.operation.catch(() => {}).then(() => this.exclusive(operation, generation));
     const pending = operation()
       .catch((error) => {
         if (
@@ -465,6 +472,7 @@ export class ManagedSandbox {
 
   // A close request can fail to save drafts. Cancel setup without disabling retries.
   cancelPending(): void {
+    this.generation++;
     if (this.operation) this.abort.abort();
   }
 }

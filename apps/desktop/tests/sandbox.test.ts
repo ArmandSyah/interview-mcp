@@ -151,11 +151,41 @@ it('cancels a pending command and permits another inspection if window closure f
   const inspect = manager.inspect();
   const rejected = expect(inspect).rejects.toThrow();
   await started;
+  const queued = expect(manager.inspect()).rejects.toThrow('Sandbox operation cancelled');
   manager.cancelPending();
   await rejected;
+  await queued;
+  expect(run).toHaveBeenCalledTimes(1);
   expect((await manager.inspect()).phase).toBe('stopped');
   expect(mutations()).toEqual([]);
   await manager.close();
+});
+
+it('cancelled runtime discovery cannot start a container', async () => {
+  const { manager, request, mutations, statuses } = fixture();
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  request.mockImplementationOnce(
+    (_url, options) =>
+      new Promise<Response>((_resolve, reject) => {
+        options!.signal!.addEventListener(
+          'abort',
+          () => reject(new Error('Cancelled runtime request')),
+          { once: true },
+        );
+        entered();
+      }),
+  );
+  const rejected = expect(manager.enable()).rejects.toThrow();
+  await started;
+  manager.cancelPending();
+  await rejected;
+  expect(mutations()).toEqual([]);
+  expect(statuses.some((status) => status.phase === 'starting')).toBe(false);
+  await manager.close();
+  expect(mutations()).toEqual([]);
 });
 
 it('starts the pinned app-owned sandbox, installs Python, checks execution, and stops without deleting data', async () => {

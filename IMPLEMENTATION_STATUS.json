@@ -717,11 +717,13 @@
       "test": "apps/desktop/tests/e2e/design-finish.spec.ts"
     },
     "sandbox_close_cancellation": {
-      "status": "verified_local_pending_independent_review",
+      "status": "verified_local_review_corrections_pending_final_independent_check",
       "behavior": "A native close request cancels the active sandbox command before the renderer waits for active work. The manager creates a new cancellation controller after the operation ends, so a failed draft save can permit another inspection. Final shutdown still validates ownership before stopping containers.",
       "evidence": "Before the fix, the native test failed its five-second close check while Docker --version waited for its ten-second timeout. After the fix, the story passed in 2.5 seconds. All 11 related native stories passed. All 245 desktop unit/process tests passed with 2 optional skips. The build passed.",
       "scope": "The native fixture replaces Docker with a temporary Linux executable. It does not start or stop a real container. The manager unit test verifies inspection after cancellation. Native close during image/runtime installation and final owned-container cleanup remains to be tested.",
-      "data_effect": "Draft-save checks and saved data formats have no changes. A failed save still prevents closure."
+      "data_effect": "Draft-save checks and saved data formats have no changes. A failed save still prevents closure.",
+      "review_corrections": "The independent review found queued commands, accepted actions that reached the backend after closure began, and cancelled runtime reads that could trigger container startup. A cancellation generation now rejects older queued work. The close gate rejects new sandbox commands but permits draft saves. Cancelled runtime reads reject, and cancelled commands cannot reach the command runner.",
+      "latest_checks": "The build and 16 sandbox unit tests passed. All 9 native close stories passed, including coding/settings/design/queue save failures, close retry, timer/input behavior, and both delayed and active sandbox requests."
     }
   },
   "last_verified": {

@@ -198,7 +198,18 @@ void app.whenReady().then(async () => {
         throw new Error('Untrusted IPC sender');
       if (finalizingClose && !['close-ready', 'cancel', 'snapshot'].includes(channel))
         throw new Error('The window is closing.');
-      if (closeRequested && ['chat', 'grade'].includes(channel))
+      if (
+        closeRequested &&
+        [
+          'chat',
+          'grade',
+          'sandbox-inspect',
+          'sandbox-enable',
+          'sandbox-stop',
+          'run',
+          'settings',
+        ].includes(channel)
+      )
         throw new Error('The window is closing.');
       const operation = Promise.resolve().then(() => action(...args));
       if (['close-ready', 'cancel', 'snapshot'].includes(channel)) return operation;
