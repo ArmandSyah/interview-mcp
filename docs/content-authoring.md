@@ -116,7 +116,6 @@ Each rewrite uses at most one model request, with no automatic retries.
 
 The model returns proposed changes. Fields without proposed changes keep their previous text.
 The report gives the number of changed fields. An empty set of changes does not show conformity.
-If the tool finds a sentence with more than 25 words, a response without changes causes an error.
 
 In local tests, `qwen3:4b-instruct` repeated source text and paths instead of correcting a full question.
 The tool rejected repeated paths. These tests do not show reliable automatic rewrites.

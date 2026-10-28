@@ -220,6 +220,11 @@ def test_cli_rejects_invalid_prose_hyphen_declarations(
         "```\nnon-overlapping\n```\n",
         r'Return "A \"non-overlapping\" B".',
         r"Return 'A \'non-overlapping\' B'.",
+        'Return "non-overlapping\ntext".',
+        'Return """non-overlapping\ntext""".',
+        "Return 'non-overlapping\ntext'.",
+        "Return \u201cnon-overlapping\ntext\u201d.",
+        "Return \u2018non-overlapping\ntext\u2019.",
     ],
 )
 def test_prose_hyphen_never_waives_quoted_or_code_literals(text: str) -> None:
@@ -598,7 +603,7 @@ def test_model_errors_never_start_an_automatic_repair(
 
 
 @pytest.mark.parametrize("copy_source", [False, True])
-def test_known_overlong_sentence_cannot_return_a_candidate_without_changes(
+def test_approximate_word_count_cannot_require_model_changes(
     monkeypatch: pytest.MonkeyPatch, copy_source: bool
 ) -> None:
     text = "Keep the item " * 10 + "."
@@ -611,7 +616,7 @@ def test_known_overlong_sentence_cannot_return_a_candidate_without_changes(
         if request.url.path == "/api/show":
             return httpx.Response(200, json={"model_info": {"general.architecture": "fixture"}})
         body = json.loads(request.content)
-        assert body["format"]["properties"]["changes"]["minItems"] == 1
+        assert "minItems" not in body["format"]["properties"]["changes"]
         changes = [{"path": field.pointer, "replacement": text}] if copy_source else []
         return httpx.Response(
             200, json={"done": True, "message": {"content": json.dumps({"changes": changes})}}
@@ -622,8 +627,9 @@ def test_known_overlong_sentence_cannot_return_a_candidate_without_changes(
         "Client",
         lambda **kwargs: client(**kwargs, transport=httpx.MockTransport(respond)),
     )
-    with pytest.raises(ValueError, match="overlong sentence"):
-        language.rewrite([field], dictionary(), [], "http://localhost", "fixture")
+    assert language.rewrite([field], dictionary(), [], "http://localhost", "fixture") == {
+        field.pointer: text
+    }
     assert calls == ["/api/show", "/api/chat"]
 
 

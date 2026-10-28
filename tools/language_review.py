@@ -27,8 +27,8 @@ MAX_PROMPT_BYTES = 24_000
 MAX_RESPONSE_BYTES = 60_000
 WORD = re.compile(r"\b[^\W\d_]+(?:-[^\W\d_]+)*\b")
 LITERALS = re.compile(
-    r"(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|\"(?:\\.|[^\"\\\n])*\""
-    r"|(?<!\w)'(?:\\.|[^'\\\n])*'"
+    r"(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|\"(?:\\[\s\S]|[^\"\\])*\""
+    r"|(?<!\w)'(?:\\[\s\S]|[^'\\])*'|\u201c[^\u201d]*\u201d|\u2018[^\u2019]*\u2019"
     r"|\[[^\]\n]+\]|\b[A-Za-z_]\w*\([^()\n]*\)"
     r"|(?:\b[^\W\d]\w*|\d+(?:\.\d+)?)(?:\s*(?:\*\*|//|[-+*/%^\u2212\u00d7\u00f7])"
     r"\s*(?:[^\W\d]\w*|\d+(?:\.\d+)?))+"
@@ -390,7 +390,6 @@ def rewrite(
         raise ValueError("Select a local Ollama model.")
     selected = {field.pointer: field.text for field in fields}
     field_audit = audit(fields, dictionary, terms)
-    overlong = any(screen.get("over_25") for item in field_audit for screen in item["rule_screens"])
     alternatives = {}
     for word in sorted(
         {
@@ -409,7 +408,6 @@ def rewrite(
         "properties": {
             "changes": {
                 "type": "array",
-                "minItems": 1 if overlong else 0,
                 "maxItems": len(selected),
                 "items": {
                     "type": "object",
@@ -528,8 +526,6 @@ If no correction is necessary, return an empty changes array."""
             raise ValueError("Each model change must contain one different selected path and text.")
         changed_paths.add(change["path"])
         selected[change["path"]] = change["replacement"]
-    if overlong and not any(selected[field.pointer] != field.text for field in fields):
-        raise ValueError("The model did not change text with an overlong sentence.")
     validate_replacements(fields, selected)
     return selected
 
