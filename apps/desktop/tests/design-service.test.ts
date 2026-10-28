@@ -17,7 +17,14 @@ it('design AI review locks before checkpoint capture, cancels before inference, 
   const waiting = new Promise<void>((resolve) => {
     release = resolve;
   });
+  let modelEntered!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    modelEntered = resolve;
+  });
+  let review: Promise<void> | undefined;
+  let cancelled: Promise<void> | undefined;
   const complete = vi.fn<Model['complete']>(async () => {
+    modelEntered();
     await waiting;
     return { text: reviewJSON('design'), calls: [] };
   });
@@ -38,7 +45,7 @@ it('design AI review locks before checkpoint capture, cancels before inference, 
     await service.saveDesignDraft(sessionId, draft);
     await service.reviewDesign();
     const curated = service.snapshot().designSessions[0]!.review;
-    const cancelled = service.grade();
+    cancelled = service.grade();
     expect(service.snapshot().busy).toBe(true);
     expect(service.snapshot().chatId).toBeTruthy();
     await expect(service.grade()).rejects.toThrow();
@@ -46,8 +53,14 @@ it('design AI review locks before checkpoint capture, cancels before inference, 
     await cancelled;
     expect(complete).not.toHaveBeenCalled();
     expect(service.snapshot().busy).toBe(false);
-    const review = service.grade();
-    await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+    review = service.grade();
+    await Promise.race([
+      entered,
+      review.then(() => {
+        throw new Error(`grade() ended before model.complete(): ${service.snapshot().error}`);
+      }),
+    ]);
+    expect(complete).toHaveBeenCalledTimes(1);
     const captured = JSON.parse(complete.mock.calls[0]![1][0]!.text);
     expect(captured.checkpoint.notes.requirements).toBe('Captured candidate notes.');
     draft.notes.requirements = 'New candidate notes after capture.';
@@ -68,6 +81,9 @@ it('design AI review locks before checkpoint capture, cancels before inference, 
     ).toHaveLength(2);
   } finally {
     release();
+    service.cancelChat();
+    await cancelled?.catch(() => {});
+    await review?.catch(() => {});
     await service.close();
   }
 }, 20_000);
