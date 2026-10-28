@@ -749,6 +749,13 @@
       "status": "passed_native_source",
       "evidence": "The native story supplies empty and populated progress through snapshot events. It checks the Show progress control, PROGRESS tab, empty message, rendered heading/body, switching to test results, and an unchanged backend snapshot. The baseline includes a saved coding attempt. The final story passed in 2.7 seconds. Existing result-stories also verify backend fixture progress after a real run action.",
       "test": "apps/desktop/tests/e2e/progress-view.spec.ts"
+    },
+    "preview_merge": {
+      "pull_request": 34,
+      "merge_commit": "874110d7cc325833d71c256595f5ba1081dfbf80",
+      "tested_head": "81a0ac7f3ce00a798f22504ea383b19ce52ad392",
+      "evidence": "All 12 check runs passed, including both Linux and Windows desktop jobs, Windows installer checks, remote integration, Supabase, container build, and backend CI. The merge completed after both Linux runs finished.",
+      "scope": "The desktop preview is on main. Subsequent shutdown fixes and UI stories remain on test/desktop-remaining-interactions until their checks pass. The full goal is still active."
     }
   },
   "last_verified": {

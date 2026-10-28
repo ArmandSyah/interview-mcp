@@ -81,6 +81,8 @@ test('signed update rejects tampering, retries downloads, and requires confirmat
     await expect(
       dialog.getByRole('status').filter({ hasText: 'Fixture installer open failure' }),
     ).toBeVisible();
+    expect((await state()).backupsAtOpen).toHaveLength(1);
+    expect((await state()).backupsAtOpen[0]).toContain(before.sessions[0]!.attemptId);
     await expect(install).toBeEnabled();
     await app.evaluate(() => {
       (globalThis as typeof globalThis & { updateFixture: UpdateFixture }).updateFixture.openError =
