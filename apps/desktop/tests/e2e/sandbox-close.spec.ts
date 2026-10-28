@@ -29,10 +29,10 @@ for (const phase of ['before command', 'active command', 'pending consent'] as c
       if (phase === 'before command') gate = await gateIpc(app, 'sandbox-inspect');
       if (phase === 'pending consent')
         await app.evaluate(({ dialog }) => {
-          const fixture = dialog as typeof dialog & { releaseConsent?: () => void };
+          const fixture = dialog as typeof dialog & { releaseConsent?: (response: number) => void };
           dialog.showMessageBox = async () =>
             new Promise((resolve) => {
-              fixture.releaseConsent = () => resolve({ response: 1, checkboxChecked: false });
+              fixture.releaseConsent = (response) => resolve({ response, checkboxChecked: false });
             });
         });
       await page
@@ -46,7 +46,10 @@ for (const phase of ['before command', 'active command', 'pending consent'] as c
         await expect
           .poll(() =>
             app.evaluate(({ dialog }) =>
-              Boolean((dialog as typeof dialog & { releaseConsent?: () => void }).releaseConsent),
+              Boolean(
+                (dialog as typeof dialog & { releaseConsent?: (response: number) => void })
+                  .releaseConsent,
+              ),
             ),
           )
           .toBe(true);
@@ -59,13 +62,22 @@ for (const phase of ['before command', 'active command', 'pending consent'] as c
       if (gate) await gate.release(0);
       if (phase === 'pending consent')
         await app.evaluate(({ dialog }) =>
-          (dialog as typeof dialog & { releaseConsent?: () => void }).releaseConsent!(),
+          (dialog as typeof dialog & { releaseConsent?: (response: number) => void })
+            .releaseConsent!(1),
         );
       await expect.poll(() => closed, { timeout: 5000 }).toBe(true);
       if (phase !== 'active command')
         await expect(readFile(marker, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
     } finally {
       await gate?.restore().catch(() => {});
+      if (phase === 'pending consent')
+        await app
+          .evaluate(({ dialog }) =>
+            (
+              dialog as typeof dialog & { releaseConsent?: (response: number) => void }
+            ).releaseConsent?.(0),
+          )
+          .catch(() => {});
       await app.close().catch(() => {});
     }
   });

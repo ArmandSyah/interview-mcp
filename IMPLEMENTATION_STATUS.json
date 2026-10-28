@@ -697,7 +697,7 @@
       "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
     },
     "remaining_checks": [
-      "Signed updates: configured channel/check/download/retry, installer confirmation, backup error, duplicate actions, and close during download",
+      "Signed updates: close during metadata/download operations, late consent after close, and shell-open failure recovery",
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
       "Startup and close: close during engine initialization, a native file picker, update download, and sandbox setup",
       "Content packs/licenses/checkout: native cancellation, read/validation errors, valid installation/catalog refresh, and configured checkout success/error with a shell fixture",
@@ -728,8 +728,16 @@
     "distribution_stories": {
       "status": "passed_native_source",
       "coverage": "Configured update controls retain the beta channel, reject duplicate clicks, disable other controls during work, show check/download/installer errors, and permit explicit retry. Separate stories read real notices, cancel the real backup command at the native picker, and recover from an initial distribution read error after reopen.",
-      "limits": "Update replies and errors use IPC protocol fixtures. This does not verify real signature validation, installer confirmation, backup-write failure, or installer launch in the native app. Those paths remain open.",
+      "limits": "The renderer retry story uses IPC protocol fixtures. A separate native signed-update story now verifies actual signatures, checksum rejection, confirmation cancellation, backup failure, and backup-before-open behavior.",
       "test": "apps/desktop/tests/e2e/distribution-stories.spec.ts"
+    },
+    "signed_update_native_story": {
+      "status": "passed_native_source_pending_independent_review",
+      "mechanism": "The test compiles the real source bundle with one temporary release public key. It supplies signed fixture responses through fetch and intercepts the native confirmation and installer launch. IPC handlers, signature and checksum checks, downloaded files, and backup creation remain real. The fixture never executes installer bytes or publishes a release.",
+      "coverage": "The story rejects an invalid signature, removes a corrupt download, permits retry, preserves practice after confirmation cancellation, blocks installer launch after backup-directory failure, and retries after that error. At installer-open time, the fixture reads the backup and verifies the saved attempt.",
+      "checks": "Seven combined native distribution and shutdown stories passed in 17.5 seconds. The final backup-at-open assertion passed in a focused native run. Type checks and formatting passed.",
+      "limits": "This test uses a temporary source-bundle trust key and skips packaged-executable runs. Close during update download remains open.",
+      "test": "apps/desktop/tests/e2e/signed-update.spec.ts"
     }
   },
   "last_verified": {

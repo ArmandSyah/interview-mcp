@@ -5,7 +5,11 @@ import { writeFile } from 'node:fs/promises';
 import { desktopEnvironment } from '../desktop-environment';
 import { captureConnectionEvidence, connectionEvidence } from '../connection-evidence';
 
-export async function launch(data: string, developmentUrl = ''): Promise<ElectronApplication> {
+export async function launch(
+  data: string,
+  developmentUrl = '',
+  entryPoint?: string,
+): Promise<ElectronApplication> {
   const info = test.info();
   const name = `electron-${randomUUID()}`;
   const app = await electron.launch({
@@ -14,7 +18,7 @@ export async function launch(data: string, developmentUrl = ''): Promise<Electro
       ? { executablePath: process.env.INTERVIEW_DESKTOP_EXECUTABLE }
       : {}),
     args: [
-      ...(process.env.INTERVIEW_DESKTOP_EXECUTABLE ? [] : [resolve('.')]),
+      ...(process.env.INTERVIEW_DESKTOP_EXECUTABLE ? [] : [entryPoint ?? resolve('.')]),
       ...(process.platform === 'linux' ? ['--ozone-platform=x11'] : []),
     ],
     env: desktopEnvironment(data, developmentUrl),

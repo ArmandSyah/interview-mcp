@@ -91,7 +91,13 @@ test('notices display and backup picker cancellation preserve practice data', as
   try {
     const page = await app.firstWindow();
     await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
+    await page
+      .getByRole('button', { name: /Training Mix Segment/ })
+      .first()
+      .click();
+    await expect(page.getByTestId('code-editor')).toBeVisible();
     const before = await page.evaluate(() => window.interview.snapshot());
+    expect(before.sessions.length).toBeGreaterThan(0);
     await app.evaluate(({ dialog }) => {
       dialog.showSaveDialog = async () => ({ canceled: true, filePath: '' });
     });
