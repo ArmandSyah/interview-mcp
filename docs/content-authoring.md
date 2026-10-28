@@ -119,6 +119,7 @@ The report gives the number of changed fields. An empty set of changes does not 
 
 In local tests, `qwen3:4b-instruct` repeated source text and paths. It did not correct a full question.
 The tool rejected repeated paths. These results do not show that the model can make the necessary corrections.
+A `qwen3:4b` test changed one phrase but left known rule errors.
 You can select a different installed model or correct a candidate before the audit command.
 
 The model receives only selected prose, declared terms, rule screens, and related dictionary alternatives.
@@ -206,6 +207,31 @@ Exit code `0` shows that the tool wrote the report. It does not show conformity 
 Exit code `2` identifies an input, model, or file error. Exit code `130` identifies a user interruption.
 Malformed responses, tool requests, changed literals, and token-limit responses cause errors without automatic retries.
 The source files keep their previous values after errors or interruption.
+
+### Reviewed example
+
+The [Delivery Hold Clusters question](../problems/examples/0015-delivery-hold-clusters.json) contains a corrected example for all users.
+The tool examined nine selected fields. Six text fields changed, and three fields kept their text.
+The tool did not change the other 83 values.
+
+A different AI agent examined the corrected text. It used Part 1 and Part 2 of ASD-STE100 Issue 9.
+The [review record](language-review/delivery-hold-review.json) gives each selected field, word check, rule check, and hash.
+The word checks include the meaning and part of speech for each word in its sentence.
+The [term file](language-review/delivery-hold-terms.json) gives the technical terms for this example.
+
+The review found no necessary changes to the selected text.
+It does not include hints, solutions, tests, or the other fields.
+These results are for the selected fields only.
+The AI review gives no approval for a commercial release.
+
+The corrected text gives cluster membership and output endpoints.
+It keeps the gap formula, limits, output sequence, and follow-up questions.
+The source commit in the record identifies the previous text.
+
+Previous attempts keep their saved question snapshots.
+New local attempts use the updated catalog after the next content load.
+For Supabase, the new catalog migration supplies the updated text.
+Attempts without a snapshot that the app can get stay `unpinned`.
 
 ## Review-bound compilation
 

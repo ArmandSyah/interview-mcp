@@ -13,7 +13,7 @@ from server.design.catalog import PROBLEMS
 from server.workspace import build_solution_scaffold_contents, scaffold_sha256
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "supabase/migrations/20261021142431_public_catalog.sql"
+OUTPUT = ROOT / "supabase/migrations/20261028163500_public_catalog.sql"
 
 
 def build_seed() -> str:

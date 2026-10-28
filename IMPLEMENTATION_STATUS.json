@@ -129,15 +129,18 @@
       "ci_runtime_follow_up": "For 816f906, the corrected unit suite passed all 244 tests in PR CI. Windows passed. Linux passed all 166 source UI stories with real Piston, managed sandbox integration, and three remote Piston tests. The 45-minute Linux job limit cancelled the run during packaged UI tests. The job limit is now 60 minutes. No application or assertion time limits change. A different Linux push run reached connected state in 1.932 seconds, then the diagnostic pointer click waited 30 seconds for actionability. The trace probe now opens settings with a DOM click because it tests artifact capture. Native interaction stories keep their pointer clicks. Both intended diagnostic failures and the artifact verifier passed locally."
     },
     "question_language_review": {
-      "status": "implemented_draft_model_quality_not_verified",
+      "status": "implemented_with_independently_reviewed_example_model_quality_limited",
       "branch": "feat/question-language-review",
       "mechanism": "The command selects question prose, reads the official Issue 9 dictionary, records word references and rule checks, and audits a new candidate. Optional local Ollama calls propose changes.",
       "protection": "The source stays unchanged. Code, tests, metadata, unselected items, literals, formulas, and resource references keep their values. Explicit prose hyphen declarations remove formula protection for those words only outside code and quoted text.",
-      "checks": "The full backend and authoring suite passed 333 tests with 30 optional skips before the last review corrections. The current focused suite passed 94 tests, including the local official PDF. Ruff lint, formatting, and strict mypy for server and tools passed.",
+      "checks": "The final focused suite passed 97 tests, including the official PDF, authoring protection, and public example loading. Earlier full backend and authoring checks passed 333 tests with 30 optional skips. Ruff, formatting, strict mypy, and final repository commit checks must pass before this branch merges.",
       "independent_review": "An independent reviewer confirmed the dictionary fixes, quoted-text protection, and removal of mandatory edits from approximate counts. Their final run passed 94 tests, including the official PDF. They found no further concrete protocol validation defect.",
-      "model_limit": "Real local qwen3:4b-instruct calls repeated source text and paths. The tool rejected duplicate paths. These calls do not show reliable automatic rewrites. No automatic conformity or content approval is issued.",
-      "remaining": "Examine a corrected question against Part 1 and Part 2, and verify useful model rewrites before claiming that part complete.",
-      "data_effect": "No installed question, saved attempt, content approval, or runtime schema changed. New prose invalidates previous content approval."
+      "model_limit": "Local qwen3:4b-instruct calls repeated text and paths. A bounded qwen3:4b call changed one description phrase but left known rule errors. These results do not show reliable automatic rewrites. The accepted sample required explicit corrections and an independent contextual review.",
+      "remaining": "The optional local model can propose candidate text, but its output still requires contextual correction and review. Do not claim reliable automatic ASD-STE100 conversion.",
+      "data_effect": "The public source question prose changes after review. Existing attempts retain their saved question snapshots. New attempts use the revised catalog after the next content load. Legacy attempts without a recoverable snapshot remain unpinned. No code, test fixture, saved answer, or runtime schema changes.",
+      "reviewed_example": "Six prose fields changed in the public delivery-hold question. Three selected fields and 83 protected values remain unchanged. The independent agent checked all nine selected fields against Part 1 and Part 2 and found no remaining required prose edits. Its review records 51 contextual word checks, subject terms, sentence counts, hashes, and preserved requirements. It excludes hints, solutions, tests, and whole-question conformity.",
+      "review_record": "docs/language-review/delivery-hold-review.json",
+      "cloud_catalog": "A new catalog migration supplies the reviewed question revision and retains previous revisions for saved attempts. The earlier applied migration stays unchanged. The catalog generator now checks the new migration. No remote migration has been applied from this branch."
     },
     "independent_verification": {
       "status": "in_progress",
