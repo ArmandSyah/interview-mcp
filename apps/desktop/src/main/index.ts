@@ -276,6 +276,7 @@ void app.whenReady().then(async () => {
       });
       if (result.response !== 1) return null;
     }
+    if (closeRequested || finalizingClose) throw new Error('The window is closing.');
     return service.enableSandbox();
   });
   handler('license-notices', async () => {

@@ -700,7 +700,6 @@
       "Signed updates: configured channel/check/download/retry, installer confirmation, backup error, duplicate actions, and close during download",
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
       "Startup and close: close during engine initialization, a native file picker, update download, and sandbox setup",
-      "Distribution dialogs: initial read error/reopen, successful notices display, and backup-picker cancellation",
       "Content packs/licenses/checkout: native cancellation, read/validation errors, valid installation/catalog refresh, and configured checkout success/error with a shell fixture",
       "Recall: Open saved practice for coding/design, activation error, field limits, and a queue-enabled remote account transition",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
@@ -723,7 +722,14 @@
       "scope": "The native fixture replaces Docker with a temporary Linux executable. It does not start or stop a real container. The manager unit test verifies inspection after cancellation. Native close during image/runtime installation and final owned-container cleanup remains to be tested.",
       "data_effect": "Draft-save checks and saved data formats have no changes. A failed save still prevents closure.",
       "review_corrections": "The independent review found queued commands, accepted actions that reached the backend after closure began, and cancelled runtime reads that could trigger container startup. A cancellation generation now rejects older queued work. The close gate rejects new sandbox commands but permits draft saves. Cancelled runtime reads reject, and cancelled commands cannot reach the command runner.",
-      "latest_checks": "The build and 16 sandbox unit tests passed. All 9 native close stories passed, including coding/settings/design/queue save failures, close retry, timer/input behavior, and both delayed and active sandbox requests."
+      "latest_checks": "The build and 16 sandbox unit tests passed. All 9 native close stories passed, including coding/settings/design/queue save failures, close retry, timer/input behavior, and both delayed and active sandbox requests.",
+      "consent_correction": "An accepted sandbox-enable request can wait in the consent dialog. The handler now checks closure again after consent returns and before setup starts. A native held-consent test failed its five-second close check before the fix and passed after it. The three shutdown cases and three distribution stories passed together in 14.5 seconds."
+    },
+    "distribution_stories": {
+      "status": "passed_native_source",
+      "coverage": "Configured update controls retain the beta channel, reject duplicate clicks, disable other controls during work, show check/download/installer errors, and permit explicit retry. Separate stories read real notices, cancel the real backup command at the native picker, and recover from an initial distribution read error after reopen.",
+      "limits": "Update replies and errors use IPC protocol fixtures. This does not verify real signature validation, installer confirmation, backup-write failure, or installer launch in the native app. Those paths remain open.",
+      "test": "apps/desktop/tests/e2e/distribution-stories.spec.ts"
     }
   },
   "last_verified": {
