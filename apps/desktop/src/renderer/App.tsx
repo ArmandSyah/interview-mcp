@@ -820,6 +820,20 @@ function Workbench() {
               <h2>Interview coach</h2>
             </div>
             <button
+              type="button"
+              className="secondary small"
+              title="Examine the captured draft. Scores are model estimates."
+              disabled={
+                busy ||
+                !active ||
+                snapshot.connection !== 'connected' ||
+                snapshot.settings.provider === 'disabled'
+              }
+              onClick={() => void action(() => window.interview.grade())}
+            >
+              AI review
+            </button>
+            <button
               className="icon-button"
               aria-label="Clear conversation"
               disabled={busy}

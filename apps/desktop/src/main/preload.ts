@@ -48,6 +48,7 @@ const api: DesktopAPI = {
   runTests: (submit: boolean) => ipcRenderer.invoke('workbench:run', submit),
   hint: () => ipcRenderer.invoke('workbench:hint'),
   chat: (text: string) => ipcRenderer.invoke('workbench:chat', text),
+  grade: () => ipcRenderer.invoke('workbench:grade'),
   cancelChat: (chatId) => ipcRenderer.invoke('workbench:cancel', chatId),
   approve: (id: string, allow: boolean) => ipcRenderer.invoke('workbench:approve', id, allow),
   updateSettings: (settings: SettingsUpdate) => ipcRenderer.invoke('workbench:settings', settings),

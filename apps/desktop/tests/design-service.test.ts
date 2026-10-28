@@ -7,6 +7,111 @@ import { LocalStore, defaultSettings } from '../src/main/storage';
 import { WorkbenchService } from '../src/main/service';
 import { emptyDesignDraft } from '../src/shared/design';
 import type { Model } from '../src/main/providers';
+import { DesignStore } from '../src/main/design-storage';
+import { reviewJSON } from './grading-fixture';
+
+it('design AI review locks before checkpoint capture, cancels before inference, and preserves curated reviews', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'interview-design-ai-review-'));
+  const store = new LocalStore(root);
+  let release!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const complete = vi.fn<Model['complete']>(async () => {
+    await waiting;
+    return { text: reviewJSON('design'), calls: [] };
+  });
+  const service = new WorkbenchService(
+    store,
+    new McpConnection(resolve('../..'), root),
+    { available: () => false, encrypt: () => '', decrypt: () => '' },
+    () => {},
+    () => ({ complete }),
+  );
+  try {
+    await service.initialize();
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.startDesign('design-link-aliases');
+    const sessionId = service.snapshot().activeDesignSessionId!;
+    const draft = emptyDesignDraft();
+    draft.notes.requirements = 'Captured candidate notes.';
+    await service.saveDesignDraft(sessionId, draft);
+    await service.reviewDesign();
+    const curated = service.snapshot().designSessions[0]!.review;
+    const cancelled = service.grade();
+    expect(service.snapshot().busy).toBe(true);
+    expect(service.snapshot().chatId).toBeTruthy();
+    await expect(service.grade()).rejects.toThrow();
+    service.cancelChat();
+    await cancelled;
+    expect(complete).not.toHaveBeenCalled();
+    expect(service.snapshot().busy).toBe(false);
+    const review = service.grade();
+    await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+    const captured = JSON.parse(complete.mock.calls[0]![1][0]!.text);
+    expect(captured.checkpoint.notes.requirements).toBe('Captured candidate notes.');
+    draft.notes.requirements = 'New candidate notes after capture.';
+    await service.saveDesignDraft(sessionId, draft);
+    release();
+    await review;
+    const after = service.snapshot().designSessions[0]!;
+    expect(after.review).toEqual(curated);
+    expect(after.status).toBe('in_progress');
+    expect(after.hintDepth).toBe(0);
+    expect(after.chat.at(-1)!.text).toContain(captured.checkpoint.id);
+    expect(after.chat.at(-1)!.text).toContain(captured.checkpoint.scene_digest);
+    expect((await service.loadDesignDraft(sessionId)).notes.requirements).toBe(
+      'New candidate notes after capture.',
+    );
+    expect(
+      (await service.designCheckpoints()).filter((item) => item.label === 'AI review'),
+    ).toHaveLength(2);
+  } finally {
+    release();
+    await service.close();
+  }
+}, 20_000);
+
+it('a design AI checkpoint failure prevents inference and permits retry', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'interview-design-ai-checkpoint-'));
+  const store = new LocalStore(root);
+  const complete = vi.fn<Model['complete']>(async () => ({
+    text: reviewJSON('design'),
+    calls: [],
+  }));
+  const service = new WorkbenchService(
+    store,
+    new McpConnection(resolve('../..'), root),
+    { available: () => false, encrypt: () => '', decrypt: () => '' },
+    () => {},
+    () => ({ complete }),
+  );
+  let checkpoint: ReturnType<typeof vi.spyOn> | undefined;
+  try {
+    await service.initialize();
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.startDesign('design-link-aliases');
+    checkpoint = vi
+      .spyOn(DesignStore.prototype, 'checkpoint')
+      .mockRejectedValueOnce(new Error('Fixture checkpoint failed'));
+    await service.grade();
+    expect(complete).not.toHaveBeenCalled();
+    expect(service.snapshot().error).toContain('Fixture checkpoint failed');
+    expect(service.snapshot().busy).toBe(false);
+    checkpoint.mockRestore();
+    checkpoint = undefined;
+    await service.grade();
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(service.snapshot().error).toBeNull();
+    await service.reviewDesign();
+    await service.finishDesign();
+    await expect(service.grade()).rejects.toThrow('Start a new design attempt');
+    expect(complete).toHaveBeenCalledTimes(1);
+  } finally {
+    checkpoint?.mockRestore();
+    await service.close();
+  }
+}, 20_000);
 
 it('a new design attempt write failure keeps the previous attempt and permits retry', async () => {
   const root = await mkdtemp(join(tmpdir(), 'interview-design-create-'));

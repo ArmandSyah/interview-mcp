@@ -24,6 +24,7 @@ import {
   type DesignSummary,
 } from '../shared/design';
 import { AnthropicModel, OllamaModel, type Model } from './providers';
+import { gradeEvidence } from './grading';
 import type {
   AppEvent,
   ChatItem,
@@ -1055,6 +1056,116 @@ export class WorkbenchService {
     const pending = this.approvals.get(id);
     if (!pending) throw new Error('Approval has expired');
     pending(allow);
+  }
+
+  /**
+   * Examine the active draft once. Return no value after the last state write.
+   * Reject missing prerequisites, an active operation, or a last write error.
+   * Record model and protocol errors in the captured conversation and snapshot.error.
+   * A design review creates a checkpoint, including when cancellation follows capture.
+   * Keep test results, curated reviews, progress, and completion status separate from AI scores.
+   */
+  async grade(): Promise<void> {
+    this.idle();
+    const settings = this.settings();
+    if (settings.provider === 'disabled')
+      throw new Error(
+        'Select a local Ollama model or your Claude API key in Settings for AI review.',
+      );
+    if (settings.provider === 'anthropic' && !this.apiKey)
+      throw new Error('Add your Claude API key in Settings');
+    if (this.connection !== 'connected') throw new Error('Reconnect to the MCP before AI review.');
+    const design = this.store.workspace(this.scope).mode === 'design' ? this.designSession() : null;
+    const session = design ? null : this.requiredSession();
+    if (design?.status === 'completed')
+      throw new Error('Start a new design attempt before AI review.');
+    const code = session?.code ?? '';
+    const codeHash = createHash('sha256').update(code).digest('hex');
+    const description = session?.description;
+    const attemptId = session?.attemptId;
+    const problemId = session?.problem.id;
+    let testSummary = design
+      ? 'Not applicable to design practice.'
+      : 'No test report for this captured code.';
+    if (session?.result != null && !session.resultStale) {
+      try {
+        const report = parseTestReport(session.result, session.attemptId, session.problem.id);
+        testSummary = `${report.tests_passed}/${report.tests_total} passed before this review. These are recorded execution results.`;
+      } catch {
+        testSummary = 'The saved test report is invalid. Run tests again.';
+      }
+    }
+    const record = (item: ChatItem) =>
+      design ? this.recordDesign(design, item) : this.record(session ?? undefined, item);
+    const controller = new AbortController();
+    this.busy = true;
+    this.error = null;
+    this.agent = controller;
+    this.agentId = randomUUID();
+    this.publish();
+    try {
+      const checkpoint = design ? await this.captureDesign(design, 'AI review') : null;
+      controller.signal.throwIfAborted();
+      const evidence = JSON.stringify(
+        design
+          ? { brief: design.brief, checkpoint }
+          : {
+              problemId,
+              attemptId,
+              description,
+              code,
+              codeSha256: codeHash,
+              recordedTests: testSummary,
+            },
+      );
+      const reference = design
+        ? `Checkpoint: ${checkpoint!.id}. Scene SHA-256: ${checkpoint!.scene_digest}.`
+        : `Attempt: ${attemptId}. Code SHA-256: ${codeHash}.`;
+      record({
+        id: randomUUID(),
+        role: 'user',
+        text: 'Examine my captured work with the practice rubric.',
+        timestamp: Date.now(),
+      });
+      await this.store.persist();
+      const model =
+        this.modelFactory?.(settings, this.apiKey) ??
+        (settings.provider === 'anthropic'
+          ? new AnthropicModel(this.apiKey, settings.model)
+          : new OllamaModel(settings.ollamaUrl, settings.model));
+      const text = await gradeEvidence({
+        model,
+        modelName: settings.model,
+        kind: design ? 'design' : 'coding',
+        evidence,
+        reference,
+        testSummary,
+        candidateEvidence: checkpoint
+          ? [
+              ...Object.values(checkpoint.notes),
+              ...checkpoint.diagram.map((element) => element.label),
+            ].join('\n')
+          : code,
+        signal: controller.signal,
+      });
+      controller.signal.throwIfAborted();
+      record({ id: randomUUID(), role: 'assistant', text, timestamp: Date.now() });
+    } catch (error) {
+      const message = controller.signal.aborted ? 'AI review stopped.' : this.sanitize(error);
+      record({ id: randomUUID(), role: 'system', text: message, timestamp: Date.now() });
+      if (!controller.signal.aborted) this.error = message;
+    } finally {
+      this.agent = null;
+      this.agentId = null;
+      this.publish();
+      try {
+        await this.store.persist();
+      } finally {
+        this.busy = false;
+        this.publish();
+        this.emit({ type: 'agent-done', ...(this.error ? { error: this.error } : {}) });
+      }
+    }
   }
 
   async chat(text: string): Promise<void> {

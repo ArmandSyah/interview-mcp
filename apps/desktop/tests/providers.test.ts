@@ -33,6 +33,8 @@ describe('real provider wire formats (no paid requests)', () => {
     expect(value.calls[0].name).toBe('get_progress');
     expect(request.tools).toHaveLength(1);
     expect(value.inputTokens).toBe(20);
+    expect(request.options).toEqual({ num_predict: 900 });
+    expect(request.format).toBeUndefined();
   });
   it('rejects non-loopback Ollama URLs', async () => {
     await expect(
@@ -91,7 +93,35 @@ describe('real provider wire formats (no paid requests)', () => {
     expect(value.text).toBe('One step at a time.');
     expect(JSON.stringify(request.messages)).toContain('tool_result');
     expect(JSON.stringify(request.messages)).toContain('previous');
+    expect(request.max_tokens).toBe(900);
   });
+  it.each(['ollama', 'anthropic'] as const)(
+    'sends explicit grading output limits through %s',
+    async (provider) => {
+      let request: Record<string, unknown> = {};
+      const fetcher: typeof fetch = async (_url, init) => {
+        request = JSON.parse(init?.body as string);
+        return new Response(provider === 'ollama' ? '{"done":true}\n' : '');
+      };
+      const model =
+        provider === 'ollama'
+          ? new OllamaModel('http://127.0.0.1:11434', 'fixture', fetcher)
+          : new AnthropicModel('fixture-not-a-secret', 'fixture', fetcher);
+      const format = { type: 'object', properties: {} };
+      await model.complete('Review', [], [], new AbortController().signal, () => {}, {
+        format,
+        contextTokens: 32768,
+        outputTokens: 1500,
+      });
+      expect(request.tools).toEqual([]);
+      if (provider === 'ollama') {
+        expect(request.format).toEqual(format);
+        expect(request.options).toEqual({ num_predict: 1500, num_ctx: 32768 });
+      } else {
+        expect(request.max_tokens).toBe(1500);
+      }
+    },
+  );
   it('does not expose upstream response bodies on credential errors', async () => {
     const fetcher: typeof fetch = async () =>
       new Response('secret-key echoed by upstream', { status: 401 });

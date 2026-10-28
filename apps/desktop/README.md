@@ -226,6 +226,81 @@ Snapshots and the Python process do not receive API keys.
 Without secure storage, keys stay in memory until exit. Enter the keys again after you start the app.
 Practice files are not encrypted.
 
+### AI practice review
+
+**AI review** examines captured work with a practice rubric.
+Coding has four criteria: requirements, approach, edge cases, and time and space complexity.
+Design uses the six criteria in its brief.
+Each score is a model estimate. It can be incorrect.
+
+| Score | Meaning |
+| --- | --- |
+| 0 | The work shows an error. |
+| 1 | Much necessary information is missing. |
+| 2 | Some necessary information is missing. |
+| 3 | The work obeys the criterion requirements. |
+| N/A | The evidence is not sufficient for a score. |
+
+The model supplies scores and quotations from captured code, notes, or diagram labels.
+The app compares each quotation with that source text.
+This check does not show if the score is correct or who wrote the text.
+The model selects one criterion for more practice. The app supplies that criterion's practice question.
+The app does not show new solution text from the model.
+
+To use the local model:
+
+1. Install [Ollama](https://ollama.com/download).
+2. Start Ollama.
+3. In a terminal, run `ollama pull qwen3:4b`.
+4. Open **Settings** in the desktop app.
+5. Select **Ollama** in **Provider**.
+6. Set **Model** to `qwen3:4b`.
+7. Select **Save & connect**.
+8. Open a coding attempt or a design session.
+9. Select **AI review**.
+
+Ollama uses your computer's memory and processing time without an API charge.
+Each review uses one model request. There are no automatic retries or model tool calls.
+The Claude provider uses your paid API account for that request.
+AI stays off until you select a provider.
+
+The app sends at most 20,000 UTF-8 evidence bytes for each review.
+This count includes the task text and captured work.
+It does not include the system instructions and JSON schema.
+The app rejects larger requests before the model call.
+Diagram labels use the checkpoint limits above.
+
+Ollama reviews use a 32,768-token context. The maximum output is 1,500 tokens.
+A larger context uses more memory.
+See the [Ollama context guide](https://docs.ollama.com/context-length).
+
+Each review stays with its captured attempt in the same workspace.
+Coding feedback identifies the attempt and code SHA-256 hash.
+Design feedback identifies its checkpoint and scene hash.
+After new edits, a new review is necessary. Previous reviews keep their captured references.
+The app stores review text in the same conversation format.
+
+An account is not necessary for local practice.
+The app uses a different workspace for each account.
+
+Each conversation keeps at most 200 records.
+This count includes user, assistant, tool, and system records.
+If the conversation has more than 200 records, the app removes records from the start of the conversation.
+In coding mode, **Clear conversation** also removes review text.
+
+Each design AI review creates a checkpoint before the model call.
+This changes checkpoint history and the latest checkpoint ID.
+After capture, the app keeps the checkpoint if you cancel or the model returns an error.
+A new attempt is necessary for AI review of a completed design session.
+AI review does not change curated reviews, test results, hints, reminders, progress, or completion status.
+
+**Stop coach** cancels the active review. Window close also cancels it before the last draft save.
+The app rejects invalid JSON, incorrect criterion keys, invalid scores, and quotations missing from the captured work.
+After a model error, the app keeps the captured work. Select **AI review** to start a new review.
+
+If the last disk write has an error, the app can show feedback without a saved copy.
+Correct the disk error before you close the app.
+
 ## Recall and reflection
 
 Open **Practice queue** from the coding workspace or the system-design workspace.

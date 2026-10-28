@@ -14,6 +14,14 @@ export type Completion = {
   inputTokens?: number;
   outputTokens?: number;
 };
+export type CompletionOptions = {
+  /** Ollama JSON schema. Other providers use the system prompt. */
+  format?: Record<string, unknown>;
+  /** Ollama context size. Without this option, use the server configuration. */
+  contextTokens?: number;
+  /** Maximum output tokens. The default is 900 for both providers. */
+  outputTokens?: number;
+};
 export interface Model {
   complete(
     system: string,
@@ -21,6 +29,7 @@ export interface Model {
     tools: Tool[],
     signal: AbortSignal,
     delta: (text: string) => void,
+    options?: CompletionOptions,
   ): Promise<Completion>;
 }
 
@@ -67,6 +76,7 @@ export class OllamaModel implements Model {
     tools: Tool[],
     signal: AbortSignal,
     delta: (text: string) => void,
+    options: CompletionOptions = {},
   ): Promise<Completion> {
     const url = new URL(this.url);
     if (
@@ -84,7 +94,11 @@ export class OllamaModel implements Model {
         model: this.model,
         stream: true,
         think: false,
-        options: { num_predict: 900 },
+        options: {
+          num_predict: options.outputTokens ?? 900,
+          ...(options.contextTokens ? { num_ctx: options.contextTokens } : {}),
+        },
+        ...(options.format ? { format: options.format } : {}),
         messages: [
           { role: 'system', content: system },
           ...messages.map((message) => ({
@@ -150,6 +164,7 @@ export class AnthropicModel implements Model {
     tools: Tool[],
     signal: AbortSignal,
     delta: (text: string) => void,
+    options: CompletionOptions = {},
   ): Promise<Completion> {
     const converted: { role: string; content: unknown[] }[] = [];
     for (const message of messages) {
@@ -180,7 +195,7 @@ export class AnthropicModel implements Model {
       },
       body: JSON.stringify({
         model: this.model,
-        max_tokens: 900,
+        max_tokens: options.outputTokens ?? 900,
         stream: true,
         system,
         messages: converted,

@@ -3,16 +3,18 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 /** A local provider fixture. It never loads a model or sends a paid request. */
-export async function controlledCoach(approval: boolean | number[] = false) {
+export async function controlledCoach(approval: boolean | number[] = false, partial = true) {
   const requests: {
     response: ServerResponse;
     closed: boolean;
     messages: { role: string; content: string }[];
+    payload: Record<string, unknown>;
   }[] = [];
   const server = createServer(async (request, response) => {
     let body = '';
     for await (const chunk of request) body += chunk;
-    const entry = { response, closed: false, messages: JSON.parse(body).messages };
+    const payload = JSON.parse(body);
+    const entry = { response, closed: false, messages: payload.messages, payload };
     requests.push(entry);
     response.on('close', () => {
       entry.closed = true;
@@ -35,7 +37,7 @@ export async function controlledCoach(approval: boolean | number[] = false) {
     } else {
       response.write(
         JSON.stringify({
-          message: { content: `Fixture partial response ${requests.length}.` },
+          message: { content: partial ? `Fixture partial response ${requests.length}.` : '' },
           done: false,
         }) + '\n',
       );

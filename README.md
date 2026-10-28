@@ -143,8 +143,17 @@ Open **Settings**. Select a provider in the **AI coach** section.
 - **Ollama:** use a model that you install and start locally.
 - **Claude API:** enter your Anthropic API key. Each chat uses your API account.
 
-A paid provider receives the message and applicable practice text when you send a chat.
+When you send a chat, a paid provider receives your message and applicable practice text.
+An AI review sends captured practice text to the selected provider.
 The app does not make background model calls. It does not install a model automatically.
+
+Select **AI review** to get rubric scores for captured code or a design checkpoint.
+Scores are model estimates and can be incorrect.
+The app compares source quotations with captured work and supplies one practice question.
+Each review stays in its attempt conversation. The app does not complete the attempt or change test results.
+
+A local Ollama model runs on your computer without an API charge.
+See [AI review setup and limits](apps/desktop/README.md#ai-practice-review) for model installation and review behavior.
 
 ### Enable code execution
 

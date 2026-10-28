@@ -197,7 +197,8 @@ void app.whenReady().then(async () => {
         throw new Error('Untrusted IPC sender');
       if (finalizingClose && !['close-ready', 'cancel', 'snapshot'].includes(channel))
         throw new Error('The window is closing.');
-      if (closeRequested && channel === 'chat') throw new Error('The window is closing.');
+      if (closeRequested && ['chat', 'grade'].includes(channel))
+        throw new Error('The window is closing.');
       const operation = Promise.resolve().then(() => action(...args));
       if (['close-ready', 'cancel', 'snapshot'].includes(channel)) return operation;
       pendingRequests.add(operation);
@@ -420,6 +421,7 @@ void app.whenReady().then(async () => {
   handler('run', (submit) => service.runTests(z.boolean().parse(submit)));
   handler('hint', () => service.hint());
   handler('chat', (text) => service.chat(z.string().min(1).max(8000).parse(text)));
+  handler('grade', () => service.grade());
   handler('cancel', (chatId) => service.cancelChat(z.string().uuid().optional().parse(chatId)));
   handler('approve', (value, allow) =>
     service.approve(z.string().uuid().parse(value), z.boolean().parse(allow)),

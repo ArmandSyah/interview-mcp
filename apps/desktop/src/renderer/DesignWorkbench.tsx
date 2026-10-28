@@ -657,6 +657,25 @@ export function DesignWorkbench({
           <div className="design-panel-actions">
             <button
               className="secondary small"
+              title="Examine a new checkpoint. Scores are model estimates."
+              disabled={
+                !ready ||
+                busy ||
+                locked ||
+                snapshot.connection !== 'connected' ||
+                snapshot.settings.provider === 'disabled'
+              }
+              onClick={() =>
+                void action(async () => {
+                  setTab('coach');
+                  await window.interview.grade();
+                })
+              }
+            >
+              AI review
+            </button>
+            <button
+              className="secondary small"
               disabled={!ready || busy || locked || draft?.practiceMode === 'mock'}
               onClick={() =>
                 void action(async () => {

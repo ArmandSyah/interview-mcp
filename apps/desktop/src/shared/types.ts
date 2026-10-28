@@ -169,6 +169,7 @@ export type DesktopAPI = {
   runTests(submit: boolean): Promise<void>;
   hint(): Promise<void>;
   chat(text: string): Promise<void>;
+  grade(): Promise<void>;
   cancelChat(chatId?: string): Promise<void>;
   approve(id: string, allow: boolean): Promise<void>;
   updateSettings(settings: SettingsUpdate): Promise<void>;

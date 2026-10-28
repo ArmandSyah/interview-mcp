@@ -10,6 +10,7 @@ import type { Model } from '../src/main/providers';
 import type { ManagedSandbox } from '../src/main/sandbox';
 import type { AppEvent, Approval, Problem, TestRun } from '../src/shared/types';
 import { testReport } from './test-report-fixture';
+import { reviewJSON } from './grading-fixture';
 
 const problem: Problem = {
   id: '0001-test',
@@ -98,6 +99,148 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+it('AI review captures code once, permits autosave, and does not execute tools or complete practice', async () => {
+  const waiting = deferred();
+  const complete = vi.fn<Model['complete']>(async () => {
+    await waiting.promise;
+    return { text: reviewJSON(), calls: [] };
+  });
+  const { service, store, mcp } = await fixture({ complete });
+  try {
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.startProblem(problem.id);
+    await service.runTests(false);
+    const before = service.snapshot();
+    mcp.call.mockClear();
+    const review = service.grade();
+    expect(service.snapshot().busy).toBe(true);
+    expect(service.snapshot().chatId).toBeTruthy();
+    await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+    const captured = JSON.parse(complete.mock.calls[0]![1][0]!.text);
+    expect(captured.code).toBe(code);
+    expect(captured.codeSha256).toBe(createHash('sha256').update(code).digest('hex'));
+    expect(complete.mock.calls[0]![2]).toEqual([]);
+    await expect(service.grade()).rejects.toThrow();
+    await service.saveCode(problem.id, '# More recent candidate draft');
+    waiting.resolve();
+    await review;
+    const after = service.snapshot();
+    expect(after.sessions[0]!.code).toBe('# More recent candidate draft');
+    expect(after.sessions[0]!.chat.at(-1)!.text).toContain(captured.codeSha256);
+    expect(after.sessions[0]!.chat.at(-1)!.text).not.toContain('More recent candidate');
+    expect(after.sessions[0]!.result).toEqual(before.sessions[0]!.result);
+    expect(after.sessions[0]!.submitted).toBe(before.sessions[0]!.submitted);
+    expect(after.sessions[0]!.hintDepth).toBe(before.sessions[0]!.hintDepth);
+    expect(after.progress).toBe(before.progress);
+    expect(after.busy).toBe(false);
+    expect(after.chatId).toBeNull();
+    expect(mcp.call).not.toHaveBeenCalled();
+    const saved = JSON.parse(await readFile(join(store.root, 'workspace.json'), 'utf8'));
+    expect(JSON.stringify(saved)).toContain(captured.codeSha256);
+  } finally {
+    waiting.resolve();
+    await service.close();
+  }
+});
+
+it('AI review cancellation rejects a late answer and ignores a stale cancellation ID', async () => {
+  const waiting = deferred();
+  let signal: AbortSignal | undefined;
+  const complete = vi.fn<Model['complete']>(async (_system, _messages, _tools, activeSignal) => {
+    signal = activeSignal;
+    await waiting.promise;
+    return { text: reviewJSON(), calls: [] };
+  });
+  const { service } = await fixture({ complete });
+  try {
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.startProblem(problem.id);
+    const review = service.grade();
+    await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+    service.cancelChat('previous-review-id');
+    expect(signal!.aborted).toBe(false);
+    service.cancelChat(service.snapshot().chatId!);
+    expect(signal!.aborted).toBe(true);
+    waiting.resolve();
+    await review;
+    expect(service.snapshot().sessions[0]!.chat.at(-1)!.text).toBe('AI review stopped.');
+    expect(service.snapshot().sessions[0]!.chat.some((item) => item.role === 'assistant')).toBe(
+      false,
+    );
+    expect(service.snapshot().busy).toBe(false);
+  } finally {
+    waiting.resolve();
+    await service.close();
+  }
+});
+
+it('AI review rejects missing prerequisites before a model call', async () => {
+  const complete = vi.fn<Model['complete']>(async () => ({ text: reviewJSON(), calls: [] }));
+  const { service, mcp } = await fixture({ complete });
+  try {
+    await expect(service.grade()).rejects.toThrow('Select a local Ollama model');
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await expect(service.grade()).rejects.toThrow();
+    await service.startProblem(problem.id);
+    mcp.connect.mockRejectedValueOnce(new Error('Fixture disconnected'));
+    await service.reconnect();
+    await expect(service.grade()).rejects.toThrow('Reconnect');
+    expect(complete).not.toHaveBeenCalled();
+    expect(service.snapshot().busy).toBe(false);
+  } finally {
+    await service.close();
+  }
+});
+
+it('a failed review state write prevents inference and releases the lock', async () => {
+  const complete = vi.fn<Model['complete']>(async () => ({ text: reviewJSON(), calls: [] }));
+  const { service, store } = await fixture({ complete });
+  try {
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.startProblem(problem.id);
+    const persist = vi
+      .spyOn(store, 'persist')
+      .mockRejectedValueOnce(new Error('Fixture review write failed'));
+    await service.grade();
+    expect(complete).not.toHaveBeenCalled();
+    expect(service.snapshot().error).toContain('Fixture review write failed');
+    expect(service.snapshot().busy).toBe(false);
+    persist.mockRestore();
+    await service.grade();
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(service.snapshot().error).toBeNull();
+  } finally {
+    await service.close();
+  }
+});
+
+it('a final review write failure rejects without another model call and releases the lock', async () => {
+  const complete = vi.fn<Model['complete']>(async () => ({ text: reviewJSON(), calls: [] }));
+  const { service, store } = await fixture({ complete });
+  try {
+    await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
+    await service.startProblem(problem.id);
+    const original = store.persist.bind(store);
+    const persist = vi
+      .spyOn(store, 'persist')
+      .mockImplementationOnce(original)
+      .mockRejectedValueOnce(new Error('Fixture final review write failed'));
+    await expect(service.grade()).rejects.toThrow('Fixture final review write failed');
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(service.snapshot().busy).toBe(false);
+    expect(service.snapshot().chatId).toBeNull();
+    expect(
+      service.snapshot().sessions[0]!.chat.filter((item) => item.role === 'assistant'),
+    ).toHaveLength(1);
+    expect(await readFile(join(store.root, 'workspace.json'), 'utf8')).not.toContain(
+      'AI practice review',
+    );
+    persist.mockRestore();
+  } finally {
+    await service.close();
+  }
+});
 
 it('a new coding attempt write failure keeps the previous workspace and permits retry', async () => {
   const { service, store } = await fixture();
