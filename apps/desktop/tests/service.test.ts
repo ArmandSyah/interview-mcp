@@ -102,7 +102,10 @@ function deferred() {
 
 it('AI review captures code once, permits autosave, and does not execute tools or complete practice', async () => {
   const waiting = deferred();
+  const entered = deferred();
+  let review: Promise<void> | undefined;
   const complete = vi.fn<Model['complete']>(async () => {
+    entered.resolve();
     await waiting.promise;
     return { text: reviewJSON(), calls: [] };
   });
@@ -113,10 +116,16 @@ it('AI review captures code once, permits autosave, and does not execute tools o
     await service.runTests(false);
     const before = service.snapshot();
     mcp.call.mockClear();
-    const review = service.grade();
+    review = service.grade();
     expect(service.snapshot().busy).toBe(true);
     expect(service.snapshot().chatId).toBeTruthy();
-    await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+    await Promise.race([
+      entered.promise,
+      review.then(() => {
+        throw new Error(`grade() ended before model.complete(): ${service.snapshot().error}`);
+      }),
+    ]);
+    expect(complete).toHaveBeenCalledTimes(1);
     const captured = JSON.parse(complete.mock.calls[0]![1][0]!.text);
     expect(captured.code).toBe(code);
     expect(captured.codeSha256).toBe(createHash('sha256').update(code).digest('hex'));
@@ -140,15 +149,19 @@ it('AI review captures code once, permits autosave, and does not execute tools o
     expect(JSON.stringify(saved)).toContain(captured.codeSha256);
   } finally {
     waiting.resolve();
+    await review?.catch(() => {});
     await service.close();
   }
 });
 
 it('AI review cancellation rejects a late answer and ignores a stale cancellation ID', async () => {
   const waiting = deferred();
+  const entered = deferred();
+  let review: Promise<void> | undefined;
   let signal: AbortSignal | undefined;
   const complete = vi.fn<Model['complete']>(async (_system, _messages, _tools, activeSignal) => {
     signal = activeSignal;
+    entered.resolve();
     await waiting.promise;
     return { text: reviewJSON(), calls: [] };
   });
@@ -156,8 +169,14 @@ it('AI review cancellation rejects a late answer and ignores a stale cancellatio
   try {
     await service.updateSettings({ ...defaultSettings, provider: 'ollama' });
     await service.startProblem(problem.id);
-    const review = service.grade();
-    await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+    review = service.grade();
+    await Promise.race([
+      entered.promise,
+      review.then(() => {
+        throw new Error(`grade() ended before model.complete(): ${service.snapshot().error}`);
+      }),
+    ]);
+    expect(complete).toHaveBeenCalledTimes(1);
     service.cancelChat('previous-review-id');
     expect(signal!.aborted).toBe(false);
     service.cancelChat(service.snapshot().chatId!);
@@ -171,6 +190,7 @@ it('AI review cancellation rejects a late answer and ignores a stale cancellatio
     expect(service.snapshot().busy).toBe(false);
   } finally {
     waiting.resolve();
+    await review?.catch(() => {});
     await service.close();
   }
 });
