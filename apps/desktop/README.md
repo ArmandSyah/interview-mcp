@@ -260,7 +260,7 @@ To use the local model:
 9. Select **AI review**.
 
 Ollama uses your computer's memory and processing time without an API charge.
-Each review uses one model request. There are no automatic retries or model tool calls.
+Each review uses at most one model request. There are no automatic retries or model tool calls.
 The Claude provider uses your paid API account for that request.
 AI stays off until you select a provider.
 
