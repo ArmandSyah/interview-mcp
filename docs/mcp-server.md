@@ -1,0 +1,149 @@
+# MCP server setup
+
+The desktop app starts the MCP engine automatically.
+Use this guide only for a different MCP client or an optional HTTP server.
+A hosted server is not necessary for the desktop app.
+
+## VS Code
+
+Install the Python dependencies before you start the server:
+
+```bash
+uv sync --frozen --dev --python 3.12
+```
+
+Open the repository root in VS Code.
+For WSL, open the folder with the WSL extension.
+The [workspace configuration](../.vscode/mcp.json) starts the engine with uv.
+
+1. Open **MCP: List Servers** from the Command Palette.
+2. Select **interview**.
+3. Start the server.
+4. Select **Show Output** if startup fails.
+
+In the agent chat, tell the agent to get a problem list with `list_problems`.
+Open the tool result to see the returned catalog.
+The editor must have an enabled agent and a model provider.
+The editor's model provider can collect payments for chat requests.
+The MCP engine uses curated hints without model calls.
+
+The configuration starts `server.desktop` with stdio.
+That entry point uses `remote` mode to return scaffold files as data.
+It does not start an HTTP server or change solution files.
+Create the returned scaffold in your practice folder before you edit it.
+The database stays in `.interview-mcp-vscode`, which Git ignores.
+Desktop practice uses a different database.
+
+Use the desktop app for the built-in whiteboard.
+This repository does not supply a VS Code whiteboard extension.
+The desktop coach limits do not control the editor's agent.
+Set tool permissions in the editor.
+See the [VS Code configuration reference](https://code.visualstudio.com/docs/agents/reference/mcp-configuration) for configuration fields.
+
+## Local stdio connection
+
+Install uv and Python 3.12. Enter these commands from the repository root:
+
+```bash
+uv sync --frozen --dev --python 3.12
+```
+
+Use this configuration in an MCP client that accepts stdio connections.
+Replace the example path with the absolute path to your checkout.
+
+```json
+{
+  "mcpServers": {
+    "interview": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/interview-mcp",
+        "run",
+        "--frozen",
+        "python",
+        "-m",
+        "server.desktop"
+      ],
+      "env": {"LLM_PROVIDER": "fallback"}
+    }
+  }
+}
+```
+
+The client sends messages to stdin and receives messages from stdout.
+If you start `uv run python -m server.desktop` directly, it waits for MCP messages.
+It does not open an app window.
+
+This configuration returns a solution scaffold as data. It does not change solution files.
+The optional `server.main` entry point can write scaffolds when `INTERVIEW_MCP_MODE` is `local`.
+Call `list_problems`, then `start_problem`.
+Use the returned attempt ID with `get_hint`, `run_tests`, and `submit_solution`.
+The [local sandbox](../apps/desktop/README.md#enable-code-execution) is necessary for code execution.
+
+## Local HTTP test stack
+
+The HTTP mode uses a bearer key to identify each user ID.
+Each user ID has isolated attempts and progress records.
+It has no interactive OAuth sign-in.
+
+Use a trusted Docker host. A privileged container is necessary for Piston.
+Enter these commands from the repository root:
+
+```bash
+docker compose -f compose.remote.yml up -d --build --wait
+docker compose -f compose.remote.yml exec -T server python -c "import httpx; r=httpx.post('http://piston:2000/api/v2/packages', json={'language':'python','version':'3.12.0'}, timeout=300); r.raise_for_status()"
+docker compose -f compose.remote.yml exec server python -m server.auth create-key demo-user
+```
+
+Keep the printed key private. Do not add it to a source file or screenshot.
+For the smoke check, set `INTERVIEW_MCP_API_KEY` in your shell.
+Then enter this command:
+
+```bash
+uv run python scripts/smoke_remote.py --url http://127.0.0.1:8000/mcp --expected-problems 5
+```
+
+Stop the stack when you finish:
+
+```bash
+docker compose -f compose.remote.yml down
+```
+
+Without Docker, start only the HTTP engine with `uv run python -m server.main --remote`.
+Its default address is `127.0.0.1:8000`. A Piston instance is necessary for code execution.
+
+Remote mode returns scaffold contents as data. It does not write solution files on a user's computer.
+The client must create the scaffold from `files_to_create`.
+Requests must use a permitted Host header. Browser clients must also use a permitted Origin.
+The server limits request size, request rate, and concurrent tools with large workloads.
+
+`/health` returns the server status. `/ready` also returns the corpus and Python execution status.
+
+## Storage and content
+
+The default corpus contains five public coding examples in `problems/examples`.
+The default database directory is `~/.interview-mcp`.
+
+Set `INTERVIEW_MCP_DB_DIR` to use a different database directory.
+Set `INTERVIEW_MCP_PROBLEMS_DIR` to use an accepted runtime JSON export.
+Do not select an authoring repository.
+
+The desktop app uses a different data directory and a different SQLite database.
+It does not share the default stdio database automatically.
+The active catalog does not include removed questions. Historical attempts keep their content snapshots.
+
+## Optional hosting
+
+The [Supabase preview](supabase-hosting.md) has an authenticated HTTPS endpoint.
+It has no desktop sign-in or hosted code execution.
+Use its guide for the deployed tools and remaining work.
+
+The Python HTTP server is an alternative for a trusted Docker host.
+HTTPS, user keys, Host restrictions, backups, and a security inspection are necessary before a public deployment.
+Use one server replica with SQLite.
+Do not make the Piston port available to internet clients.
+
+The [remote CI workflow](../.github/workflows/remote.yml) includes HTTP and Piston tests.
+The [image workflow](../.github/workflows/image.yml) builds the container image.
+An HTTPS endpoint smoke test is mandatory before [registry publication](../.github/workflows/registry.yml).

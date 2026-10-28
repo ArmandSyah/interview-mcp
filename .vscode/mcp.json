@@ -1,0 +1,24 @@
+{
+  "servers": {
+    "interview": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "${workspaceFolder}",
+        "run",
+        "--frozen",
+        "python",
+        "-m",
+        "server.desktop"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "LLM_PROVIDER": "fallback",
+        "INTERVIEW_MCP_MODE": "remote",
+        "INTERVIEW_MCP_DB_DIR": "${workspaceFolder}/.interview-mcp-vscode",
+        "INTERVIEW_MCP_PROBLEMS_DIR": "${workspaceFolder}/problems/examples"
+      }
+    }
+  }
+}

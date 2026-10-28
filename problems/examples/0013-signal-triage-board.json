@@ -25,7 +25,7 @@
     "severity, timestamp, and signal_id are integers."
   ],
   "starter_code": {
-    "python": "def top_triage_signals(signals: list[list[int]], k: int) -> list[int]:\n    pass\n"
+    "python": "def top_triage_signals(signals: list[list[int]], k: int) -> list[int]:\n    \"\"\"Example call and expected return.\n\n    >>> top_triage_signals([[5, 10, 8], [7, 12, 3], [7, 9, 4]], 2)\n    [4, 3]\n    \"\"\"\n    pass\n"
   },
   "test_cases": {
     "python": [

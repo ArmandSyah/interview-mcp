@@ -1,0 +1,40 @@
+name: Supabase practice
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, feat/interview-desktop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  edge:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: supabase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 'v2.9.6'
+      - run: deno task format:check
+      - run: deno task lint
+      - run: deno task check
+      - run: deno task test
+  postgres:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen --dev
+      - run: uv run python -m tools.cloud_catalog --check
+      - run: docker pull postgres:17-alpine
+      - run: uv run pytest -q tests/test_cloud_store.py
+        env:
+          INTERVIEW_TEST_CLOUD_POSTGRES: '1'

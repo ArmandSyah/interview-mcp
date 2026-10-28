@@ -24,7 +24,7 @@
     "Each lesson category is a non-empty string."
   ],
   "starter_code": {
-    "python": "def longest_balanced_training_segment(lessons: list[str], max_per_category: int) -> int:\n    pass\n"
+    "python": "def longest_balanced_training_segment(lessons: list[str], max_per_category: int) -> int:\n    \"\"\"Example call and expected return.\n\n    >>> longest_balanced_training_segment([\"sql\", \"api\", \"sql\", \"sql\", \"testing\"], 2)\n    4\n    \"\"\"\n    pass\n"
   },
   "test_cases": {
     "python": [

@@ -1,31 +1,36 @@
 # Local sandbox setup
 
-The MCP server executes user code in a [Piston](https://github.com/engineer-man/piston)
-container. In local development, the server talks to Piston at
-`http://localhost:2000`. In remote mode, the hosted MCP server should use an
-internal service URL through `PISTON_BASE_URL`.
+Piston executes user code in a Docker container.
+The Python MCP server sends code to Piston with HTTP requests.
+It does not execute user code with host Python, `exec`, `eval`, or a local subprocess.
+
+The desktop app has optional sandbox setup and automatic control of its own container.
+See the [desktop guide](../apps/desktop/README.md#enable-code-execution) for that procedure.
+The instructions below use the manual server development project, not the app-owned project.
+The app does not stop this manual container.
+
+CAUTION: Use this privileged container only on a trusted workstation or an isolated Docker virtual machine.
+Privileged software can change host files. This can cause data loss.
+Do not use a shared production host.
+Do not make the Piston port available to internet clients.
 
 ## First-time local setup
 
-From the repo root, in your WSL shell:
+Start Docker before this procedure.
+Enter these commands from the repository root in your WSL shell:
 
 ```bash
-# 1. Bring up Piston.
-docker compose up -d piston
+docker compose up -d --wait --wait-timeout 180 piston
 
-# 2. Confirm it is healthy. It may take around 15 seconds.
 docker compose ps piston
 
-# 3. Install the Python runtime once. The named Docker volume persists it.
-curl -X POST http://localhost:2000/api/v2/packages \
+curl --fail --max-time 300 http://127.0.0.1:2000/api/v2/packages \
   -H "Content-Type: application/json" \
   -d '{"language":"python","version":"3.12.0"}'
 
-# 4. Confirm the runtime is available.
-curl http://localhost:2000/api/v2/runtimes
+curl --fail http://127.0.0.1:2000/api/v2/runtimes
 
-# 5. Smoke test execution.
-curl -X POST http://localhost:2000/api/v2/execute \
+curl --fail --max-time 30 http://127.0.0.1:2000/api/v2/execute \
   -H "Content-Type: application/json" \
   -d '{
     "language": "python",
@@ -34,69 +39,36 @@ curl -X POST http://localhost:2000/api/v2/execute \
   }'
 ```
 
-The smoke test should return JSON whose `run.stdout` is `2\n`.
+The expected JSON result contains `run.stdout: "2\n"`.
+The named Docker volume keeps the installed runtime after container shutdown.
 
-Piston's API container runs with `privileged: true`, stores runtimes in
-`/piston/packages`, and uses an executable tmpfs at `/tmp`. These settings match
-the upstream Piston Compose file while keeping the host port bound to
-`127.0.0.1`.
+The API container uses `privileged: true`, `/piston/packages` for runtimes, and an executable tmpfs at `/tmp`.
+The host port binds only to `127.0.0.1:2000`.
 
 ## Daily local operation
 
-- Start: `docker compose up -d piston`
-- Stop: `docker compose down`
-- Logs: `docker compose logs -f piston`
-- Restart, keeping installed runtimes: `docker compose restart piston`
-- Recreate from scratch, losing installed runtimes: `docker compose down -v`
+| Operation | Command | Effect |
+| --- | --- | --- |
+| Start | `docker compose up -d piston` | Starts the manual container. |
+| Stop | `docker compose stop piston` | Stops the container and keeps the installed runtimes. |
+| Logs | `docker compose logs -f piston` | Displays container logs until you cancel the command. |
+| Restart | `docker compose restart piston` | Restarts the container and keeps the installed runtimes. |
 
-## Why Piston runs separately
+## Remote connections
 
-The MCP server must never execute user-submitted code directly with Python
-`exec`, `eval`, or a local subprocess. Piston gives us an HTTP boundary between
-the server and untrusted code execution. Later application code will send a
-script to Piston and receive structured stdout, stderr, exit code, and timing
-data back.
+For the optional Python HTTP server, `PISTON_BASE_URL` identifies its Piston endpoint.
+The [local HTTP test stack](mcp-server.md#local-http-test-stack) uses an internal container URL.
+Do not publish that internal Piston port.
+Only the MCP server can receive external client requests.
 
-## Remote deployment shape
-
-Remote mode should not expose Piston publicly. The production shape later should
-look like this:
-
-```yaml
-services:
-  server:
-    image: ghcr.io/yourusername/interview-mcp:v0.2.0
-    environment:
-      INTERVIEW_MCP_MODE: remote
-      PISTON_BASE_URL: http://piston:2000
-    depends_on:
-      piston:
-        condition: service_healthy
-
-  piston:
-    image: ghcr.io/engineer-man/piston
-    privileged: true
-    expose:
-      - "2000"
-    volumes:
-      - piston_data:/piston/packages
-    tmpfs:
-      - /tmp:exec
-```
-
-Only the MCP server should sit behind public ingress. Piston should be reachable
-from the server container and nowhere else.
+The [Supabase preview](supabase-hosting.md) does not host Piston or execute user code.
+Its desktop client uses local Docker execution, not a public execution server.
 
 ## Troubleshooting
 
-**`Connection refused` from the Python server.** Piston may still be starting.
-Run `docker compose ps piston` and check for `healthy`.
-
-**Runtime not installed.** Repeat the package install POST. The install is
-idempotent.
-
-**Piston is unreachable from WSL but works from PowerShell.** Docker Desktop's
-WSL integration may be disabled for your Ubuntu distro.
-
-**Remote server cannot reach Piston.** Check `PISTON_BASE_URL`, container DNS,
-and whether both services are on the same Docker network.
+| Problem | Procedure |
+| --- | --- |
+| `Connection refused` | Enter `docker compose ps piston`. Make sure that the container reports `healthy`. |
+| Python is not installed. | Enter the runtime installation command again. It does not create a duplicate runtime. |
+| Piston works from PowerShell but not WSL. | Enable Docker Desktop WSL integration for your Ubuntu distribution. |
+| The Python HTTP server cannot connect to Piston. | Examine `PISTON_BASE_URL` and the container network configuration. |

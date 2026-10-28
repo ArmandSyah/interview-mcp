@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 from server.core.identity import current_user_id
 from server.db.base import get_session
 from server.db.models import Attempt, Event, Problem, State
+from server.db.revisions import snapshot_problem
 from server.db.schemas import AttemptRead, EventRead, ProblemRead
 from server.db.write_types import ProblemWrite
 
@@ -51,6 +52,18 @@ def get_problem(problem_id: str, *, available_only: bool = False) -> ProblemRead
         return ProblemRead.model_validate(problem)
 
 
+def get_attempt_problem(attempt_id: str) -> ProblemRead | None:
+    """Read this user's pinned content, never the currently published question."""
+    with get_session() as session:
+        attempt = session.get(Attempt, attempt_id)
+        if attempt is None or attempt.user_id != current_user_id():
+            return None
+        if attempt.problem_snapshot is not None:
+            return ProblemRead.model_validate(attempt.problem_snapshot)
+        # Legacy rows without recoverable content remain explicitly unpinned.
+        return None
+
+
 def list_problems(difficulty: str | None = None, tag: str | None = None) -> list[ProblemRead]:
     with get_session() as session:
         statement = select(Problem).where(Problem.available.is_(True))
@@ -86,8 +99,14 @@ def list_attempts_with_problems(limit: int = 50) -> list[AttemptWithProblem]:
         return [
             AttemptWithProblem(
                 attempt=AttemptRead.model_validate(attempt),
-                problem_title=attempt.problem.title,
-                problem_difficulty=attempt.problem.difficulty,
+                problem_title=str(attempt.problem_snapshot.get("title", attempt.problem.title))
+                if attempt.problem_snapshot
+                else attempt.problem.title,
+                problem_difficulty=str(
+                    attempt.problem_snapshot.get("difficulty", attempt.problem.difficulty)
+                )
+                if attempt.problem_snapshot
+                else attempt.problem.difficulty,
             )
             for attempt in attempts
         ]
@@ -95,12 +114,19 @@ def list_attempts_with_problems(limit: int = 50) -> list[AttemptWithProblem]:
 
 def create_attempt(problem_id: str, language: str) -> AttemptRead:
     with get_session() as session:
+        problem = session.get(Problem, problem_id)
+        if problem is None or not problem.available:
+            raise ValueError("Problem is not available.")
+        snapshot, revision = snapshot_problem(ProblemRead.model_validate(problem))
         attempt = Attempt(
             id=str(uuid4()),
             user_id=current_user_id(),
             problem_id=problem_id,
             language=language,
             status="in_progress",
+            problem_snapshot=snapshot,
+            problem_revision=revision,
+            revision_origin="pinned",
             started_at=datetime.now(UTC),
         )
         session.add(attempt)

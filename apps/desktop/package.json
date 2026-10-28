@@ -1,0 +1,109 @@
+{
+  "name": "interview-workbench",
+  "version": "0.2.0",
+  "private": true,
+  "description": "A local-first interview practice desktop workspace with an MCP-connected AI coach",
+  "author": "Armand Syah",
+  "homepage": "https://github.com/ArmandSyah/interview-mcp",
+  "desktopName": "interview-workbench.desktop",
+  "license": "Apache-2.0",
+  "main": "dist/main/index.cjs",
+  "type": "module",
+  "scripts": {
+    "install:electron": "node node_modules/electron/install.js",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run typecheck && vite build && node scripts/build-notices.mjs && node scripts/build-main.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:desktop": "playwright test",
+    "demo": "node scripts/capture-demo.mjs",
+    "start": "electron .",
+    "backend": "node scripts/build-backend.mjs",
+    "package": "npm run backend && npm run build && electron-builder --dir",
+    "dist": "npm run backend && npm run build && electron-builder",
+    "format": "prettier --write src scripts tests *.json *.ts *.html",
+    "format:check": "prettier --check src scripts tests *.json *.ts *.html"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "@modelcontextprotocol/client": "^2.3.0",
+    "lucide-react": "^0.577.0",
+    "monaco-editor": "^0.57.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "0.28.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.2",
+    "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "@excalidraw/excalidraw": {
+      "nanoid": "3.3.19",
+      "sass": "1.105.1"
+    },
+    "@excalidraw/mermaid-to-excalidraw": {
+      "nanoid": "5.1.16"
+    },
+    "lodash-es": "4.18.1",
+    "dompurify": "3.4.16",
+    "http-cache-semantics": "4.3.0"
+  },
+  "build": {
+    "appId": "io.github.armandsyah.interview-workbench",
+    "productName": "Interview Workbench",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend"
+      },
+      {
+        "from": "resources/compose.sandbox.yml",
+        "to": "sandbox/compose.sandbox.yml"
+      }
+    ],
+    "asar": true,
+    "npmRebuild": false,
+    "linux": {
+      "maintainer": "Armand Syahtama <armand.syahtama@gmail.com>",
+      "syncDesktopName": true,
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

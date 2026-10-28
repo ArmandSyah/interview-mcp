@@ -1,0 +1,729 @@
+{
+  "status": "verified_preview",
+  "goal": "Desktop coding and system-design practice, public release preparation, and Supabase remote MCP development",
+  "database": "SQLAlchemy 2.x with local SQLite. Schema version 4.",
+  "delivery_scope": "The working desktop and private Supabase preview are verified. Public sign-up, payments, and trusted installer publication remain release work.",
+  "delivery_audit": [
+    {
+      "requirement": "Coding practice with an editor, hints, tests, submission, and saved drafts",
+      "result": "verified",
+      "evidence": "Native source and packaged workflows passed. The Linux CI job passed with real Piston. Desktop tests cover draft ownership and submission approval."
+    },
+    {
+      "requirement": "Coding/System design switch with a built-in whiteboard",
+      "result": "verified",
+      "evidence": "Native tests cover offline Excalidraw, notes, images, checkpoints, reviews, exports, and saved work after restart."
+    },
+    {
+      "requirement": "MCP access from VS Code",
+      "result": "verified",
+      "evidence": "tests/test_vscode_setup.py executes the saved launch command and verifies catalogs, scaffold results, hints, and unchanged solution files."
+    },
+    {
+      "requirement": "Use the Supabase Free project without a VPS",
+      "result": "verified_private_preview",
+      "evidence": "Function version 4 is ACTIVE. Live tests verified two accounts, access controls, token replacement, remote practice, and local Piston execution. Both temporary accounts were deleted."
+    },
+    {
+      "requirement": "Plans for sign-up, revenue, deployment, and public packages",
+      "result": "documented",
+      "evidence": "docs/public-release-plan.md defines the proposed account flow, ownership, payment operations, cost limits, package targets, and public release checks. These are plans, not active services."
+    },
+    {
+      "requirement": "A working desktop package",
+      "result": "verified_development_build",
+      "evidence": "Local AppImage and Deb files are available in apps/desktop/release. Windows and Linux packaged tests passed in Desktop workflow 39623646553. Installers are unsigned."
+    },
+    {
+      "requirement": "Slow demos that show the app and agent workflow",
+      "result": "verified",
+      "evidence": "The GIF files contain 185 frames over 30.84 seconds and 207 frames over 34.5 seconds. Captions identify each step. The model is a local fixture, not live inference."
+    },
+    {
+      "requirement": "Current READMEs with ASD-STE100 checks",
+      "result": "reviewed",
+      "evidence": "The review used Issue 9 Part 1 and Part 2 dictionary entries for meanings, parts of speech, and forms. Computer terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed their checks."
+    }
+  ],
+  "implemented": [
+    "Revision-pinned coding attempts and owned design sessions",
+    "Five original development system-design briefs",
+    "Actual offline Excalidraw canvas with bundled fonts and reusable component palette",
+    "Local raster image assets, autosave, checkpoint history and restore",
+    "Requirements, API, data, capacity, tradeoff and failure-mode notes",
+    "Guided/mock modes and optional timer",
+    "Checkpoint-bound discussion coverage reviews, explicitly not correctness/hiring grades",
+    "AI off by default; optional read-only checkpoint coach with one hint per turn",
+    "Pre-migration SQLite backups and versioned atomic desktop-state migration",
+    "Credential-excluding portable practice archives; no in-app archive restore UI yet",
+    "Signed original content pack/license validation and atomic SQLAlchemy installation",
+    "Perpetual purchased-version use with a bounded licensed update window",
+    "Owner-operated signing CLI; no checkout account provisioned",
+    "Manual signed stable/beta update checks and verified downloads",
+    "Backup before explicit installer opening; no automatic install during practice",
+    "Optional Docker onboarding with explicit privileged-container consent and streamed setup phases",
+    "Digest-pinned bundled Piston config, local Docker/context/platform checks, and ownership-validated management",
+    "Lazy execution startup, five-minute idle/exit stop, retained runtime volume, and read-only reuse of external sandboxes",
+    "Malformed sandbox opt-in preservation and cancellation/cleanup of interrupted setup",
+    "Voluntary coding/design practice queue with pinned attempt metadata, editable/pausable reminders, and plain-English recall",
+    "Candidate-owned self-rating intervals and immutable reflection history; no automatic grading or attempt completion",
+    "Local reflection draft autosave and final-close flush; failed/stale saves preserve evidence",
+    "Owned MCP queue APIs and credential-excluding backups; queue tools are inaccessible to the AI coach",
+    "Complete checkpoint diagram projection up to 3,000 elements, late arrow bindings, and explicit shortened-label markers",
+    "Oversized-summary rejection before checkpoint-file creation, preserving the full saved canvas and exports",
+    "Explicit incomplete tool-result previews and non-streaming final coach response handling",
+    "Native raster image paste/restore/reopen, Excalidraw/notes/PNG exports with image-pixel checks, and export-cancellation preservation",
+    "Native optional design coach loop proves immutable checkpoint binding, no image-byte disclosure, rejected completion, and one hint per turn",
+    "Supabase authenticated MCP practice preview with account-owned attempts, content revisions, curated hints, and immutable design evidence",
+    "PostgreSQL row-level security, restricted RPC access, and public-only catalog generation",
+    "Stable account workspaces across manual token replacement, without moving earlier draft files",
+    "Remote coding attempts with local Piston execution and immutable personal reports, explicitly not server-verified grades",
+    "Live Supabase two-account verification, actual token refresh, owned coding/design practice, and scoped test cleanup"
+  ],
+  "engineering_remaining": [
+    "Optional remote exports and recall tools; these features already work with the local engine",
+    "Public account registration and automatic desktop sign-in remain proposed release work",
+    "Coordinated signed app/engine release artifact workflow and macOS CI",
+    "Review published dependency notice inventory before a production release",
+    "Clean-machine installation and upgrade checks on each public release platform"
+  ],
+  "external_prerequisites_not_provisioned": [
+    "Production Ed25519 public trust keys; private keys must remain outside the repo",
+    "Windows/macOS signing and notarization credentials for trusted public releases",
+    "Optional hosted checkout and reviewed paid-pack publication"
+  ],
+  "queued_follow_up": {
+    "branch": "feat/subscription-plans",
+    "requested_price": "USD 10 each month",
+    "status": "not_started",
+    "condition": "Finish and hand off the current desktop and Supabase work first. No billing is active."
+  },
+  "expanded_delivery_work": {
+    "windows_installation": {
+      "status": "verified_windows_preview",
+      "existing": "Electron Builder creates an NSIS installer. The Windows workflow tests the unpacked app.",
+      "required": "Test actual installation, saved practice after restart, and removal without loss of practice data. Supply GitHub build, download, and installation instructions.",
+      "implementation": "The Windows installer preview workflow builds an x64 NSIS installer. A dedicated lifecycle test installs it in a path with spaces, uses the bundled engine with an invalid host-Python path, saves code and design work, removes the app, compares saved data, and reinstalls it. Default data-directory markers must survive removal. NSIS data retention is explicit.",
+      "artifacts": "The download contains an installer, SHA-256 checksum, build identity, and standalone instructions. Generated guide links identify the source commit when GitHub supplies it. Artifacts are development previews with 30-day retention, not a published installer release.",
+      "local_verification": "TypeScript, formatting, installer test discovery, workflow YAML parsing, metadata byte counts, checksum generation, and standalone guide links passed. No Windows installation or removal ran locally.",
+      "independent_review": "A subagent independently examined the workflow, lifecycle test, PowerShell arguments, data-retention checks, artifact generator, and Issue 9 writing. It found broken relative links in the extracted guide and compound procedural instructions. The corrections passed independent metadata and source review.",
+      "windows_ci": "Windows installer preview workflow 40688491316 passed for 9224097. The actual Windows installation, removal, and reinstallation test passed in 56.6 seconds. Preview artifact 12816695170 and evidence artifact 12815564364 were uploaded. The downloaded archives passed their published SHA-256 checks. The preview expires on 2026-11-27. The installer has 158124386 bytes and SHA-256 69e9a0724f61c66784970d569fd95d07614251e1833d369d5753bc739b5df2bb. Its build identity identifies 9224097ac5743a52bedee907e74bb80c58ef431d. The final Windows screenshot shows the retained code after reinstallation. The Windows and Linux jobs in Desktop workflow 40688491295 also passed."
+    },
+    "download_website": {
+      "status": "plan_reviewed",
+      "required": "Prepare a website deployment plan with installer downloads and build identity. No provider purchase or website deployment is authorized by this planning requirement.",
+      "proposal": "docs/download-site-plan.md proposes Cloudflare Pages Free for static pages and GitHub Releases for installers. It defines release metadata, publication gates, download tests, and a USD 0 website budget within provider limits. No account, domain, or site has been provisioned.",
+      "independent_review": "The subagent examined the provider facts and Issue 9 wording. It found an impossible anonymous-download test before draft publication. The plan now examines draft files with repository write access, obtains owner approval, publishes the release, tests anonymous downloads, then publishes the website. Vocabulary and part-of-speech corrections were applied. The final independent review found no further concrete issues."
+    },
+    "low_cost_ai": {
+      "status": "verified_local_pending_platform_ci",
+      "existing": "Curated hints work with AI off. The desktop supports optional Ollama and a personal Claude API key.",
+      "required": "Provide an inexpensive or free assistance and grading mechanism. Define its evidence, rubric, model limits, and relationship to actual code-test results.",
+      "implementation": "AI review makes at most one explicit request to the selected provider. A prerequisite error or cancellation can prevent inference. Coding uses four criteria. Design uses six brief criteria and creates a checkpoint. Numeric scores from zero to three require a quotation found in captured code, notes, or diagram labels. Null means the evidence is not sufficient. The app supplies a fixed practice question for the selected criterion. It rejects new model prose, duplicate JSON fields, unknown criteria, invalid scores, tool requests, and cancelled late answers. It does not run tests or complete practice.",
+      "state": "The result identifies its attempt/code hash or checkpoint/scene hash. It stays in the captured conversation with the previous 200-record limit and file format. Draft autosave continues during inference. Curated reviews, test results, progress, and completion keep their previous meaning. AI stays off by default.",
+      "limits": "Each request contains at most 20000 UTF-8 evidence bytes, excluding system instructions and the JSON schema. Ollama uses a 32768-token context. Output has a 1500-token maximum. There are no automatic retries. Local Ollama has no API charge. The Claude provider uses the user's paid account.",
+      "verification": "The desktop unit/process suite passed 244 tests with two optional skips. Six native review stories passed, including draft changes, unsent text, restart, errors, explicit retry, duplicate actions, cancellation, stale Stop IDs, native close, and size rejection. Fifteen existing chat stories passed in the earlier combined run. The first design story read disk before its autosave. It now waits for the actual write. An old native-close test context caused a trace-file error in the next story. The corrected close-ready gate closes its trace before restart. All six final stories passed after that correction and the compact-list layout change.",
+      "live_model": "Real local qwen3:4b calls passed coding and design response validation. The first unrestricted response proposed a solution and gave credit for question text. That result prompted the restricted quotation/criterion contract. The restricted coding and design calls passed in 1.02 and 1.24 seconds after model load. This verifies inference and the response contract, not score accuracy. Scores are model estimates.",
+      "independent_review": "A subagent examined service locks, evidence capture, cancellation, persistence, provider options, state effects, native tests, and Issue 9 writing. It found blank quotations and incomplete test evidence for task-only quotations. Both corrections passed focused tests. It independently passed the grading/provider checks. Documentation states retention, local accounts, checkpoint effects, model limits, and paid-provider data transfer.",
+      "full_native_and_ci": "The complete local native suite passed 164 stories with two optional Piston skips in 11.3 minutes. PR 34 Linux had 243 unit passes, two skips, and one fixture-entry assertion failure. Its one-second poll expired before the model fixture started. The three new review tests now use fixture-entry signals and reject an early review return. Cleanup awaits both design review promises. The unit/process suite passed 244 tests with two skips after the poll correction. Application time limits do not change. Platform checks must verify this test correction.",
+      "ci_runtime_follow_up": "For 816f906, the corrected unit suite passed all 244 tests in PR CI. Windows passed. Linux passed all 166 source UI stories with real Piston, managed sandbox integration, and three remote Piston tests. The 45-minute Linux job limit cancelled the run during packaged UI tests. The job limit is now 60 minutes. No application or assertion time limits change. A different Linux push run reached connected state in 1.932 seconds, then the diagnostic pointer click waited 30 seconds for actionability. The trace probe now opens settings with a DOM click because it tests artifact capture. Native interaction stories keep their pointer clicks. Both intended diagnostic failures and the artifact verifier passed locally."
+    },
+    "question_language_review": {
+      "status": "requested",
+      "existing": "The private draft validator checks structure and binds release approval to content hashes.",
+      "required": "Add a repeatable review and rewrite mechanism for AI-authored questions using ASD-STE100 Issue 9 rules and dictionary checks. Preserve exercise requirements and test behavior."
+    },
+    "independent_verification": {
+      "status": "in_progress",
+      "required": "A subagent independently examines functionality and language rewrites. Record its findings and verify each correction."
+    }
+  },
+  "ui_interaction_audit": {
+    "status": "in_progress",
+    "prior_delivery_commit": "38257228803b971caedb1d1ac90d0d0534f9ddc0",
+    "completed_save_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/save-races.spec.ts",
+      "unit_tests": [
+        "apps/desktop/tests/draft-writer.test.ts",
+        "apps/desktop/tests/service.test.ts"
+      ],
+      "corrected_defects": [
+        "An older snapshot could replace a code draft during its save.",
+        "A mode change could discard design notes edited during an earlier save.",
+        "A code-save retry could report success without another disk write."
+      ],
+      "verified_behaviors": [
+        "Code drafts stay visible until their writes have confirmation.",
+        "Navigation and window close wait for edits received during a save.",
+        "Failed code and recall writes prevent navigation and keep the last draft for retry.",
+        "Restart restores the code entered while window close waits for a save.",
+        "Concurrent flush requests share one operation and preserve independent draft IDs.",
+        "An edit between write completion and promise cleanup starts a new write, including an empty draft."
+      ],
+      "verification": {
+        "desktop_unit_and_process": "81 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "11 passed, 1 opt-in Piston execution test skipped. This run includes all five new save stories.",
+        "build_types_format": "Passed.",
+        "documentation": "Local links, anchors, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Desktop workflow 39633649614 passed Windows and Linux package tests for 359f5a2. Linux also passed real Piston integration. Supabase workflow 39633649592 passed."
+      }
+    },
+    "action_and_settings_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/action-races.spec.ts",
+        "apps/desktop/tests/e2e/settings-stories.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/service.test.ts",
+      "verified_behaviors": [
+        "Repeated coding hints, new design attempts, and settings submits produce one request before the service busy event.",
+        "Settings, sandbox checks, directory pickers, and license notices use one UI action lock.",
+        "A failed chat request keeps the unsent message without replacing a newer message in either workspace.",
+        "Credential fields and removal checkboxes agree with the form values after provider or connection changes.",
+        "Directory picker cancellation preserves the path. Picker failure shows an error and releases the action lock.",
+        "Invalid remote and local service URLs do not change the stored connection.",
+        "A failed design mode change shows an error. A later action clears that error.",
+        "Settings changes, coding activation, mode changes, chat clearing, code tests, and hints retain the service lock through their state writes.",
+        "Both successful and failed state writes release the service lock. Subsequent reconnection remains available."
+      ],
+      "verification": {
+        "desktop_unit_and_process": "93 passed, 2 opt-in tests skipped.",
+        "native_regression_stories": "14 passed across action-races.spec.ts and settings-stories.spec.ts.",
+        "native_source_ui": "25 passed, 1 opt-in Piston execution test skipped in the final source run.",
+        "build_types_format": "Passed.",
+        "packages_and_ci": "Desktop workflow 39636521059 and Supabase workflow 39636521267 passed for d242a7e."
+      }
+    },
+    "dialog_and_startup_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/lifecycle.spec.ts",
+      "verified_behaviors": [
+        "Settings, recall, and history dialogs contain keyboard focus and prevent background input.",
+        "The dialogs restore focus after asynchronous operations without replacing a later focus selection.",
+        "Escape and backdrop clicks discard unsaved settings only when no operation is in progress. Pointer drags from the dialog do not close it.",
+        "Recall saves complete before Escape closes the dialog. Save failures preserve the answer and permit a retry.",
+        "Repeated Escape presses cannot hide a dialog during an operation. Focus stays in the dialog when controls become disabled.",
+        "Checkpoint restore errors show in the history dialog. A retry restores the selected checkpoint.",
+        "The mouse wheel reaches all 18 checkpoint records in the test. The history header stays visible.",
+        "The initial workspace request has an error display and one retry request for concurrent clicks.",
+        "A late initial response or error does not replace a newer workspace event. No unhandled promise rejection occurs in these tests."
+      ],
+      "verification": {
+        "native_regression_stories": "14 passed.",
+        "desktop_unit_and_process": "93 passed, 2 opt-in tests skipped.",
+        "layout": "Settings and history tests passed in a 1040 by 633 renderer viewport. The screenshots were inspected. Native window-manager resize behavior remains unverified because WSLg ignored the resize request.",
+        "native_source_ui": "39 passed, 1 opt-in Piston execution test skipped. This run includes all 14 dialog and startup stories.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 writing rules and dictionary entries. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Desktop workflow 39640354351 passed Linux and Windows checks for eb934f0. Supabase workflow 39640354356 passed. Local release packages predate these changes."
+      }
+    },
+    "close_and_chat_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/close-races.spec.ts",
+        "apps/desktop/tests/e2e/chat-cancellation.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/service.test.ts",
+      "verified_behaviors": [
+        "Window close waits for an active hint, preserves code edits during that wait, and restores both after restart.",
+        "The last workspace write occurs before window destruction. Write errors preserve the old file and permit a new close request.",
+        "Close recovery works from coding, design, settings, and recall. Unsaved settings stay in the form until the user closes it.",
+        "A close cancellation failure releases the interface. A later hint and close request work.",
+        "The design timer stops during close. The last close check prevents new editor focus and draft changes.",
+        "Window close cancels streaming chat and submission approval. A queued chat does not start a model request after close begins.",
+        "Stop permits one pending cancellation request for each chat and handles transport errors without an unhandled rejection.",
+        "A cancellation request carries the selected chat ID. An old request or error cannot cancel or replace the error state of a different chat.",
+        "Provider construction failures release chat state and the service lock. Chat cancellation is unavailable during the last state write, while the service stays busy."
+      ],
+      "verification": {
+        "native_regression_stories": "16 passed.",
+        "desktop_unit_and_process": "96 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "55 passed, 1 opt-in Piston execution test skipped. This run includes all 16 close and chat cancellation stories.",
+        "build_types_format": "Passed.",
+        "documentation": "README rules and dictionary review completed. Local links, sentence lengths, paragraph lengths, and punctuation passed. The close recovery screenshot was inspected.",
+        "packages_and_ci": "Supabase workflow 39644510244 and Desktop workflow 39644510191 passed for 397f784. Desktop checks include Windows and Linux packages. Local release packages predate these changes."
+      }
+    },
+    "submission_approval_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/approval-stories.spec.ts",
+      "unit_tests": "apps/desktop/tests/service.test.ts",
+      "corrected_defects": [
+        "A failed approval request removed the dialog and prevented a retry. Button failures also caused unhandled rejections.",
+        "Repeated clicks could send three conflicting decisions for one approval before React disabled the controls.",
+        "An expired approval stayed visible until the coach completed its response.",
+        "A response error from a previous approval caused an unhandled rejection while a different approval was visible.",
+        "Keyboard focus could move to the document body after both approval buttons became disabled."
+      ],
+      "verified_behaviors": [
+        "Submit this draft, Keep practicing, and Escape preserve the approval after a transport failure and permit a retry.",
+        "One pending decision prevents more clicks and Escape requests. Backdrop clicks do not choose a decision.",
+        "Expiry and cancellation resolve an approval once, close its dialog, and never submit code.",
+        "A late request for an expired approval cannot submit code or restore the dialog.",
+        "A delayed response or error cannot dismiss a different approval or replace its error state.",
+        "Service tests verify the exact 60-second deadline, reject a second decision, and bind submission to the captured draft after more edits.",
+        "The real Piston story verifies one approved submission and keeps the failed starter attempt incomplete."
+      ],
+      "verification": {
+        "native_regression_stories": "9 passed, including the real local Piston story.",
+        "desktop_unit_and_process": "98 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "65 passed with real local Piston. All 9 approval stories also passed after the last error-message edit.",
+        "build_types_format": "Passed.",
+        "documentation": "Issue 9 rules and dictionary review completed for the new README section. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The approval recovery screenshot was inspected.",
+        "packages_and_ci": "Supabase workflow 39646816595 and Desktop workflow 39646816592 passed for a293820. Desktop checks include Windows and Linux packages. Local release packages predate these changes."
+      }
+    },
+    "chat_input_and_history_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/chat-input.spec.ts",
+        "apps/desktop/tests/e2e/chat-recovery.spec.ts",
+        "apps/desktop/tests/e2e/history-save-races.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/design-service.test.ts"
+      ],
+      "corrected_defects": [
+        "The coding composer sent text when Enter completed an input composition.",
+        "The design composer discarded a newer unsent message after a pending draft save.",
+        "A failed history clear removed live messages before its disk write succeeded. A later state write could preserve that failed deletion."
+      ],
+      "verified_behaviors": [
+        "Coding composition events do not send text. Normal Enter sends, and Shift+Enter inserts a line break. Design Enter keeps its line-break behavior.",
+        "Repeated sends produce one request before and during an active chat. New unsent text stays available.",
+        "Whitespace does not start a chat. Both composers enforce the 8,000 UTF-16 code-unit limit for ASCII and supplementary Unicode characters.",
+        "Provider errors and malformed response data preserve the question, received response text, and a newer unsent message. A new chat and restart retain the recorded evidence.",
+        "A failed history clear retains the messages and permits a retry. The clear does not change other conversations or unsent composer text.",
+        "Code edits during a pending clear survive both write success and failure, including restart.",
+        "History clear waits for earlier drafts. Code, design, and recall writes received during the clear wait for its result.",
+        "State snapshots keep the previous history until its write completes. An earlier draft failure prevents the clear and releases queued draft writes."
+      ],
+      "verification": {
+        "native_regression_stories": "16 passed.",
+        "desktop_unit_and_process": "107 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "81 passed with real local Piston. This run includes all 16 new chat input and history stories.",
+        "build_types_format": "Passed.",
+        "documentation": "Issue 9 rules and dictionary review completed for the new README section. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "input_method_scope": "The composition test sends browser events to the real renderer. Operating system input methods remain unverified.",
+        "packages_and_ci": "Supabase workflow 39650092020 and the Linux job in Desktop workflow 39650092349 passed for a2ee5bd. Windows failed 8 assertions that waited 5 seconds for settings to close. The Windows job did not upload failure traces. The cause is not yet verified. Local release packages predate these changes."
+      }
+    },
+    "settings_and_account_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/settings-recovery.spec.ts",
+        "apps/desktop/tests/e2e/account-settings.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/design-service.test.ts"
+      ],
+      "corrected_defects": [
+        "A settings write or encryption failure changed settings and credentials in memory before the disk write completed.",
+        "A connection failure during an account change could leave the previous account workspace selected.",
+        "The editor undo history could insert code from a different account. Autosave then wrote that code to the selected account.",
+        "Unsent coding chat text appeared in a different account's composer."
+      ],
+      "verified_behaviors": [
+        "A rejected settings write keeps the settings, credentials, workspace, and connection. The form keeps its values for retry.",
+        "Settings saves wait for draft writes in progress. Queued drafts wait for the settings result and cannot pass to a different account.",
+        "Code, design, and recall drafts received during a settings write keep the correct settings and history after write success or failure.",
+        "A failed account map write keeps the previous maps and closes the new connection. A retry can save the maps.",
+        "Account identity and catalog errors clear catalogs and progress. The previous account's drafts do not appear in the new workspace.",
+        "Token replacement keeps one account's drafts. Different accounts retain different files after restart.",
+        "Workspace-specific editor models prevent undo from inserting a different account's code. Undo can restore text from the same account.",
+        "Unsent coding chat text stays with its workspace in memory through account changes and token replacement.",
+        "Credential removal disconnects without deleting the saved account draft. Reconnection restores that draft.",
+        "Sandbox disable saves settings before the stop request. A write failure does not stop the sandbox. A stop failure reports that settings were saved."
+      ],
+      "verification": {
+        "native_regression_stories": "6 passed.",
+        "desktop_unit_and_process": "123 passed, 2 opt-in tests skipped. This includes 16 new service cases.",
+        "native_source_ui": "87 passed with real local Piston. This run includes all 6 new settings and account stories.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "Account tests use a local protocol fixture, not live Supabase token verification. Encryption failures use a test vault. These checks do not prove that every race condition is absent.",
+        "packages_and_ci": "Supabase workflow 39653399455 and Desktop workflow 39653399669 passed for 6b94492. Desktop checks include Windows and Linux packages. Local release packages predate these changes."
+      }
+    },
+    "catalog_and_selection_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/navigation-stories.spec.ts",
+        "apps/desktop/tests/e2e/editor-shortcuts.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/design-service.test.ts"
+      ],
+      "corrected_defects": [
+        "Problem search omitted pattern tags despite the search prompt.",
+        "A failed problem or mode selection write changed the live selection before the disk write completed.",
+        "Saved design selection used the same unsafe write order."
+      ],
+      "verified_behaviors": [
+        "Search includes titles, IDs, tags, and pattern tags and combines with the difficulty filter without changing saved attempts.",
+        "Failed selections keep the previous problem, mode, or design session. Retry saves the selection, and restart restores it.",
+        "Selection writes wait for draft writes in progress and hold new draft writes through write success or failure.",
+        "Editor save shortcuts preserve edits received during a pending write. Test shortcuts send one request and recover from a request error.",
+        "File tabs keep their selection across problem folders and preserve each problem's draft."
+      ],
+      "verification": {
+        "native_regression_stories": "7 passed.",
+        "desktop_unit_and_process": "129 passed, 2 opt-in tests skipped. This includes 6 new service cases.",
+        "native_source_ui": "94 passed with real local Piston. This run includes all 7 new catalog, selection, and keyboard stories.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Supabase workflow 39655983395 and the Linux job in Desktop workflow 39655983365 passed for d3de3e6. Windows had 90 passes, 3 skips, and one startup failure. The uploaded snapshot shows Connecting MCP after the 20-second assertion wait. This failure occurs before the chat story starts. The cause is not yet verified. The artifact contains the test-runner trace but no Electron context trace. The previous settings-close failures also need investigation. No assertion timeout was increased."
+      }
+    },
+    "test_report_and_export_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/result-stories.spec.ts",
+        "apps/desktop/tests/e2e/solution-export.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/test-report.test.ts",
+        "apps/desktop/tests/export-file.test.ts",
+        "apps/desktop/tests/service.test.ts"
+      ],
+      "corrected_defects": [
+        "An invalid MCP test report caused a renderer exception and prevented normal window closure.",
+        "Saved invalid reports could also stop the result display. The result tab also used unchecked counts.",
+        "An export write error replaced an existing solution export with partial data. Design and backup exports used the same write procedure."
+      ],
+      "verified_behaviors": [
+        "Report validation checks fields, counts, unique case indexes, and the attempt and problem IDs before session changes.",
+        "Invalid reports keep the previous report, completion state, draft, and chat history. The controls permit retry.",
+        "Invalid saved reports show an error without removing the report or draft. An accepted report replaces the invalid report.",
+        "A test request uses the captured code. New edits stay in the draft and cause the older-draft label.",
+        "Result details show pass, wrong-answer, and execution-error cases. Output text does not become HTML.",
+        "A test run does not complete an attempt. A subsequent failed submission does not remove its completed state.",
+        "Solution export waits for draft writes, prevents duplicate requests, and keeps edits received during the file dialog.",
+        "Solution, design, and backup export errors preserve the previous file and permit retry. Cancellation preserves the previous solution export.",
+        "Text and byte exports use file replacement. Open, write, sync, close, and replacement errors preserve the previous file. Tests verify temporary file cleanup."
+      ],
+      "verification": {
+        "native_regression_stories": "8 passed. The existing design artifact story also passed with all export formats.",
+        "desktop_unit_and_process": "169 passed, 2 opt-in tests skipped. This includes 40 new cases. The symbolic-link test is platform-skipped on Windows only.",
+        "native_source_ui": "102 passed in 7.3 minutes on an isolated Xvfb display with real local Piston. No tests were skipped. This run used the final build and includes all 8 new stories.",
+        "interrupted_native_runs": "The WSLg run stopped after 42 passes, 4 failures, and 56 tests not run. An Electron connection closed, then three launches timed out. A direct X11 handshake returned EAGAIN, and the WSLg log contained a fatal file-descriptor error. Failure artifacts are in /tmp/interview-native-display-failure-MWKCSC. The first isolated-display run stopped after 29 passes for the final export cleanup correction. Neither interrupted run is a full-suite pass.",
+        "build_types_format": "Passed.",
+        "documentation": "The new README section was checked against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Supabase workflow 39661389799 and the Windows job in Desktop workflow 39661389789 passed for 1f3bda6. Linux passed all 102 source UI tests in 11.3 minutes, managed sandbox integration, and three remote Piston tests. GitHub cancelled the Linux job at its 25-minute limit during packaged UI tests. The packaged result is incomplete. The previous Windows settings-close and startup failures need investigation even though this Windows run passed. Local release packages predate these changes."
+      }
+    },
+    "report_context_and_trace_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/result-stories.spec.ts",
+        "apps/desktop/tests/e2e/solution-export.spec.ts",
+        "apps/desktop/tests/diagnostics/trace-probe.spec.ts"
+      ],
+      "unit_tests": [
+        "apps/desktop/tests/export-file.test.ts",
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/desktop-environment.test.ts",
+        "tests/test_desktop_trace_verifier.py"
+      ],
+      "corrected_defects": [
+        "An accepted long export filename caused a temporary filename to exceed the filesystem limit.",
+        "Invalid saved report counts could throw during coach context creation and leave the service busy.",
+        "Manual Electron launches produced runner traces without Electron document snapshots. The new helper captures both trace types."
+      ],
+      "verified_behaviors": [
+        "A 223-character export filename works with draft saves, duplicate requests, cancellation, retry, and edits during the native file dialog.",
+        "The coach receives a warning for an invalid saved report, not unchecked counts. Two consecutive replies preserve the report and draft and release the controls.",
+        "A context creation error releases the service lock. A subsequent chat can use corrected context.",
+        "Electron context traces retain document snapshots and screenshot files after both helper close and native window close. The runner trace records the intended assertion failure.",
+        "The test helper copies platform environment values without unrelated shell values or provider credentials. A sentinel value and its name do not enter launch metadata.",
+        "The diagnostic configuration retains expected failures. The usual configuration removes successful test output. No Electron traces remain after the full passing native suite.",
+        "The artifact verifier rejects missing context metadata, document snapshots, dialog content, screenshots, JPEG markers, leaked sentinel values, and an unintended assertion failure."
+      ],
+      "verification": {
+        "native_source_ui": "104 passed in 7.3 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. This includes the two new application stories.",
+        "desktop_unit_and_process": "173 passed, 2 opt-in tests skipped. This includes four new cases.",
+        "trace_verifier_units": "9 passed. These tests check the verifier with synthetic artifacts. The native diagnostic tests supply the actual Electron artifacts.",
+        "trace_diagnostics": "The two expected-failure probes and artifact verification passed on the final harness. Both explicit settings screenshots were inspected and show the dialog. The trace checks verify document snapshots, JPEG files, PNG headers, expected assertion messages, and exclusion of the sentinel name and value.",
+        "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
+        "documentation": "The new README sections were reviewed against Issue 9 writing rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "packages_and_ci": "Supabase workflow 39665381181 and Desktop workflow 39665381086 passed for 8ee694e. Desktop checks include Windows and Linux packages, trace probes, and artifact verification. Linux completed in 32 minutes 32 seconds under the 35-minute job limit. Individual test and assertion timeouts are unchanged. Local release packages predate these changes."
+      }
+    },
+    "new_attempt_creation_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/attempt-creation.spec.ts",
+      "unit_tests": [
+        "apps/desktop/tests/service.test.ts",
+        "apps/desktop/tests/design-service.test.ts",
+        "apps/desktop/tests/storage.test.ts",
+        "apps/desktop/tests/design-storage.test.ts"
+      ],
+      "corrected_defects": [
+        "A failed new coding attempt write changed the selected problem and added an unsaved session to memory.",
+        "A failed new design attempt write changed the selected design session and kept an unsaved session in memory.",
+        "A failed design write prevented later draft loads and blocked creation of a different design draft.",
+        "A progress request failure occurred after the desktop saved and selected a new coding attempt. The progress request now precedes the local commit."
+      ],
+      "verified_behaviors": [
+        "New coding and design attempts become selected only after the draft and workspace writes succeed.",
+        "Draft and workspace write errors keep the previous selection and session count. Retry creates one new local session, and restart restores it.",
+        "Edits during a failed creation request stay with the previous problem or design session and survive restart.",
+        "Creation waits for previous draft writes. Queued edits wait through the creation write and preserve their owner after success or failure.",
+        "A progress request error does not write or publish a new local coding attempt.",
+        "An explicit state snapshot lets LocalStore.saveCode write a staged workspace without changing memory. Omitted snapshots retain the default behavior.",
+        "DesignStore.load reads saved data after a previous write error. It does not clear that error from flush. A subsequent accepted save permits flush to complete.",
+        "Creation error text stays within the window and is not covered by another element. Direct error-text screenshots confirm the displayed message."
+      ],
+      "verification": {
+        "native_regression_stories": "4 passed in the final focused run, including error-text visibility assertions and direct screenshots. The first native run had two design assertion failures because restart used the coding status label. The corrected run passed all four. Coding and design failure screenshots were inspected.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped. This includes nine new cases.",
+        "native_source_ui": "108 passed in 7.8 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. The four new creation stories also passed after the final test-only visibility assertions were added.",
+        "build_types_format": "Build, TypeScript, and Prettier passed.",
+        "documentation": "The new README section was reviewed against Issue 9 writing rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "Server attempt creation can precede a local error. A retry can create a new server attempt. Unreferenced draft files can also remain. The desktop does not remove server records or those files. Saved data formats do not change.",
+        "packages_and_ci": "Supabase workflow 39711126421 passed for 88f9915. Linux in Desktop workflow 39711126175 passed source and packaged checks in 28 minutes 31 seconds. Windows reached its 25-minute job limit after 83 passes, 2 skips, 1 interruption, and 22 tests that did not run. The annotation and job log confirm the job timeout. No failed assertion was reported. Local release packages predate these changes."
+      }
+    },
+    "navigation_draft_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/late-draft-navigation.spec.ts",
+        "apps/desktop/tests/e2e/inactive-design-drafts.spec.ts"
+      ],
+      "corrected_defects": [
+        "A change from System design to Coding canceled the autosave timer and discarded notes entered after the first navigation flush."
+      ],
+      "verified_behaviors": [
+        "Workbench owns pending design drafts and the autosave timer. The design view no longer removes them when it closes.",
+        "Coding and design edits after the first navigation flush keep their previous attempt ID during new attempt creation and mode changes.",
+        "The new coding attempt does not receive the previous code edit. The new design attempt keeps empty requirements notes.",
+        "Autosave writes the edit without a subsequent navigation or close request. Restart restores the saved edit.",
+        "A design save error in Coding shows an error and keeps the pending notes. The saved file keeps its previous contents.",
+        "Navigation and window close retry pending design saves. A second error prevents the requested navigation or close.",
+        "A third save can succeed with the same notes. The notes survive restart."
+      ],
+      "verification": {
+        "native_regression_stories": "Six new stories passed in the final focused run, including new-attempt isolation assertions and screenshots. Nine related save and creation stories also passed. Before the fix, the design-to-coding story reproduced lost notes. The other three initial navigation stories passed. Save-error and close-error screenshots were inspected.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "114 passed in 8.5 minutes on the isolated Xvfb display with real local Piston. No tests were skipped.",
+        "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "The saved data format and 600-millisecond design autosave interval do not change. Pending drafts stay in memory until their write succeeds. Forced process termination can still lose unsaved edits.",
+        "packages_and_ci": "Supabase workflow 39713147594 passed for e55c246. Linux in Desktop workflow 39713147595 passed in 34 minutes 4 seconds, including source and packaged UI tests. Windows reached its 25-minute job limit after 79 passes, 2 skips, and 33 tests that did not run. The annotation and job log confirm the job timeout. No failed assertion was reported. Local release packages predate these changes."
+      }
+    },
+    "account_draft_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/account-draft-races.spec.ts",
+      "corrected_defects": [
+        "System design settings did not save pending code before they changed accounts.",
+        "The native reproduction overwrote Bob's local code with Alice's pending edit. Alice's file kept its previous code, and restart showed the incorrect Bob file."
+      ],
+      "verified_behaviors": [
+        "DesignWorkbench uses the parent workspace flush for its actions, including settings. It saves pending code, design, and recall drafts.",
+        "An account change saves pending code to its account before the connection changes. An identical problem ID in a different account does not receive the edit.",
+        "A failed code save keeps the active account and entered settings values. It does not start a connection for the new account.",
+        "Duplicate settings submissions share one draft write. Retry uses the same pending code and completes the account change after the save.",
+        "Code files, displayed code, and saved work after restart stay with their accounts."
+      ],
+      "verification": {
+        "native_regression_stories": "Two new stories and seven related account and inactive-design stories passed. The first reproduction also contained an editor display assertion before the paused renderer painted. Advancing the renderer clock by 100 milliseconds corrected that test condition. The separate file and restart assertions had reproduced the data overwrite.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped.",
+        "native_source_ui": "118 passed in 9.1 minutes on the isolated Xvfb display with real local Piston after the account and settings error-focus fixes. No tests were skipped. The previous 116-story run also passed before the error-focus change.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "These tests use two local protocol-fixture accounts. They do not test live Supabase authentication. The saved data format does not change. The fix does not reconstruct previous overwritten code.",
+        "packages_and_ci": "Desktop workflow 39715837526 passed Windows and Linux checks for 7c98ec5. Supabase workflow 39715837466 also passed. The Windows job limit changed from 25 to 35 minutes. Individual test and assertion timeouts stay unchanged. The previous Windows assertion failures still need investigation."
+      }
+    },
+    "settings_keyboard_error_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/settings-error-focus.spec.ts",
+      "corrected_defects": [
+        "A settings save error stayed below the visible scroll area after Enter submitted the form from the Model field. Native keyboard tests reproduced this in Coding and System design."
+      ],
+      "verified_behaviors": [
+        "A rejected settings save puts keyboard focus on the error message and scrolls it into view.",
+        "The failure keeps saved settings and entered form values unchanged.",
+        "Tab moves focus from the error to Save & connect. Enter retries the save.",
+        "After a save without an error, the dialog closes and keyboard focus returns to Open settings."
+      ],
+      "verification": {
+        "native_regression_stories": "Two new keyboard stories and 23 related account, lifecycle, and settings stories passed after the fix. Before the fix, both keyboard stories reproduced an error outside the viewport. The corrected screenshots show the error and its focus outline in a 1040-by-633-pixel viewport.",
+        "native_source_ui": "118 passed in 9.1 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. The previous 116-story run passed before the error-focus change.",
+        "desktop_unit_and_process": "182 passed, 2 opt-in tests skipped after the final source change.",
+        "build_types_format": "Build, TypeScript, and Prettier passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "scope": "This change affects error display and keyboard focus. It does not change saved settings or data formats.",
+        "packages_and_ci": "Desktop workflow 39715837526 passed Windows and Linux checks for 7c98ec5. Supabase workflow 39715837466 also passed. Local release packages predate these changes."
+      }
+    },
+    "design_account_and_review_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/design-accounts.spec.ts",
+        "apps/desktop/tests/e2e/design-review-navigation.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/canvas-elements.test.ts",
+      "corrected_defects": [
+        "An unsent design question could appear under a different account. Token replacement and mode changes could discard the question.",
+        "An unchanged canvas could invalidate its review after a mode change or restart. Excalidraw changed an element's empty boundElements representation from null to an empty list. That format change changed the saved evidence digest and disabled Finish practice."
+      ],
+      "verified_behaviors": [
+        "Workbench keeps unsent coding and design questions in different values for each account workspace. Token replacement and mode changes preserve the selected account's question.",
+        "Notes and full canvas element records stay with their accounts through token replacement, account changes, and restart.",
+        "An identity or catalog error hides the previous account's design data. Reconnection restores that account's saved data without disclosure to the other account.",
+        "A previous account's delayed design load or load error cannot replace the new account's draft or error display. Subsequent edits save to the new account.",
+        "Canvas serialization preserves a saved null binding value when Excalidraw supplies an empty list for the same element ID. It preserves actual binding changes and edits to other fields.",
+        "A mode change and restart keep an unchanged review valid. The canvas records, evidence digest, and immutable review stay unchanged. Adding a component invalidates the review, and a new review permits practice completion."
+      ],
+      "verification": {
+        "native_regression_stories": "Eight new stories and five existing account stories passed in the focused run. Before correction, native tests reproduced the unsent-question defect and false review staleness. Initial connection-error assertions needed the documented identity error text and a wait for connection completion, not only dialog closure.",
+        "desktop_unit_and_process": "186 passed, 2 opt-in tests skipped. Four new canvas serialization tests passed. All three remote MCP tests also passed in a separate run with real local Piston.",
+        "native_source_ui": "126 passed in 9.2 minutes on the isolated Xvfb display with real local Piston. No tests were skipped. This includes all eight new account and review stories.",
+        "build_types_format": "Build, TypeScript, Prettier, Python lint, and Python format checks passed.",
+        "documentation": "The new README sections were reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The review and account-error screenshots were inspected.",
+        "scope": "The account tests use a local protocol fixture, not Supabase authentication. Unsent questions stay in memory and disappear on app close. Saved formats and checkpoint hashes do not change. The correction does not rewrite reviews that a previous save invalidated.",
+        "packages_and_ci": "Supabase workflow 39718216094 passed for 24aa0a3. Windows job 119625340428 in Desktop workflow 39718216048 had 122 passes, 3 skips, and one startup assertion failure. The trace and screenshot show Connecting MCP after the 20-second assertion expired. The chat keyboard test did not reach its input steps. Artifact 12399979194 passed its SHA-256 check. The cause is unproven. Linux passed 126 source UI tests in 16.3 minutes, managed sandbox integration, and remote Piston tests. GitHub cancelled Linux at its 35-minute job limit during packaged tests. The job annotation confirms the time limit. That packaged result is incomplete. Local release packages predate these changes."
+      }
+    },
+    "design_load_recovery_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/design-load-recovery.spec.ts",
+        "apps/desktop/tests/e2e/design-load-races.spec.ts"
+      ],
+      "corrected_defects": [
+        "After a design draft read error, Reconnect did not read the same session again. The canvas stayed unavailable.",
+        "A design draft response without an error could clear an error from a different action."
+      ],
+      "verified_behaviors": [
+        "Retry canvas load reads the same session without a connection change. More clicks before the response do not start a new retry.",
+        "Read errors preserve the saved draft. A response without an error restores the notes and canvas.",
+        "A previous session's retry response or error cannot replace the selected session's draft. Edits stay with their session.",
+        "A draft response without an error keeps an error from a different action visible.",
+        "A history read error keeps the draft. Retry opens one checkpoint dialog. Escape closes it and restores History focus."
+      ],
+      "verification": {
+        "native_regression_stories": "Five new stories passed. Six existing design account stories also passed with the correction. The initial retry story reproduced the missing read before the correction.",
+        "desktop_unit_and_process": "186 passed, 2 opt-in tests skipped. The first run had 185 passes, two skips, and one failure because the isolated checkout lacked its backend executable. The executable build completed before the next run.",
+        "native_source_ui": "129 passed in 9.6 minutes on an isolated Xvfb display. The two optional Piston stories were skipped to keep port 2000 available for the user's trial. This run includes all five new stories.",
+        "build_types_format": "Backend build, desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The retry error screenshot was examined.",
+        "scope": "Tests use a different checkout and temporary practice data. They do not change the user's trial checkout. Saved draft formats and connection behavior do not change. Retry cannot repair a damaged draft file.",
+        "packages_and_ci": "Supabase workflow 39720225925 passed for 62d432a. In Desktop workflow 39720225930, Windows had 126 passes, three skips, and two settings-close assertion failures. Artifact 12401906512 passed its SHA-256 check. In the validation story, a snapshot 31 milliseconds after the failed assertion shows the connection complete and the dialog absent. The small-viewport trace still shows Connecting MCP after six seconds. The cause of that delay is unproven. Linux passed 131 source UI tests in 16.5 minutes, managed sandbox integration, and three remote Piston tests. GitHub cancelled Linux at its 35-minute job limit during packaged tests. The job annotation confirms the time limit. That packaged result is incomplete. Local release packages predate these changes."
+      }
+    },
+    "practice_queue_recovery_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/practice-queue-stories.spec.ts",
+        "apps/desktop/tests/e2e/practice-queue-races.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/reflection-draft.test.ts",
+      "corrected_defects": [
+        "After a lost reflection save response, an edited draft reused the committed reflection ID. The server rejected each save as an immutable-record change."
+      ],
+      "verified_behaviors": [
+        "An edit to recall content selects a new reflection ID. An unchanged retry or schedule-only change keeps the ID.",
+        "An edited draft can save a new reflection after a lost response, including after app restart. The previous record stays unchanged.",
+        "A schedule conflict preserves the answer, notes, next step, and self-rating. The user must accept the refreshed schedule before a save.",
+        "Duplicate pause, reschedule, and save clicks start one request. Request errors keep the draft and permit retry.",
+        "Date and practice filters work together. At the exact due time, an upcoming reminder becomes due. A paused reminder stays paused.",
+        "Recall works without a local source session. Open saved practice stays disabled, and the pinned source and revision stay unchanged."
+      ],
+      "verification": {
+        "native_regression_stories": "Eight new stories and five existing save stories passed after the correction. Before the correction, the edited-draft story reproduced the immutable-record rejection. The unchanged retry passed.",
+        "desktop_unit_and_process": "193 passed, 2 opt-in tests skipped. This includes seven new reflection ID tests.",
+        "native_source_ui": "137 passed in 9.9 minutes on the isolated Xvfb display. The two optional Piston tests were skipped to keep port 2000 available for the user's trial. This run includes all eight new queue stories.",
+        "build_types_format": "Desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
+        "documentation": "The new README sections were reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The screenshot shows the original and new reflections after recovery.",
+        "scope": "The correction does not change saved file formats or previous history records. Old drafts keep their ID until their content changes. Tests use the isolated checkout and temporary practice data. The user's trial checkout stays unchanged.",
+        "packages_and_ci": "Supabase workflow 39722436631 and the Linux job in Desktop workflow 39722436646 passed for a9f6ae0. Windows had 133 passes, three skips, and three assertion failures. Two saved-design test setups continued before Coding mode appeared. The third assertion waited five seconds for the Requirements field. Artifact 12401964835 passed its SHA-256 check. The Windows job limit stayed at 35 minutes. Linux used the 45-minute job limit after the verified cancellation in run 39718216048. Local release packages predate these changes."
+      }
+    },
+    "practice_queue_creation_and_read_regressions": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/practice-queue-create.spec.ts",
+        "apps/desktop/tests/e2e/practice-queue-loads.spec.ts"
+      ],
+      "corrected_defects": [
+        "After an add retry, the requested delay could select a date filter that hid the saved reminder. A concurrent schedule change could also hide it.",
+        "The previous practice-type filter could hide a new reminder of a different type."
+      ],
+      "verified_behaviors": [
+        "Add selects filters from the refreshed reminder. A practice-type filter that shows the reminder stays unchanged.",
+        "Duplicate add clicks start one request. Invalid delay values disable Add and Move reminder.",
+        "An add retry after a response error returns the same reminder without a change to its schedule or paused state.",
+        "After an initial queue read error, the user can close and open the dialog again. A refresh error keeps the selected recall and draft.",
+        "A draft or history read error keeps the previous selection. Its response cannot replace a new selection or notes.",
+        "A connected engine without queue tools does not show local recall. Local mode lets the user access the saved draft again."
+      ],
+      "verification": {
+        "native_regression_stories": "All ten new stories and eight previous queue stories passed. Before correction, four stories reproduced hidden reminders. One assertion needed the disabled property for an option element. The option was disabled, but the matcher reported it as enabled.",
+        "desktop_unit_and_process": "193 passed, 2 opt-in tests skipped. No unit tests changed in this batch.",
+        "native_source_ui": "147 passed in 10.4 minutes on the isolated Xvfb display. The two optional Piston tests were skipped to keep port 2000 available for the user's trial. This run includes all ten new queue stories.",
+        "build_types_format": "Desktop build, TypeScript, Prettier, Python lint, Python format, and Python types passed.",
+        "documentation": "The new README section was reviewed against Issue 9 rules and dictionary meanings, parts of speech, and forms. Software terms use the technical term rules. Local links, sentence lengths, paragraph lengths, and punctuation passed. The design and paused-reminder screenshots show the returned item with the correct filters.",
+        "scope": "Saved file formats, schedules, history records, and previous drafts stay unchanged. Tests use temporary data and a local protocol fixture, not Supabase accounts. The user's trial checkout stays at 24aa0a3.",
+        "packages_and_ci": "Supabase workflow 39724534652 and the Linux job in Desktop workflow 39724534668 passed for 16fa34a. Windows had 144 passes, three skips, and two settings-close assertion failures. Artifact 12403429084 passed its SHA-256 check. A recorded frame after one expired assertion shows the dialog closed. The other trace still shows the settings dialog. The connection delay needs more investigation. Local release packages predate these changes."
+      }
+    },
+    "connection_diagnostics_and_mode_setup": {
+      "native_tests": [
+        "apps/desktop/tests/e2e/connection-evidence.spec.ts",
+        "apps/desktop/tests/diagnostics/trace-probe.spec.ts",
+        "apps/desktop/tests/e2e/design-load-races.spec.ts",
+        "apps/desktop/tests/e2e/design-load-recovery.spec.ts"
+      ],
+      "unit_tests": "apps/desktop/tests/connection-evidence.test.ts",
+      "changes": [
+        "The native test harness writes bounded connection records with elapsed times, engine process phases, byte counts, and connection snapshots.",
+        "Connection records contain no request arguments, response text, child logs, credentials, workspace paths, or practice text.",
+        "The trace verifier examines the saved JSON file after normal helper close. Native window close can end Electron before this file is available.",
+        "Saved-design tests wait for the Coding welcome page before their next mode change. Previously, a click could select the active System design button before Coding appeared."
+      ],
+      "verification": {
+        "focused_native": "Seven native stories passed after the independent review corrections. The initial setup correction incorrectly waited for a code editor without an open coding attempt. Four setup assertions failed before that correction. The Coding welcome-page prerequisite fixes the setup.",
+        "trace_probes": "Two expected assertion failures and the artifact verifier passed. An earlier display-start error produced two expected failures at the wrong location. That result was discarded. After display repair, the verifier confirmed the intended assertion messages, native screenshots, context traces, and connection JSON.",
+        "observer_unit": "All 16 observer tests passed, including an independent verifier run. They include privacy, bounded records, process selection, timestamp accuracy, snapshot counts, and unchanged write and error behavior.",
+        "desktop_unit_and_process": "209 passed, 2 opt-in tests skipped after the independent review corrections.",
+        "documentation": "The main agent and independent verifier examined the new README section against Issue 9 rules and dictionary meanings, parts of speech, and forms. They corrected vocabulary, participle placement, the timing origin, and an ambiguous pronoun. Local links, sentence lengths, paragraph lengths, and punctuation passed.",
+        "python_trace_verifier": "All 15 CLI verifier cases passed locally and in the independent review. The initial commit check found nine old fixtures without the new JSON evidence. The common fixture now includes it. Six new cases reject missing, duplicate, wrong-version, truncated, disconnected, and disclosed-sentinel records.",
+        "native_source_ui": "148 passed in 10.5 minutes on the isolated display. The two optional Piston tests were skipped because Docker is unavailable in the resumed session. This full run preceded the final two harness corrections from independent review. Seven focused native tests and the two trace probes passed with those corrections. Desktop workflow 40685687810 then passed the final harness on Windows and Linux. Linux passed 151 source stories with real Piston.",
+        "independent_review": "A subagent found two harness defects and language issues. errorMonitor preserves unhandled child errors. An independent guard prevents connection-file errors from suppressing the Electron trace. Native tests reproduced a connection-file write error and kept the context trace. The verifier confirmed the code corrections and all 16 observer unit tests. README corrections use active language, approved general vocabulary, and a defined timing origin.",
+        "scope": "Only test code and documentation change. Existing assertion time limits stay unchanged. The new reconnection probe has a 20-second connection wait. The user's trial checkout stays at 24aa0a3.",
+        "packages_and_ci": "Desktop workflow 40685687810 passed for 19c813e on Windows and Linux. Windows passed 148 packaged UI stories with three platform skips. Linux passed 151 source stories, 150 packaged stories with one development-server skip, managed sandbox integration, and three remote Piston tests. Supabase workflow 40685687778 passed. Desktop workflow 40688491295 also passed on Windows and Linux for 9224097. Its Windows job passed 148 packaged stories with three skips. Supabase workflow 40688491274 passed. The previous Windows startup/settings/canvas failures did not recur in these two Windows runs. Their earlier timing causes remain unproven."
+      }
+    },
+    "sandbox_status_regressions": {
+      "native_tests": "apps/desktop/tests/e2e/sandbox-status-races.spec.ts",
+      "corrected_defect": "An initial sandbox status or error could replace panel state after a sandbox event or accepted operation.",
+      "behavior": "An accepted operation invalidates the initial read before it waits. A refused concurrent operation does not invalidate that read. Status events also invalidate the initial read. A fresh settings dialog reads status again.",
+      "verification": "All eight ordering cases reproduced the original overwrite. Nine corrected sandbox stories and six previous settings stories passed. The desktop unit/process suite passed 209 tests with two optional skips. An earlier restricted-process run had backend timeouts and was stopped. The suite passed with fixture loopback access.",
+      "independent_review": "A subagent examined the revision guard and response barrier. It identified missing pending-operation cases and a control-state assertion. Those cases now pass. It confirmed the eight original failures and examined the README against Issue 9 rules and dictionary entries.",
+      "scope": "Saved data, sandbox consent, and manager behavior do not change. Native stories use controlled IPC and temporary data. They do not start Docker."
+    },
+    "coverage_review": {
+      "method": "An independent subagent mapped the renderer components and native handlers to existing native, unit, and process tests. This is a source coverage review, not a claim that the remaining interactions passed.",
+      "scope_corrections": "There is no archive-restore UI. Timer start/pause, guided/mock selection, reflection history expansion, coding error dismissal, and account isolation have coverage. The remaining list names specific uncovered actions rather than indefinite additional testing.",
+      "race_candidates": "The initial sandbox response race is corrected and verified. Close during sandbox setup may wait for the active operation before it can cancel setup. That path needs controlled native reproduction."
+    },
+    "remaining_checks": [
+      "Signed updates: configured channel/check/download/retry, installer confirmation, backup error, duplicate actions, and close during download",
+      "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
+      "Startup and close: close during engine initialization, a native file picker, update download, and sandbox setup",
+      "Design completion: Finish practice success/error/retry, completed controls/restart, and New attempt from completion",
+      "Distribution dialogs: initial read error/reopen, successful notices display, and backup-picker cancellation",
+      "Content packs/licenses/checkout: native cancellation, read/validation errors, valid installation/catalog refresh, and configured checkout success/error with a shell fixture",
+      "Recall: Open saved practice for coding/design, activation error, field limits, and a queue-enabled remote account transition",
+      "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
+      "Credential recovery: visible startup decryption error and recovery with fixture credentials",
+      "Progress view: displayed content and empty state",
+      "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
+      "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
+    ]
+  },
+  "last_verified": {
+    "scope": "Delivery baseline before the UI audit. See ui_interaction_audit for new fixes and test results.",
+    "python": "229 passed, 30 skipped in the default run, including 20 opt-in PostgreSQL tests. All 23 catalog/PostgreSQL tests passed separately. 30 existing datetime deprecation warnings.",
+    "desktop_unit_and_process": "74 passed, 2 opt-in tests skipped in the default run. The remote MCP suite passed all 3 tests separately with real Piston. Real managed Docker integration passed earlier.",
+    "native_source_ui": "7 passed, including development startup, offline design, exports, practice queue, and real Piston",
+    "typescript": "Passed",
+    "python_lint_and_types": "Passed",
+    "dependency_audit": "Zero known npm advisories at the previous audit. This is not a current security guarantee.",
+    "packaged_linux": "Latest AppImage and Deb rebuilt. Six native workflows passed against the latest unpacked app, including actual Piston execution. The actual AppImage passed the offline design save/reopen workflow. Development-server test is intentionally inapplicable to packaged builds.",
+    "supabase_local": "14 MCP/auth/adapter tests passed. 23 catalog/PostgreSQL tests passed with real isolated PostgreSQL. Deno types, format, and lint passed.",
+    "supabase_remote": "Function version 4 and three migrations deployed. Live tests passed for two real temporary accounts: identity, catalogs, attempts, hints, cross-account rejection, immutable checkpoints/reviews, token refresh, and the desktop service with real local Piston. Both accounts and their data in five practice tables were removed. Public registration and a desktop login page were not tested.",
+    "desktop_notices": "Collector handles absent platform-specific optional packages; project/font/dependency notices packaged; 44 package entries lack published notice files and still need release review",
+    "ci": "Desktop workflow 39623646553 passed Windows and Linux native package checks. Supabase workflow 39623646495 passed Edge Function and PostgreSQL checks. Both runs verified code commit e46fabf.",
+    "documentation": "README setup selects feat/interview-desktop. The sandbox guide has current links and commands. Demo dimensions agree with the files. No application behavior or saved data changed in this documentation pass."
+  }
+}

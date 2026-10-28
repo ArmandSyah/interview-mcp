@@ -1,108 +1,247 @@
-# Interview MCP
+# Interview Workbench
 
-Coding interview practice through MCP: browse Python problems, start an attempt,
-receive progressive hints, run sandboxed tests, submit solutions, and track progress.
-Supports local stdio and authenticated remote Streamable HTTP.
+A desktop app for coding and system-design practice, with an optional artificial intelligence (AI) coach.
 
-## Remote connection
+Write Python code in the Monaco editor.
+Draw a system design with the Excalidraw whiteboard. Save your work on your computer.
+The coach gets hints and test results with Model Context Protocol (MCP) tools.
+The app controls which tools the coach can use and which draft each tool receives.
 
-The public hosted endpoint has not been provisioned yet. Once deployed, connect
-your editor to `https://YOUR_HOST/mcp` and send your personal access key:
+AI is off at first startup. The app keeps the provider that you select.
+Local curated hints and system-design practice do not use a model or an application programming interface (API) key.
+Docker and a hosting account are not necessary for these features.
 
-```json
-{
-  "mcpServers": {
-    "interview": {
-      "url": "https://YOUR_HOST/mcp",
-      "headers": {"Authorization": "Bearer YOUR_PERSONAL_KEY"}
-    }
-  }
-}
-```
+Select **System design** to open the built-in whiteboard. Select **Coding** to open the editor.
+See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
+For Windows installation, follow the [preview installation guide](docs/windows-install.md).
+See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
+Account registration and checkout are proposals, not available app features.
 
-The operator issues a separate key/user ID to each person; attempts, active problems,
-hints and progress are scoped to that user. Key-based clients such as Cursor and
-Claude Code can use this connection. Clients requiring an interactive OAuth flow
-need an OAuth integration before they can connect.
+The [Supabase preview](docs/supabase-hosting.md) supplies remote hints and system-design tools.
+The desktop accepts an operator-supplied account token. Account registration and automatic sign-in are not available.
+Remote attempts use local Docker for code execution. Supabase stores personal reports, not server-verified grades.
+The [term list](docs/terminology.md) gives the meanings of app terms in this guide.
 
-Call `list_problems`, then `start_problem`. Remote mode returns `files_to_create`
-with the scaffold contents and checksum. Create the file in your own workspace.
-Pass the returned `attempt_id` and your code to `run_tests`, `get_hint`, and
-`submit_solution`. `get_progress` shows only your attempts.
+## Agent workflow demo
 
-## Run locally
+![The desktop app opens a coding problem, saves a draft, calls an MCP hint tool, and shows a coach response.](docs/media/agent-workflow.gif)
+
+This recording uses the desktop app and the Python MCP engine.
+A scripted local model sends a tool request and supplies sample text. No model inference occurs in this demo.
+The app executes the MCP tool and keeps the user's draft.
+See [the capture guide](docs/media/README.md) for the script and checks.
+
+## The coach workflow
+
+The coach prompt tells the model to give small hints. It tells the model not to supply a full solution.
+The app does not let the model change the user's code.
+
+1. The user sends a question with a saved draft.
+2. The coach loop sends the question, draft, and permitted tool schemas to the model.
+3. The model returns a response or a tool request.
+4. The app examines the tool request and supplies the correct attempt ID and draft.
+5. The Python MCP engine executes the tool. The coach loop returns the result to the model.
+6. The app displays the response and tool results. The user selects the next step.
+
+For system design, the app captures an immutable checkpoint before each coach turn.
+The coach reads that checkpoint, not canvas edits after the request.
+It receives notes and diagram labels. It does not receive image files.
+
+The workflow has these limits:
+
+- The app accepts one hint request in each turn. Hint depth can increase by one, to a maximum of three.
+- Coding tools receive the user's saved draft. The model cannot replace the code or select a different attempt.
+- User approval is mandatory for a submission. The model cannot finish a system-design session.
+- The coach cannot use a shell, edit files, change reminders, or redraw the canvas.
+- The loop stops after six model requests or ten tool requests. The user can stop a turn.
+- Tool errors return to the model as errors. Large tool previews identify missing evidence.
+
+The prompt does not control access. The desktop service controls tool permissions.
+
+The [coach loop](apps/desktop/src/main/agent.ts) processes model responses and tool requests.
+The [desktop service](apps/desktop/src/main/service.ts) supplies the saved draft and controls tool permissions.
+The [provider adapters](apps/desktop/src/main/providers.ts) connect to Ollama and the Claude API.
+The [Python backend](server/main.py) supplies the MCP tools.
+
+## Offline system-design demo
+
+![The desktop app adds diagram components, saves notes, and reviews an immutable checkpoint without AI.](docs/media/offline-design.gif)
+
+The canvas, fonts, notes, and image assets stay local.
+Use guided mode for curated hints. Use mock mode for practice without hint controls.
+Save checkpoints, restore saved work, or export the canvas as PNG or an Excalidraw file.
+A design review shows discussion coverage. It does not show that a design is correct.
+
+## Screenshots
+
+### Coding workspace
+
+![Python editor, problem description, MCP tool results, and coach response.](docs/media/coding-workbench.png)
+
+### System-design workspace
+
+![Offline Excalidraw canvas, design brief, and checkpoint review.](docs/media/design-workbench.png)
+
+### Recall and reflection
+
+![Practice queue with plain-English recall, self-rating, and next-step fields.](docs/media/practice-queue.png)
+
+The user adds reminders and records self-ratings. The coach cannot change these records.
+Each saved reflection keeps its history. A self-rating is not a test result.
+
+## Start locally
+
+### Requirements
+
+- [Git](https://git-scm.com/downloads).
+- [Node.js 24](https://nodejs.org/en/download).
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python dependencies.
+- Python 3.12. uv can download this version when necessary.
+- A graphical desktop. The Electron system libraries are necessary for Linux.
+
+Docker and an AI model are optional. Do not install them for your first session.
+
+### Start the desktop app
+
+Enter these commands in a terminal or Windows PowerShell.
 
 ```bash
-uv sync --frozen --dev
-cp .env.example .env
-# Start Piston with Docker and install Python 3.12.0 as described below.
-uv run python -m server.main
+git clone --branch feat/interview-desktop https://github.com/ArmandSyah/interview-mcp.git
+cd interview-mcp
+uv sync --frozen --dev --python 3.12
+cd apps/desktop
+npm ci
+npm run install:electron
+npm run dev
 ```
 
-The stdio server uses your local database and can write solution scaffolds to the
-working directory. Set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` for generated
-hints, or `LLM_PROVIDER=fallback` for curated hints and default follow-up questions.
+The app starts a local Python MCP process. A different server and an `.env` file are not necessary.
+The initial catalog contains five coding examples and five system-design briefs.
 
-## Test the remote stack
+For a first check:
+
+1. Open a coding problem.
+2. Select **Hint** to get a curated hint.
+3. Select **System design**.
+4. Open a brief.
+5. Add a component.
+6. Enter a note.
+7. Select **Checkpoint** to save the evidence.
+8. Select **Review** to see discussion coverage.
+
+Close the app to stop the development process. Drafts stay in the local app data directory.
+
+If `libnss3` and `libasound2t64` are not installed on Ubuntu 24.04, install them.
+GTK and X11 libraries are also necessary for Linux. WSLg is necessary for an app window in WSL.
+See [desktop setup and troubleshooting](apps/desktop/README.md) for instructions.
+
+### Enable the AI coach
+
+Open **Settings**. Select a provider in the **AI coach** section.
+
+- **Off:** use curated hints without a model.
+- **Ollama:** use a model that you install and start locally.
+- **Claude API:** enter your Anthropic API key. Each chat uses your API account.
+
+When you send a chat, a paid provider receives your message and applicable practice text.
+An AI review sends captured practice text to the selected provider.
+The app does not make background model calls. It does not install a model automatically.
+
+Select **AI review** to get rubric scores for captured code or a design checkpoint.
+Scores are model estimates and can be incorrect.
+The app compares source quotations with captured work and supplies one practice question.
+Each review stays in its attempt conversation. The app does not complete the attempt or change test results.
+
+A local Ollama model runs on your computer without an API charge.
+See [AI review setup and limits](apps/desktop/README.md#ai-practice-review) for model installation and review behavior.
+
+### Enable code execution
+
+The editor does not execute code on your host Python.
+Code tests use a local Piston container.
+
+1. Install Docker with Compose.
+2. Start Docker.
+3. Open **Settings** in the app.
+4. Select **Check local sandbox**.
+5. Read the privileged-container warning.
+6. Select **Enable local execution** only on a trusted workstation.
+
+Setup downloads the container image and Python runtime.
+Linux AMD64 containers and cgroup v2 are necessary for the bundled image.
+The app does not manage remote Docker endpoints.
+See [the sandbox guide](apps/desktop/README.md#enable-code-execution) for manual setup and shutdown commands.
+
+## Prepare desktop packages
+
+After the local setup, enter these commands from `apps/desktop`:
 
 ```bash
-docker compose -f compose.remote.yml up -d --build --wait
-docker compose -f compose.remote.yml exec -T server python -c "import httpx; r=httpx.post('http://piston:2000/api/v2/packages', json={'language':'python','version':'3.12.0'}, timeout=300); r.raise_for_status()"
-docker compose -f compose.remote.yml exec server python -m server.auth create-key your-user-id
-# Store the printed key in your client, or export INTERVIEW_MCP_API_KEY for the smoke check.
-uv run python scripts/smoke_remote.py --url http://127.0.0.1:8000/mcp --expected-problems 5
+npm run backend
+npm run build
+npm test
+npm run test:desktop
+npm run dist -- --publish never
 ```
 
-For HTTP without Docker: `uv run python -m server.main --remote`. The default
-binding is `127.0.0.1:8000`. An ASGI host can use
-`uvicorn server.http:create_app --factory --host 127.0.0.1 --port 8000`.
-Both entry points initialize the database and validate/load questions in their
-lifespan. Remote startup fails if the selected corpus is missing or invalid.
+`npm run backend` bundles Python and the MCP engine with PyInstaller.
+`npm run dist` creates an installer for the host operating system in `apps/desktop/release`.
+Use `npm run package` to create an unpacked app as an alternative.
+Packaged apps include the public examples. Node.js, uv, and the source checkout are not necessary to start them.
 
-`/health` checks server liveness. `/ready` also checks the question corpus and
-Piston Python runtime. Requests need an allowed Host, browser Origin headers need
-explicit allowlisting, and MCP access requires a bearer key. The server bounds
-request/code size, request volume, and concurrent expensive tools.
+A graphical display is necessary for native UI tests.
+Linux and Windows have build workflows. The installers are unsigned development builds, not a trusted public release.
 
-## Hosting and discovery
+## Architecture and checks
 
-The private `interview-mcp-ops` repo contains `deploy/compose.yml`, Caddy/TLS setup,
-runtime export and installation scripts, and deployment instructions. Its export
-checks human acceptance and strips authoring/review metadata. Production mounts
-that private export read-only and persists SQLite in a named volume. Run one server
-replica with SQLite. Public engine images contain the five examples only.
+| Component | Responsibility |
+| --- | --- |
+| Electron main process | Connect to MCP, operate the coach loop, control permissions, and save local files. |
+| React desktop UI | Display the editor, canvas, notes, tool results, and practice queue. |
+| Python MCP engine | Supply practice tools and store owned attempts, checkpoints, and reflections. |
+| SQLAlchemy and SQLite | Keep local records and the content revision for each attempt. |
+| Piston | Execute submitted Python code in the optional local container. |
 
-GitHub Actions builds the Docker image and tests the real HTTP/Piston stack.
-Version tags publish images to `ghcr.io/armandsyah/interview-mcp`.
+The renderer has no Node.js access.
+An inter-process communication (IPC) interface connects it to the Electron main process.
 
-Discovery uses the [official MCP Registry](https://registry.modelcontextprotocol.io).
-It hosts server metadata and points clients at your live endpoint. After deploying
-and verifying HTTPS, set `REGISTRY_SMOKE_API_KEY` to a dedicated user's key and run
-the **Publish to MCP Registry** workflow on `main` with your real `/mcp` URL.
-It verifies the live service, renders `registry/server.json.template`, and publishes
-using GitHub OIDC. No package publication is required for a remote-only listing.
-The workflow is manual and will not publish a placeholder endpoint.
+The Electron main process stores API keys. Snapshots and the Python process do not receive them.
+The app uses operating system (OS) secure storage when available.
+Without secure storage, keys stay in memory until exit. Practice text is not encrypted.
 
-Alternatively, render metadata with `scripts/make_registry_manifest.py --url ...`,
-then use the official `mcp-publisher` to authenticate, validate and publish it.
-See [remote server publication](https://modelcontextprotocol.io/registry/remote-servers).
-
-## Setup
-
-After cloning, activate the pre-commit hook:
+Do the Python checks from the repository root:
 
 ```bash
-git config core.hooksPath .githooks
+uv run ruff check server tests tools
+uv run ruff format --check server tests tools
+uv run mypy server tools
+uv run pytest -q
 ```
 
-This runs `./scripts/ci.sh` (lint, type check, tests, secret scan) before every commit.
+Do the desktop checks from `apps/desktop`:
 
-## Problem Content
+```bash
+npm run format:check
+npm run typecheck
+npm test
+npm run test:desktop
+```
 
-Five public examples in `problems/examples/` are the default corpus, resolved
-relative to the installed server. Set `INTERVIEW_MCP_PROBLEMS_DIR` to an accepted
-runtime JSON directory for a larger corpus. Never point it at a whole authoring repo.
-`INTERVIEW_MCP_DB_DIR` controls persistent SQLite storage (default `~/.interview-mcp`).
-Questions removed from a remote corpus are hidden from the catalog while historical
-attempts remain available to their owners. `interview-problem-quality` stores the
-authoring rules and validators and is not a runtime dependency.
+Tests include model tool requests, incorrect IDs, saved draft selection, one-hint limits, cancellation, and submission approval.
+Native tests include coding, design checkpoints, image exports, saved work, and recall.
+
+Sandbox tests include reply sequences, status events, operation errors, and retries.
+An initial sandbox reply cannot change the panel after a status event or an accepted sandbox operation.
+After an initial read error, users can retry the sandbox check or close and reopen the settings dialog.
+
+Model tests use local fixtures. They do not make paid API calls.
+Docker tests start only with a user opt-in. See [the desktop test guide](apps/desktop/README.md#build-and-check).
+
+## Project status
+
+This is a development project. It does not give a validated interview grade.
+The public catalog is small. Supabase hosts the private MCP preview. Checkout is not configured.
+Production trust keys, signed releases, and an archive restore UI are not configured.
+
+See [the desktop guide](apps/desktop/README.md), [MCP server setup](docs/mcp-server.md), and [demo capture](docs/media/README.md).
+The project uses the [Apache 2.0 license](LICENSE). Bundled dependencies include their notices.
