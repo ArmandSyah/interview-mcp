@@ -127,9 +127,15 @@
       "independent_review": "A subagent examined service locks, evidence capture, cancellation, persistence, provider options, state effects, native tests, and Issue 9 writing. It found blank quotations and incomplete test evidence for task-only quotations. Both corrections passed focused tests. It independently passed the grading/provider checks. Documentation states retention, local accounts, checkpoint effects, model limits, and paid-provider data transfer."
     },
     "question_language_review": {
-      "status": "requested",
-      "existing": "The private draft validator checks structure and binds release approval to content hashes.",
-      "required": "Add a repeatable review and rewrite mechanism for AI-authored questions using ASD-STE100 Issue 9 rules and dictionary checks. Preserve exercise requirements and test behavior."
+      "status": "implemented_draft_model_quality_not_verified",
+      "branch": "feat/question-language-review",
+      "mechanism": "The command selects question prose, reads the official Issue 9 dictionary, records word references and rule checks, and audits a new candidate. Optional local Ollama calls propose changes.",
+      "protection": "The source stays unchanged. Code, tests, metadata, unselected items, literals, formulas, and resource references keep their values. Explicit prose hyphen declarations remove formula protection for those words only outside code and quoted text.",
+      "checks": "333 backend and authoring tests passed. 30 optional tests were skipped. The 89 authoring tests include the local official PDF. Ruff lint, formatting, strict mypy for server and tools, and documentation structure checks passed.",
+      "independent_review": "An independent reviewer confirmed the dictionary fixes. The reviewer found an escaped-quotation defect. The fix and regression tests now pass, and independent verification of the fix is pending.",
+      "model_limit": "Real local qwen3:4b-instruct calls repeated source text and paths. The tool rejected duplicate paths. These calls do not show reliable automatic rewrites. No automatic conformity or content approval is issued.",
+      "remaining": "Independently verify the quotation fix, examine a corrected question against Part 1 and Part 2, and verify useful model rewrites before claiming that part complete.",
+      "data_effect": "No installed question, saved attempt, content approval, or runtime schema changed. New prose invalidates previous content approval."
     },
     "independent_verification": {
       "status": "in_progress",
