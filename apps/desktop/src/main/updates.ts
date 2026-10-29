@@ -131,6 +131,7 @@ export class ReleaseUpdates {
   private artifact: Artifact | null = null;
   private downloaded: string | null = null;
   private busy = false;
+  private abort: AbortController | null = null;
   private status: UpdateStatus;
   constructor(
     private readonly root: string,
@@ -152,18 +153,26 @@ export class ReleaseUpdates {
   info(): UpdateStatus {
     return { ...this.status };
   }
+  cancelPending(): void {
+    this.abort?.abort();
+  }
+  private signal(timeout: number): AbortSignal {
+    const deadline = AbortSignal.timeout(timeout);
+    return this.abort ? AbortSignal.any([deadline, this.abort.signal]) : deadline;
+  }
   private async fetch(url: string): Promise<Response> {
     return this.request(url, {
       redirect: 'error',
-      signal: AbortSignal.timeout(30_000),
+      signal: this.signal(30_000),
       headers: { Accept: 'application/vnd.github+json' },
     });
   }
   private async resource(url: string, timeout: number): Promise<Response> {
     for (let redirects = 0; redirects < 5; redirects++) {
+      this.abort?.signal.throwIfAborted();
       const response = await this.request(url, {
         redirect: 'manual',
-        signal: AbortSignal.timeout(timeout),
+        signal: this.signal(timeout),
       });
       if (![301, 302, 303, 307, 308].includes(response.status)) return response;
       await response.body?.cancel();
@@ -183,6 +192,7 @@ export class ReleaseUpdates {
     if (!this.publicKey) return this.info();
     if (this.busy) throw new Error('An update operation is already running');
     this.busy = true;
+    this.abort = new AbortController();
     try {
       const endpoint = `https://api.github.com/repos/${repo}/releases${channel === 'stable' ? '/latest' : '?per_page=20'}`;
       const metadata = await boundedJson(await this.fetch(endpoint), 2_000_000);
@@ -219,6 +229,7 @@ export class ReleaseUpdates {
         (item) => item.platform === this.platform && item.arch === this.arch,
       );
       if (!artifact) throw new Error('This release has no installer for your platform');
+      this.abort.signal.throwIfAborted();
       this.manifest = manifest;
       this.artifact = artifact;
       this.downloaded = null;
@@ -234,12 +245,14 @@ export class ReleaseUpdates {
       return this.info();
     } finally {
       this.busy = false;
+      this.abort = null;
     }
   }
   async download(): Promise<UpdateStatus> {
     if (this.busy || this.status.state !== 'available' || !this.artifact || !this.manifest)
       throw new Error('Check for an available signed update first');
     this.busy = true;
+    this.abort = new AbortController();
     const directory = join(this.root, 'updates', this.manifest.version);
     const path = join(directory, basename(artifactUrl(this.artifact.url).pathname));
     const temporary = path + '.' + randomUUID() + '.partial';
@@ -248,10 +261,11 @@ export class ReleaseUpdates {
       const response = await this.resource(this.artifact.url, 300_000);
       if (!response?.ok || !response.body) throw new Error('Installer download failed');
       const reader = response.body.getReader();
-      const file = await open(temporary, 'wx', 0o600);
+      let file: Awaited<ReturnType<typeof open>> | undefined;
       const hash = createHash('sha256');
       let size = 0;
       try {
+        file = await open(temporary, 'wx', 0o600);
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -264,9 +278,13 @@ export class ReleaseUpdates {
           throw new Error('Installer checksum failed');
         await file.sync();
       } finally {
-        await reader.cancel();
-        await file.close();
+        try {
+          await reader.cancel().catch(() => {});
+        } finally {
+          await file?.close();
+        }
       }
+      this.abort.signal.throwIfAborted();
       await rename(temporary, path);
       this.downloaded = path;
       this.status = {
@@ -280,20 +298,29 @@ export class ReleaseUpdates {
       throw error;
     } finally {
       this.busy = false;
+      this.abort = null;
     }
   }
   async installerPath(): Promise<string> {
+    if (this.busy) throw new Error('An update operation is already running');
     if (!this.downloaded || !this.artifact || this.status.state !== 'ready')
       throw new Error('Download a verified installer first');
-    const hash = createHash('sha256');
-    let size = 0;
-    for await (const chunk of createReadStream(this.downloaded)) {
-      size += chunk.length;
-      if (size > this.artifact.size) throw new Error('Downloaded installer changed');
-      hash.update(chunk);
+    this.busy = true;
+    this.abort = new AbortController();
+    try {
+      const hash = createHash('sha256');
+      let size = 0;
+      for await (const chunk of createReadStream(this.downloaded, { signal: this.abort.signal })) {
+        size += chunk.length;
+        if (size > this.artifact.size) throw new Error('Downloaded installer changed');
+        hash.update(chunk);
+      }
+      if (size !== this.artifact.size || hash.digest('hex') !== this.artifact.sha256)
+        throw new Error('Downloaded installer changed; download it again');
+      return this.downloaded;
+    } finally {
+      this.busy = false;
+      this.abort = null;
     }
-    if (size !== this.artifact.size || hash.digest('hex') !== this.artifact.sha256)
-      throw new Error('Downloaded installer changed; download it again');
-    return this.downloaded;
   }
 }

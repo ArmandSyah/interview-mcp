@@ -70,6 +70,7 @@ export const practiceSchemas = {
   get_progress: z.object({ limit: limit.default(50) }).strict(),
   list_design_problems: z.object({}).strict(),
   start_design_session: z.object({ problem_id: problemId }).strict(),
+  get_design_session: session,
   get_design_brief: session,
   get_design_hint: session.extend({ depth: z.number().int().min(1).max(3).default(1) }).strict(),
   save_design_checkpoint: checkpoint.extend({
@@ -98,6 +99,7 @@ const descriptions: Record<keyof typeof practiceSchemas, string> = {
   get_progress: 'Return recent owned coding attempts.',
   list_design_problems: 'Return available system-design briefs.',
   start_design_session: 'Start an owned design session and keep its content revision.',
+  get_design_session: 'Return a design session for your account without changes to saved data.',
   get_design_brief: 'Return the brief from this session content revision.',
   get_design_hint: 'Return one curated hint from this session content revision.',
   save_design_checkpoint: 'Save immutable notes and diagram evidence for this session.',
@@ -114,6 +116,7 @@ const readOnly = new Set([
   'get_hint',
   'get_progress',
   'list_design_problems',
+  'get_design_session',
   'get_design_brief',
   'get_design_hint',
   'list_design_checkpoints',

@@ -157,10 +157,12 @@ export function DesignWorkbench({
     return () => {
       live = false;
     };
-  }, [session?.id, drafts, loadAttempt]);
+  }, [session?.id, drafts, loadAttempt, snapshot.designStatusRevision]);
   function retryLoad() {
     if (!session || loadPending.current || busy) return;
     loadPending.current = true;
+    setError('');
+    clearError();
     setLoadAttempt((attempt) => attempt + 1);
   }
   const change = useCallback(
@@ -239,7 +241,8 @@ export function DesignWorkbench({
     await window.interview.exportDesign('png', new Uint8Array(await blob.arrayBuffer()));
   }
   const stale = !!session?.review && (dirty || session.review.scene_digest !== session.draftDigest);
-  const locked = session?.status === 'completed';
+  const finished = session?.status === 'completed';
+  const locked = finished || !snapshot.designSessionVerified;
   const ready = !!session && !!draft;
   const shortenedLabels = draft?.scene.elements.some(
     (element) =>
@@ -565,7 +568,7 @@ export function DesignWorkbench({
                   })
                 }
               >
-                {locked ? 'Session finished' : 'Finish practice'}
+                {finished ? 'Session finished' : 'Finish practice'}
               </button>
             </div>
           )}
@@ -704,7 +707,7 @@ export function DesignWorkbench({
       {(loadError || error || snapshot.error) && (
         <div className="error-bar" role="alert">
           <span>{[loadError, error || snapshot.error].filter(Boolean).join(' · ')}</span>
-          {loadError && (
+          {(loadError || (session && !snapshot.designSessionVerified)) && (
             <button className="secondary small" disabled={busy} onClick={retryLoad}>
               Retry canvas load
             </button>
@@ -727,8 +730,14 @@ export function DesignWorkbench({
             : 'MCP disconnected'}
         </span>
         <span>
-          {session ? (locked ? 'Finished · read only' : saved) : 'Ready'} · Images stored locally ·
-          No hosting bill
+          {session
+            ? finished
+              ? 'Finished · read only'
+              : locked
+                ? 'The app must read and save the session status before changes.'
+                : saved
+            : 'Ready'}{' '}
+          · Images stored locally · No hosting bill
         </span>
       </footer>
       {settingsOpen && (

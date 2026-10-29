@@ -703,22 +703,97 @@
     "coverage_review": {
       "method": "An independent subagent mapped the renderer components and native handlers to existing native, unit, and process tests. This is a source coverage review, not a claim that the remaining interactions passed.",
       "scope_corrections": "There is no archive-restore UI. Timer start/pause, guided/mock selection, reflection history expansion, coding error dismissal, and account isolation have coverage. The remaining list names specific uncovered actions rather than indefinite additional testing.",
-      "race_candidates": "The initial sandbox response race is corrected and verified. Close during sandbox setup may wait for the active operation before it can cancel setup. That path needs controlled native reproduction."
+      "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
     },
     "remaining_checks": [
-      "Signed updates: configured channel/check/download/retry, installer confirmation, backup error, duplicate actions, and close during download",
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
-      "Startup and close: close during engine initialization, a native file picker, update download, and sandbox setup",
-      "Design completion: Finish practice success/error/retry, completed controls/restart, and New attempt from completion",
-      "Distribution dialogs: initial read error/reopen, successful notices display, and backup-picker cancellation",
-      "Content packs/licenses/checkout: native cancellation, read/validation errors, valid installation/catalog refresh, and configured checkout success/error with a shell fixture",
+      "Startup and close: close during engine initialization, a native file picker, and sandbox installation",
       "Recall: Open saved practice for coding/design, activation error, field limits, and a queue-enabled remote account transition",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Credential recovery: visible startup decryption error and recovery with fixture credentials",
-      "Progress view: displayed content and empty state",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
-    ]
+    ],
+    "design_completion_story": {
+      "result": "passed_native_source",
+      "evidence": "The new native story passed in 5.4 seconds. It uses real renderer controls, preload, service, backend, and saved practice data. An IPC gate supplies one controlled failure before the backend call. It checks duplicate clicks, unchanged attempt after failure, retry, completion, restart, locked notes, and a fresh attempt that preserves the completed record. The independent review requested stronger duplicate-count and canvas assertions. The updated native story passed, including unchanged saved notes/canvas and an empty canvas for the new attempt.",
+      "limits": "The injected failure occurs before the backend completion call. It does not cover a backend commit followed by a local state write failure.",
+      "test": "apps/desktop/tests/e2e/design-finish.spec.ts"
+    },
+    "sandbox_close_cancellation": {
+      "status": "verified_local_review_corrections_pending_final_independent_check",
+      "behavior": "A native close request cancels the active sandbox command before the renderer waits for active work. The manager creates a new cancellation controller after the operation ends, so a failed draft save can permit another inspection. Final shutdown still validates ownership before stopping containers.",
+      "evidence": "Before the fix, the native test failed its five-second close check while Docker --version waited for its ten-second timeout. After the fix, the story passed in 2.5 seconds. All 11 related native stories passed. All 245 desktop unit/process tests passed with 2 optional skips. The build passed.",
+      "scope": "The native fixture replaces Docker with a temporary Linux executable. It does not start or stop a real container. The manager unit test verifies inspection after cancellation. Native close during image/runtime installation and final owned-container cleanup remains to be tested.",
+      "data_effect": "Draft-save checks and saved data formats have no changes. A failed save still prevents closure.",
+      "review_corrections": "The independent review found queued commands, accepted actions that reached the backend after closure began, and cancelled runtime reads that could trigger container startup. A cancellation generation now rejects older queued work. The close gate rejects new sandbox commands but permits draft saves. Cancelled runtime reads reject, and cancelled commands cannot reach the command runner.",
+      "latest_checks": "The build and 16 sandbox unit tests passed. All 9 native close stories passed, including coding/settings/design/queue save failures, close retry, timer/input behavior, and both delayed and active sandbox requests.",
+      "consent_correction": "An accepted sandbox-enable request can wait in the consent dialog. The handler now checks closure again after consent returns and before setup starts. A native held-consent test failed its five-second close check before the fix and passed after it. The three shutdown cases and three distribution stories passed together in 14.5 seconds."
+    },
+    "distribution_stories": {
+      "status": "passed_native_source",
+      "coverage": "Configured update controls retain the beta channel, reject duplicate clicks, disable other controls during work, show check/download/installer errors, and permit explicit retry. Separate stories read real notices, cancel the real backup command at the native picker, and recover from an initial distribution read error after reopen.",
+      "limits": "The renderer retry story uses IPC protocol fixtures. A separate native signed-update story now verifies actual signatures, checksum rejection, confirmation cancellation, backup failure, and backup-before-open behavior.",
+      "test": "apps/desktop/tests/e2e/distribution-stories.spec.ts"
+    },
+    "signed_update_native_story": {
+      "status": "passed_native_source_pending_independent_review",
+      "mechanism": "The test compiles the real source bundle with one temporary release public key. It supplies signed fixture responses through fetch and intercepts the native confirmation and installer launch. IPC handlers, signature and checksum checks, downloaded files, and backup creation remain real. The fixture never executes installer bytes or publishes a release.",
+      "coverage": "The story rejects an invalid signature, removes a corrupt download, permits retry, preserves practice after confirmation cancellation, blocks installer launch after backup-directory failure, and retries after that error. At installer-open time, the fixture reads the backup and verifies the saved attempt. The shell-open fixture now returns an error on one attempt. The native story verifies its error message, retry, the verified path on both calls, and a completed backup before each call.",
+      "checks": "Seven combined native distribution and shutdown stories passed in 17.5 seconds. The final backup-at-open assertion passed in a focused native run. Type checks and formatting passed. The extended shell-open failure/retry story passed in 3.6 seconds.",
+      "limits": "The source fixture uses a temporary release public key and skips packaged executables. The separate update-close story covers metadata, download, consent, and cached-file verification cancellation.",
+      "test": "apps/desktop/tests/e2e/signed-update.spec.ts"
+    },
+    "update_close_cancellation": {
+      "status": "verified_local_independent_review",
+      "behavior": "Native close cancels metadata fetches, streamed downloads, and cached installer verification. The close gate rejects new update actions. The install handler checks closure after verification, after confirmation, and before installer opening. Cancelled operations release the busy state and permit explicit retry if closure fails.",
+      "evidence": "Before the fix, native metadata/download closure exceeded the five-second close check and late consent opened the fixture installer. The final five signed-update/close stories passed. The corrected hash test passed again with an optional signal listener, so an absent signal leaves it pending. All 249 desktop unit/process tests passed with 2 optional skips. The build passed.",
+      "cleanup": "Interrupted downloads close acquired files and remove partial files. A test verifies response cancellation if creating the file fails. Installer verification uses a cancellable read stream.",
+      "independent_review": "The reviewer passed all 8 update unit tests and independently reproduced actual file-hash cancellation with ABORT_ERR followed by a successful retry. They found and reviewed the hash/confirmation boundary and response cleanup correction. Their final fixture-sensitivity correction was applied and passed.",
+      "data_effect": "Practice save checks and saved formats have no changes. A verified download can remain cached. No installer opens after a successful close request."
+    },
+    "progress_view_story": {
+      "status": "passed_native_source",
+      "evidence": "The native story supplies empty and populated progress through snapshot events. It checks the Show progress control, PROGRESS tab, empty message, rendered heading/body, switching to test results, and an unchanged backend snapshot. The baseline includes a saved coding attempt. The final story passed in 2.7 seconds. Existing result-stories also verify backend fixture progress after a real run action.",
+      "test": "apps/desktop/tests/e2e/progress-view.spec.ts"
+    },
+    "preview_merge": {
+      "pull_request": 34,
+      "merge_commit": "874110d7cc325833d71c256595f5ba1081dfbf80",
+      "tested_head": "81a0ac7f3ce00a798f22504ea383b19ce52ad392",
+      "evidence": "All 12 check runs passed, including both Linux and Windows desktop jobs, Windows installer checks, remote integration, Supabase, container build, and backend CI. The merge completed after both Linux runs finished.",
+      "scope": "The desktop preview is on main. Subsequent shutdown fixes and UI stories remain on test/desktop-remaining-interactions until their checks pass. The full goal is still active."
+    },
+    "content_distribution_stories": {
+      "status": "passed_native_source",
+      "tests": [
+        "apps/desktop/tests/e2e/content-stories.spec.ts",
+        "apps/desktop/tests/e2e/content-fixture.ts"
+      ],
+      "coverage": "Preview installation is disabled and checkout is absent. Configured selection cancellation preserves both catalogs, installed packs, and an existing attempt. File-count, missing-file, envelope, and signature errors permit retry. A valid signed pack updates both catalogs and installed metadata. Duplicate clicks issue one request. Checkout errors permit retry of the exact configured URL.",
+      "mechanism": "An ephemeral public key replaces trust in the source bundle and the temporary backend process. The real backend checks signatures and writes its isolated database. Native picker and browser boundaries use fixtures. The checked-in trust file and bundle do not change.",
+      "checks": "All three native stories passed in the final run in 9.5 seconds. Type checks and formatting passed. The final run checks the temporary helper database and immediate cancellation assertions.",
+      "independent_review": "An independent agent found that the manifest helper inherited the default database directory. The helper now uses a temporary directory. The reviewer found no remaining concrete issue in the fixture or assertions.",
+      "limits": "Configured fixtures skip packaged executables. These stories have run on Linux source, not Windows source. They do not open a browser, make a purchase, or publish content.",
+      "windows_check": "The Windows workflow now runs content, signed-update, and update-close source fixtures before packaging. Results remain pending until that branch completes CI. Packaged tests still check the preview configuration."
+    },
+    "design_completion_recovery": {
+      "status": "local_verified_platform_and_cloud_checks_pending",
+      "requirements": "Read the owned backend status before editing a saved design session. Keep local notes, scene, review, chat, and IDs. Lock uncertain sessions after a lost completion response. Finish must wait for accepted reads and writes. Concurrent Finish requests must keep the first saved completion time.",
+      "changes": "The new get_design_session tool returns the existing session shape. The desktop validates identity and completion fields, saves status locally, and exposes retry after errors. A transient connection revision forces a status refresh after token replacement. The existing draft barrier orders completion after pending drafts and before subsequent edits. Both backends preserve completed_at with an atomic COALESCE update.",
+      "data_effect": "No saved workspace fields change. Existing content and practice records stay intact. Earlier completion times keep their stored values. Older servers without the owned-read tool cannot unlock saved design drafts. The new Supabase migration replaces the private dispatcher while preserving the public local-execution wrapper.",
+      "tests": [
+        "apps/desktop/tests/design-recovery.test.ts",
+        "apps/desktop/tests/e2e/design-completion-recovery.spec.ts",
+        "tests/test_design_practice.py",
+        "tests/test_cloud_store.py",
+        "supabase/functions/interview-mcp/practice_test.ts"
+      ],
+      "verification": "Desktop build, type checks, and formatting passed. The full desktop suite passed 255 tests with two optional skips. All 14 selected native stories passed, including account isolation, token replacement, restart recovery, lost response, load errors, and finish retry. The stronger held-read assertion passed its focused rerun. Python design/cloud checks passed 19 tests with 20 PostgreSQL tests skipped. Deno lint, type checks, and all 14 protocol tests passed.",
+      "independent_review": "Independent probes reproduced the stale-read and accepted-write races. The final barrier waits for both operations. A lost response remains locked until an owned read completes. The reviewer found no further blocking issue in the reviewed lifecycle, ownership, SQL, or permissions. Another agent reviewed the new documentation with the official Issue 9 rules and dictionary.",
+      "remaining": "Run full platform and PostgreSQL CI. Apply the Supabase migration and deploy its function after checks pass. The remote project has not received this change.",
+      "limits": "The lost-response native fixture uses a source bootstrap and skips packaged executables. Windows CI now runs that source test before packaging. Local native tests ran on Linux."
+    }
   },
   "last_verified": {
     "scope": "Delivery baseline before the UI audit. See ui_interaction_audit for new fixes and test results.",

@@ -90,6 +90,9 @@ export class WorkbenchService {
   private agentId: string | null = null;
   private approvals = new Map<string, (allow: boolean) => void>();
   private practiceOwned = new Set<string>();
+  private designVerified = new Set<string>();
+  private designStatusRevision = 0;
+  private designRecoveryError: { id: string; message: string } | null = null;
   /** Pending draft operations, including writes that wait for a state change. */
   private draftWrites = new Set<Promise<unknown>>();
   /** Resolves after a state change, including failure. New drafts wait for this promise. */
@@ -147,6 +150,8 @@ export class WorkbenchService {
       designProblems: this.designProblems,
       designSessions: workspace.designSessions,
       activeDesignSessionId: workspace.activeDesignSessionId,
+      designSessionVerified: this.designVerified.has(workspace.activeDesignSessionId ?? ''),
+      designStatusRevision: this.designStatusRevision,
       settings: this.settings(),
       problems: this.problems,
       sessions: workspace.sessions,
@@ -189,6 +194,9 @@ export class WorkbenchService {
 
   private async connect(): Promise<void> {
     this.practiceOwned.clear();
+    this.designVerified.clear();
+    this.designStatusRevision++;
+    this.designRecoveryError = null;
     this.scope = this.store.scope(this.mcpKey);
     this.problems = [];
     this.designProblems = [];
@@ -678,6 +686,7 @@ export class WorkbenchService {
         next.workspaces[this.scope].mode = 'design';
         await this.store.persist(next);
         workspace.designSessions.push(session);
+        this.designVerified.add(session.id);
         workspace.activeDesignSessionId = session.id;
         workspace.mode = 'design';
       });
@@ -693,17 +702,56 @@ export class WorkbenchService {
   async activateDesign(sessionId: string): Promise<void> {
     await this.practiceAction(async () => {
       this.designSession(sessionId);
+      this.designVerified.delete(sessionId);
+      await this.draftWrite(() => this.verifyDesignSession(sessionId));
       await this.selectWorkspace({ activeDesignSessionId: sessionId });
     });
   }
 
+  private async verifyDesignSession(sessionId: string): Promise<void> {
+    if (this.designVerified.has(sessionId)) return;
+    const session = this.designSession(sessionId);
+    if (!this.mcp.tools.some((tool) => tool.name === 'get_design_session'))
+      throw new Error('Update the connected server to read the status of saved design sessions.');
+    const record = z
+      .object({
+        id: z.string().uuid(),
+        problem_id: z.string(),
+        status: z.enum(['in_progress', 'completed']),
+        completed_at: z.iso.datetime({ offset: true }).nullable(),
+      })
+      .parse(await this.mcp.call('get_design_session', { session_id: sessionId }));
+    if (record.id !== session.id || record.problem_id !== session.problem_id)
+      throw new Error('The server returned a different design session.');
+    if ((record.status === 'completed') !== (record.completed_at !== null))
+      throw new Error('The server returned an incorrect completion time for this design session.');
+    // Completion is permanent. An older read must not unlock a completed local session.
+    if (record.status === 'completed') {
+      session.status = record.status;
+      session.completed_at = record.completed_at;
+    }
+    try {
+      await this.store.persist();
+      this.designVerified.add(sessionId);
+      if (this.designRecoveryError?.id === sessionId) {
+        if (this.error === this.designRecoveryError.message) this.error = null;
+        this.designRecoveryError = null;
+      }
+    } finally {
+      this.publish();
+    }
+  }
+
   async loadDesignDraft(sessionId: string): Promise<DesignDraft> {
-    this.designSession(sessionId);
-    return this.designs.load(this.scope, sessionId);
+    return this.draftWrite(async () => {
+      await this.verifyDesignSession(sessionId);
+      return this.designs.load(this.scope, sessionId);
+    });
   }
 
   async saveDesignDraft(sessionId: string, draft: DesignDraft): Promise<string> {
     return this.draftWrite(async () => {
+      await this.verifyDesignSession(sessionId);
       const session = this.designSession(sessionId);
       if (session.status === 'completed')
         throw new Error('This session is finished; start a new attempt to make changes');
@@ -717,6 +765,7 @@ export class WorkbenchService {
   }
 
   private async captureDesign(session: DesignSession, label: string): Promise<DesignCheckpoint> {
+    await this.verifyDesignSession(session.id);
     if (session.status === 'completed') throw new Error('This session is finished');
     const id = randomUUID();
     const { draft, digest, diagram } = await this.designs.checkpoint(this.scope, session.id, id);
@@ -831,17 +880,28 @@ export class WorkbenchService {
   }
 
   async finishDesign(): Promise<void> {
-    await this.designAction(async () => {
-      const session = this.designSession();
-      if (!session.review || session.review.scene_digest !== session.draftDigest)
-        throw new Error('Review your current checkpoint before finishing');
-      const record = await this.mcp.call<DesignSession>('finish_design_session', {
-        session_id: session.id,
-        checkpoint_id: session.review.checkpoint_id,
-      });
-      session.status = record.status;
-      session.completed_at = record.completed_at;
-    });
+    await this.designAction(() =>
+      this.withDraftBarrier(async () => {
+        const session = this.designSession();
+        await this.verifyDesignSession(session.id);
+        if (!session.review || session.review.scene_digest !== session.draftDigest)
+          throw new Error('Review your current checkpoint before finishing');
+        this.designVerified.delete(session.id);
+        let record: DesignSession;
+        try {
+          record = await this.mcp.call<DesignSession>('finish_design_session', {
+            session_id: session.id,
+            checkpoint_id: session.review.checkpoint_id,
+          });
+        } catch (error) {
+          this.designRecoveryError = { id: session.id, message: this.sanitize(error) };
+          throw error;
+        }
+        session.status = record.status;
+        session.completed_at = record.completed_at;
+        this.designVerified.add(session.id);
+      }),
+    );
   }
 
   async designExport(format: 'excalidraw' | 'workspace'): Promise<string> {
@@ -1322,6 +1382,9 @@ export class WorkbenchService {
   async prepareClose(): Promise<void> {
     await this.designs.flush();
     if (this.store.isLoaded) await this.store.persist();
+  }
+  cancelSandboxSetup(): void {
+    this.sandbox?.cancelPending();
   }
   /**
    * Cancel chat and release connections. Save pending data by default.

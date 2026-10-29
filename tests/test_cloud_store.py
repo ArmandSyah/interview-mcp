@@ -214,6 +214,7 @@ def test_catalog_and_attempt_contract(database: Database) -> None:
 def test_design_evidence_review_finish_and_ownership(database: Database) -> None:
     assert len(database.call("list_design_problems", {})) == 5
     session = database.call("start_design_session", {"problem_id": DESIGN})
+    assert database.call("get_design_session", {"session_id": session["id"]}) == session
     assert "hints" not in session["brief"] and len(session["brief"]["revision"]) == 64
     arguments = checkpoint_arguments(session["id"])
     checkpoint = database.call("save_design_checkpoint", arguments)
@@ -226,6 +227,7 @@ def test_design_evidence_review_finish_and_ownership(database: Database) -> None
         "save_design_checkpoint", {**arguments, "label": "Changed"}, success=False
     )
     for operation, values in [
+        ("get_design_session", {"session_id": session["id"]}),
         ("get_design_brief", {"session_id": session["id"]}),
         ("get_design_snapshot", ids),
         ("save_design_checkpoint", arguments),
@@ -242,7 +244,15 @@ def test_design_evidence_review_finish_and_ownership(database: Database) -> None
         and review["rubric_version"] == session["brief"]["revision"]
     )
     assert [item["status"] for item in review["items"]] == ["discussed"] + ["not_discussed"] * 5
-    assert database.call("finish_design_session", ids)["status"] == "completed"
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        completed = list(pool.map(lambda _: database.call("finish_design_session", ids), range(2)))
+    assert completed[0]["status"] == "completed"
+    assert completed[0] == completed[1]
+    assert database.call("finish_design_session", ids) == completed[0]
+    assert database.call("get_design_session", {"session_id": session["id"]}) == completed[0]
+    assert "These arguments are not permitted" in database.call(
+        "get_design_session", {"session_id": session["id"], "owner_id": ALICE}, success=False
+    )
     assert "Start a new practice session" in database.call(
         "save_design_checkpoint", arguments, success=False
     )

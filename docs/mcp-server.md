@@ -147,3 +147,52 @@ Do not make the Piston port available to internet clients.
 The [remote CI workflow](../.github/workflows/remote.yml) includes HTTP and Piston tests.
 The [image workflow](../.github/workflows/image.yml) builds the container image.
 An HTTPS endpoint smoke test is mandatory before [registry publication](../.github/workflows/registry.yml).
+
+## Design session recovery
+
+A design session contains one attempt at a system-design brief in your local workspace or remote account.
+Its backend record contains the status and completion time.
+The desktop also keeps local notes, a diagram, reviews, and chat for that session.
+A local workspace or remote account can have no design sessions.
+
+`get_design_session(session_id)` reads one session for your local workspace or remote account.
+`session_id` is the UUID of the session. UUID means universally unique identifier.
+
+The result type stays `DesignSessionRead`.
+The tool returns `id`, `problem_id`, `brief`, `status`, `started_at`, and `completed_at`.
+`brief` contains the saved requirements and rubric for the attempt, without hints.
+`status` is `in_progress` or `completed`. `completed_at` is null before completion.
+
+The tool returns `Design session not found.` for a missing session or a session from a different local workspace or remote account.
+
+This read changes no backend records.
+The desktop reads the status before it lets the user change a saved design draft.
+It examines the session ID and problem ID in the result before it uses the result.
+It saves the status and completion time locally.
+It keeps the notes, diagram, review, chat, and checkpoint references.
+
+If the read or save has an error, the draft stays locked.
+**Retry canvas load** does the recovery read again.
+
+Finish waits for previous draft reads and writes.
+If a previous write changes the draft, a review of the previous draft cannot complete the session.
+Subsequent writes wait for Finish. They cannot change a completed session.
+
+If the desktop does not get a correct completion response, it reads the session status again.
+The desktop completes this read and the local save before it lets the user change the draft.
+
+For correct Finish requests, the server keeps the completion time that it saved first.
+SQLite and Supabase keep this time when requests occur at the same time.
+The server uses the same checkpoint ownership and review requirements for each request.
+
+No new fields are necessary for previous records.
+Previous completion times keep their saved values.
+The desktop does not restore completion times that previous server versions replaced.
+
+A server without `get_design_session` cannot unlock a saved design draft in this app version.
+The error tells the user to update the server.
+
+Before clients use this version with Supabase, apply the new migration.
+Before clients use this version, deploy the function.
+The new migration changes the private practice function.
+The migration does not change the public function for local execution reports.

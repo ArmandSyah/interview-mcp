@@ -59,7 +59,8 @@ export class ManagedSandbox {
   private leases = 0;
   private ownsLifecycle = false;
   private closed = false;
-  private readonly abort = new AbortController();
+  private abort = new AbortController();
+  private generation = 0;
 
   constructor(
     root: string,
@@ -91,6 +92,8 @@ export class ManagedSandbox {
     discovering = false,
     cleanup = false,
   ): Promise<string> {
+    if (!cleanup && this.abort.signal.aborted)
+      return Promise.reject(new Error('Sandbox operation cancelled'));
     return this.run(discovering ? args : ['--host', this.host, ...args], {
       timeout,
       env: this.dockerEnv,
@@ -265,6 +268,7 @@ export class ManagedSandbox {
         ),
       };
     } catch {
+      if (this.abort.signal.aborted) throw new Error('Sandbox operation cancelled');
       return null;
     }
   }
@@ -364,9 +368,12 @@ export class ManagedSandbox {
       managed,
     );
   }
-  private exclusive(operation: () => Promise<void>): Promise<void> {
+  private exclusive(operation: () => Promise<void>, generation = this.generation): Promise<void> {
     if (this.closed) return Promise.reject(new Error('Sandbox manager is closing'));
-    if (this.operation) return this.operation.catch(() => {}).then(() => this.exclusive(operation));
+    if (generation !== this.generation)
+      return Promise.reject(new Error('Sandbox operation cancelled'));
+    if (this.operation)
+      return this.operation.catch(() => {}).then(() => this.exclusive(operation, generation));
     const pending = operation()
       .catch((error) => {
         if (
@@ -381,6 +388,7 @@ export class ManagedSandbox {
       })
       .finally(() => {
         this.operation = null;
+        if (this.abort.signal.aborted && !this.closed) this.abort = new AbortController();
       });
     this.operation = pending;
     return pending;
@@ -460,5 +468,11 @@ export class ManagedSandbox {
     // volume is removed, including after a partial image/runtime download.
     if (this.operation) await this.operation.catch(() => {});
     await this.stopOwned(true).catch(() => {});
+  }
+
+  // A close request can fail to save drafts. Cancel setup without disabling retries.
+  cancelPending(): void {
+    this.generation++;
+    if (this.operation) this.abort.abort();
   }
 }

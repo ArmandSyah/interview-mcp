@@ -106,7 +106,7 @@ Docker and an AI model are optional. Do not install them for your first session.
 Enter these commands in a terminal or Windows PowerShell.
 
 ```bash
-git clone --branch feat/interview-desktop https://github.com/ArmandSyah/interview-mcp.git
+git clone https://github.com/ArmandSyah/interview-mcp.git
 cd interview-mcp
 uv sync --frozen --dev --python 3.12
 cd apps/desktop

@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Literal, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from server.core.identity import current_user_id
@@ -239,7 +239,13 @@ def finish(session_id: str, checkpoint_id: str) -> DesignSessionRead:
         )
         if reviewed is None:
             raise ValueError("Review this checkpoint before finishing the session.")
-        row.status = "completed"
-        row.completed_at = datetime.now(UTC)
-        session.flush()
+        session.execute(
+            update(DesignSession)
+            .where(DesignSession.id == row.id, DesignSession.user_id == current_user_id())
+            .values(
+                status="completed",
+                completed_at=func.coalesce(DesignSession.completed_at, datetime.now(UTC)),
+            )
+        )
+        session.refresh(row)
         return _read(row)
