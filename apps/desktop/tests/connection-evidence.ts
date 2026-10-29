@@ -129,6 +129,12 @@ export function captureConnectionEvidence(
     if (windows.has(window)) return;
     windows.add(window);
     const contents = window.webContents;
+    contents.on('did-start-loading', () => record('document-loading'));
+    contents.on('dom-ready', () => record('document-ready'));
+    contents.on('did-finish-load', () => record('document-loaded'));
+    contents.on('did-fail-load', (_event, code, _description, _url, isMainFrame) =>
+      record('document-load-failed', { code, isMainFrame }),
+    );
     const originalSend = contents.send;
     contents.send = function (channel: string, ...args: unknown[]) {
       if (channel === 'workbench:event') {
