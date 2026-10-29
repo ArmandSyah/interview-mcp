@@ -16,6 +16,10 @@ docs/*
 !docs/terminology.md
 !docs/windows-install.md
 !docs/download-site-plan.md
+!docs/language-review/
+docs/language-review/*
+!docs/language-review/delivery-hold-review.json
+!docs/language-review/delivery-hold-terms.json
 !docs/media/
 docs/media/*
 !docs/media/README.md

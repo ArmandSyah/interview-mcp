@@ -155,6 +155,10 @@ Each review stays in its attempt conversation. The app does not complete the att
 A local Ollama model runs on your computer without an API charge.
 See [AI review setup and limits](apps/desktop/README.md#ai-practice-review) for model installation and review behavior.
 
+For AI-authored questions, see [question language review](docs/content-authoring.md#question-language-review).
+The authoring tool uses the ASD-STE100 Issue 9 dictionary and can request local model rewrites.
+Each candidate needs an independent review before content approval.
+
 ### Enable code execution
 
 The editor does not execute code on your host Python.

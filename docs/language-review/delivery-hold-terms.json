@@ -1,0 +1,59 @@
+{
+  "terms": [
+    {
+      "text": "logistics system",
+      "kind": "technical_noun",
+      "meaning": "A system that records delivery operations."
+    },
+    {
+      "text": "delivery hold",
+      "kind": "technical_noun",
+      "meaning": "An inclusive range of days when a delivery is held."
+    },
+    {
+      "text": "hold",
+      "kind": "technical_noun",
+      "meaning": "Short form of delivery hold."
+    },
+    {
+      "text": "range",
+      "kind": "technical_noun",
+      "meaning": "An interval with its start and end values included."
+    },
+    {
+      "text": "cluster",
+      "kind": "technical_noun",
+      "meaning": "A group of holds connected by overlap or gaps at most grace_days."
+    },
+    {
+      "text": "gap",
+      "kind": "technical_noun",
+      "meaning": "The later start day minus the earlier end day for holds without overlap."
+    },
+    {
+      "text": "overlap",
+      "kind": "technical_noun",
+      "meaning": "A nonempty intersection of day ranges."
+    },
+    {
+      "text": "ID",
+      "kind": "technical_noun",
+      "meaning": "An identifier for an input hold."
+    },
+    {
+      "text": "return",
+      "kind": "technical_verb",
+      "meaning": "Supply the function result to its caller."
+    },
+    {
+      "text": "delivery region",
+      "kind": "technical_noun",
+      "meaning": "A geographical area with a specified delivery policy."
+    },
+    {
+      "text": "input",
+      "kind": "technical_noun",
+      "meaning": "Data supplied to the function."
+    }
+  ]
+}
