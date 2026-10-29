@@ -2,11 +2,12 @@ import { createServer } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
 import { noteSections, type DesignBrief, type DesignSession } from '../../src/shared/design';
+import { accountQueueFixture } from './account-queue-fixture';
 
 /** Local protocol fixture. This server does not test Supabase token verification. */
 export async function accountServer(
   execution?: (name: string, args: Record<string, unknown>) => Promise<unknown>,
-  options: { design?: boolean } = {},
+  options: { design?: boolean; queue?: boolean } = {},
 ) {
   let origin = '';
   let failure: 'identity' | 'catalog' | null = null;
@@ -14,6 +15,7 @@ export async function accountServer(
   let identityGate: Promise<void> | undefined;
   const requests: { name: string; account: string; args: Record<string, unknown> }[] = [];
   const designSessions = new Map<string, { account: string; record: Partial<DesignSession> }>();
+  const queue = options.queue ? accountQueueFixture() : null;
   const brief: DesignBrief = {
     id: 'fixture-design',
     title: 'Account design fixture',
@@ -39,6 +41,7 @@ export async function accountServer(
     ...(options.design
       ? ['list_design_problems', 'start_design_session', 'get_design_session']
       : []),
+    ...(queue?.names ?? []),
   ];
   const server = createServer(async (request, response) => {
     if (request.method !== 'POST') {
@@ -69,7 +72,16 @@ export async function accountServer(
       let failed =
         (failure === 'identity' && name === 'get_connection_identity') ||
         (failure === 'catalog' && name === 'list_problems');
+      let queueError: string | undefined;
       let value: unknown;
+      if (queue?.names.includes(name)) {
+        try {
+          value = queue.call(account, name, body.params.arguments ?? {});
+        } catch (error) {
+          failed = true;
+          queueError = error instanceof Error ? error.message : 'Fixture queue failure';
+        }
+      }
       if (name === 'get_connection_identity')
         value = {
           user_id:
@@ -103,6 +115,16 @@ export async function accountServer(
           completed_at: null,
         };
         designSessions.set(record.id!, { account, record });
+        queue?.register(account, {
+          id: record.id!,
+          kind: 'design',
+          problem_id: brief.id,
+          problem_revision: brief.revision,
+          title: brief.title,
+          status: 'in_progress',
+          started_at: record.started_at!,
+          queued_id: null,
+        });
         value = record;
       }
       if (options.design && name === 'get_design_session') {
@@ -114,11 +136,22 @@ export async function accountServer(
         value = await execution(name, body.params.arguments ?? {});
       if (name === 'start_problem') {
         const contents = `# ${account} starter\n`;
+        const attemptId =
+          account === 'alice'
+            ? '33333333-3333-4333-8333-333333333333'
+            : '44444444-4444-4444-8444-444444444444';
+        queue?.register(account, {
+          id: attemptId,
+          kind: 'coding',
+          problem_id: 'fixture-account',
+          problem_revision: 'a'.repeat(64),
+          title: 'Account fixture',
+          status: 'in_progress',
+          started_at: '2026-01-01T00:00:00Z',
+          queued_id: null,
+        });
         value = {
-          attempt_id:
-            account === 'alice'
-              ? '33333333-3333-4333-8333-333333333333'
-              : '44444444-4444-4444-8444-444444444444',
+          attempt_id: attemptId,
           mode: 'remote',
           files_to_create: [
             {
@@ -130,7 +163,10 @@ export async function accountServer(
         };
       }
       result = failed
-        ? { isError: true, content: [{ type: 'text', text: `Fixture ${failure} failure` }] }
+        ? {
+            isError: true,
+            content: [{ type: 'text', text: queueError ?? `Fixture ${failure} failure` }],
+          }
         : {
             content: [{ type: 'text', text: JSON.stringify(value) }],
             structuredContent: name === 'get_connection_identity' ? value : { result: value },
@@ -167,7 +203,13 @@ export async function accountServer(
   };
 }
 
-export async function connectAccount(page: Page, url: string, token: string, provider?: 'ollama') {
+export async function connectAccount(
+  page: Page,
+  url: string,
+  token: string,
+  provider?: 'ollama',
+  timeout = 5000,
+) {
   await page.getByRole('button', { name: 'Open settings' }).click();
   const dialog = page.getByRole('dialog', { name: 'Workbench settings' });
   if (provider) await dialog.getByLabel('Provider').selectOption(provider);
@@ -175,7 +217,7 @@ export async function connectAccount(page: Page, url: string, token: string, pro
   await dialog.getByLabel('HTTPS MCP URL').fill(url);
   await dialog.getByLabel('MCP bearer key or account token', { exact: true }).fill(token);
   await dialog.getByRole('button', { name: 'Save & connect' }).click();
-  await expect(dialog).toHaveCount(0);
+  await expect(dialog).toHaveCount(0, { timeout });
   // An account change can replace the view before its connection completes.
   await expect(page.getByRole('button', { name: 'Open settings' })).toBeEnabled();
 }
