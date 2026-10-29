@@ -1,6 +1,6 @@
 # Install Interview Workbench on Windows
 
-The preview targets Windows x64.
+The preview is for Windows x64.
 The package contains the app, Python engine, and sample questions.
 Node.js, uv, and a Python installation are not necessary to start the app.
 Docker is necessary only for code execution.
@@ -13,11 +13,13 @@ See the [GitHub artifact guide](https://docs.github.com/en/actions/how-tos/manag
 This workflow keeps download artifacts for 30 days.
 
 1. Open the [Windows installer preview workflow](https://github.com/ArmandSyah/interview-mcp/actions/workflows/windows-installer.yml).
-2. Select a run for `feat/interview-desktop` that contains the preview artifact.
+2. Select a run with a `success` result for the source revision to install.
 3. Download `interview-workbench-windows-preview` from **Artifacts**.
 4. Extract the ZIP file into a new directory.
 5. Open `build-info.json`.
-6. Make sure that `sourceCommit` identifies the correct source revision.
+6. Make sure that `sourceCommit` agrees with the source commit in the selected workflow run.
+
+Before installation, make sure that the **Desktop** workflow result is `success` for the same source commit.
 
 The download contains one installer, `SHA256SUMS.txt`, `build-info.json`, and these instructions.
 The build record identifies the version, source commit, architecture, installer byte count, and checksum.
@@ -49,13 +51,13 @@ Examine the source commit and workflow result before installation.
 
 ## Install and start
 
-1. Run the installer after the hashes agree.
+1. When the hashes agree, run the installer.
 2. Select installation for your Windows account.
 3. Select a destination directory.
 4. Complete installation.
 5. Open **Interview Workbench** from the Start menu.
 
-You can use coding drafts, curated hints, and the design whiteboard without a model.
+You can use coding drafts, hints, and the design whiteboard without a model.
 The [desktop guide](../apps/desktop/README.md) gives instructions for optional Docker and AI setup.
 Installation does not download a model or start Docker.
 
@@ -71,6 +73,9 @@ Reinstallation can use those saved files again.
 Use **Export practice backup** before you change app versions.
 Use an app version that can read the saved database format.
 
+The backup export is an archive. The app has no archive restore UI.
+The [local storage guide](../apps/desktop/README.md#local-storage-and-backups) describes the saved files and backups.
+
 ## Build and verification
 
 The preview workflow builds the Windows installer and tests it on a temporary GitHub runner.
@@ -79,13 +84,19 @@ It saves code and design work, removes the app, and compares the saved files.
 It also examines default application-data markers after removal.
 Then it reinstalls the app and opens the saved work.
 
-The **Desktop** workflow supplies the full UI test results.
+The **Desktop** workflow supplies the UI test results.
+The installer lifecycle test does not run code in Piston.
 See [implementation status](../IMPLEMENTATION_STATUS.json) for recorded results and open audit work.
 
-For a local package build, use Windows and the source prerequisites in the desktop guide.
-Enter these commands from `apps/desktop`:
+For a local package build, use Windows.
+Install Git, Node.js 24, and uv as described in the desktop guide.
+Enter these commands from the repository root:
 
 ```powershell
+uv sync --frozen --dev --python 3.12
+cd apps/desktop
+npm ci
+npm run install:electron
 npm run backend
 npm run build
 npx electron-builder --win nsis --x64 --publish never
