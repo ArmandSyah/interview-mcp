@@ -699,9 +699,7 @@
     "remaining_checks": [
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
       "Startup and close: close during engine initialization, a native file picker, and sandbox installation",
-      "Recall: Open saved practice for coding/design, activation error, field limits, and a queue-enabled remote account transition",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
-      "Credential recovery: visible startup decryption error and recovery with fixture credentials",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
     ],
@@ -809,7 +807,45 @@
       ],
       "changes": "The Windows guide selects a source revision with successful installer and desktop checks, supplies the missing dependency commands, and explains the export archive limitation. The release plan retains duplicate-order rejection and states the payment fee calculation base correctly.",
       "verification": "An independent agent compared the guide with the workflow, package configuration, artifact script, and installer tests. It checked the changed prose against Issue 9 and corrected wording. Structural and diff checks passed. The official payment provider pricing and fee pages support the fee example.",
-      "remaining": "Complete a contextual dictionary check of every word in the unchanged account and payment paragraphs. This review does not establish full document conformity."
+      "remaining": "No contextual dictionary check remains open within the four account/payment sections reviewed. This scoped review does not establish full-document conformity.",
+      "contextual_check": {
+        "sections": [
+          "User sign-ups",
+          "Account records and ownership",
+          "Revenue model",
+          "Checkout and fulfillment"
+        ],
+        "reference": "ASD-STE100 Issue 9, Parts 1 and 2. PROCESS is retained as a technical verb for computer system operations under Rule 1.12 (PDF page 58).",
+        "corrections": "The independent reviewer checked meaning, part of speech, forms, noun groups, and sentence structure in context. It corrected PKCE wording and the signing-directory reference, and removed three added table hyphens.",
+        "preserved": "Prices, numbers, identifiers, link URLs, UI labels, eight sign-in steps, and eight account-relationship bullets remain unchanged.",
+        "checks": "Structural and whitespace checks passed. Windows instructions did not change in this follow-up."
+      }
+    },
+    "queue_saved_practice_and_accounts": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Open the exact saved coding or design attempt. If activation fails, retain the current selection and recall draft. Permit one retry request. Keep queue items and reflection history unchanged when opening practice. Preserve each account draft across token replacement and keep different accounts separate.",
+      "coverage": "Native stories verify both saved practice kinds, duplicate clicks, activation failure and retry, unchanged attempt IDs and session arrays, unchanged queue and history, recall close/reopen, exact text limits, extra typed character rejection, whitespace-only Save rejection, and one saved reflection. An optional account fixture verifies same-account token replacement, foreign item rejection, separate account drafts and histories, and return to both accounts.",
+      "verification": "All 15 combined queue/design-account stories and all 7 existing coding-account stories passed locally. Type checks, formatting, and diff checks passed. Independent functional review found no assertion weakening in the saved-open and field-limit stories. Root reviewed the isolated account fixture and its request/data assertions.",
+      "tests": [
+        "apps/desktop/tests/e2e/practice-queue-open.spec.ts",
+        "apps/desktop/tests/e2e/practice-queue-accounts.spec.ts"
+      ],
+      "limits": "Local queue stories use the real backend and saved files. Remote account stories use an isolated protocol fixture, not Supabase authentication. The current Supabase endpoint does not advertise queue tools. Activation and mode selection remain separate operations; these tests inject failure before activation, not an unstated atomic navigation contract. Platform CI remains pending.",
+      "data_effect": "No application behavior or saved data format changes. The account fixture queue capability is off by default."
+    },
+    "credential_recovery": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "An unreadable saved credential must not prevent use of a different readable credential. Repair or removal must preserve the other credential and all saved practice. An unavailable account credential must hide account data until the same account reconnects.",
+      "defect": "Startup decrypted the AI key and MCP credential in one try block. An AI-key error skipped MCP decryption. Subsequent settings recovery could remove that readable MCP credential because its runtime value was empty.",
+      "change": "Startup now unlocks each saved credential separately. Either failure keeps the existing recovery message. Healthy account access remains available. Saved credential and workspace formats do not change.",
+      "regression": "The native mixed-credential story failed before the fix: expected connected, received disconnected. All four corrected native stories passed on Linux in 27.5 seconds. Independent fresh-instance service tests cover API/MCP corruption with replacement/removal and preservation of the readable key and prior workspaces.",
+      "tests": [
+        "apps/desktop/tests/e2e/credential-recovery.spec.ts",
+        "apps/desktop/tests/service.test.ts"
+      ],
+      "limits": "Native source fixtures replace the OS credential API with deterministic test values. They do not establish OS encryption correctness or Supabase authentication. AI stays off. Windows CI includes the source stories before packaging.",
+      "independent_review": "A subagent identified the skipped-decryption defect, reviewed the native assertions, and added four fresh-load service regressions. All four focused regressions passed after the fix. Root reproduced the native failure and ran the four corrected native cases.",
+      "validation": "All 260 desktop tests passed, with two optional skips. All four native credential stories passed. Build, type checks, formatting, and diff checks passed. Full platform checks remain pending."
     }
   },
   "last_verified": {
