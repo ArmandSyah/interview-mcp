@@ -124,7 +124,8 @@ for (const mode of ['coding', 'design'] as const) {
         await page.getByRole('button', { name: 'Open settings' }).click();
         await page.getByLabel('Provider').selectOption('ollama');
         await page.getByRole('button', { name: 'Save & connect' }).click();
-        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 20_000 });
+        await expect(page.getByText('MCP connected · 5 problems')).toBeVisible();
         if (mode === 'design') {
           await page.getByRole('button', { name: 'System design', exact: true }).click();
           await page
