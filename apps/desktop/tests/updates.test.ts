@@ -1,5 +1,5 @@
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
@@ -8,6 +8,60 @@ import { compareVersions, ReleaseUpdates, verifyReleaseManifest } from '../src/m
 const keys = generateKeyPairSync('ed25519');
 const publicKey = keys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const bytes = Buffer.from('fixture installer, never executed');
+
+it.each(['check', 'download'] as const)('permits retry after cancellation of %s', async (stage) => {
+  const root = await mkdtemp(join(tmpdir(), 'interview-update-cancel-'));
+  let hold = true;
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const request = async (input: string | URL | Request, options?: RequestInit) => {
+    const url = String(input);
+    const metadata = url.includes('api.github.com');
+    if (
+      hold &&
+      ((stage === 'check' && metadata) || (stage === 'download' && url.endsWith('.AppImage')))
+    ) {
+      return new Promise<Response>((_resolve, reject) => {
+        options!.signal!.addEventListener(
+          'abort',
+          () => reject(new Error('Fixture request cancelled')),
+          { once: true },
+        );
+        entered();
+      });
+    }
+    if (metadata)
+      return Response.json({
+        draft: false,
+        prerelease: false,
+        tag_name: 'v0.3.0',
+        assets: [
+          {
+            name: 'signed-release.json',
+            browser_download_url:
+              'https://github.com/ArmandSyah/interview-mcp/releases/download/v0.3.0/signed-release.json',
+          },
+        ],
+      });
+    if (url.endsWith('signed-release.json')) return Response.json(envelope());
+    return new Response(bytes);
+  };
+  const updates = new ReleaseUpdates(root, '0.2.0', publicKey, 'linux', 'x64', request);
+  if (stage === 'download') await updates.check('stable');
+  const rejected = expect(
+    stage === 'check' ? updates.check('stable') : updates.download(),
+  ).rejects.toThrow('cancelled');
+  await started;
+  updates.cancelPending();
+  await rejected;
+  hold = false;
+  expect((await updates.check('stable')).state).toBe('available');
+  expect((await updates.download()).state).toBe('ready');
+  expect(await updates.installerPath()).toMatch(/fixture\.AppImage$/);
+});
+
 function manifest() {
   return {
     formatVersion: 1,
@@ -29,6 +83,43 @@ function manifest() {
     ],
   };
 }
+
+it('cancels the response body if creating the download file fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'interview-update-open-failure-'));
+  let cancelled = false;
+  const request = async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes('api.github.com'))
+      return Response.json({
+        draft: false,
+        prerelease: false,
+        tag_name: 'v0.3.0',
+        assets: [
+          {
+            name: 'signed-release.json',
+            browser_download_url:
+              'https://github.com/ArmandSyah/interview-mcp/releases/download/v0.3.0/signed-release.json',
+          },
+        ],
+      });
+    if (url.endsWith('signed-release.json')) return Response.json(envelope());
+    const directory = join(root, 'updates', '0.3.0');
+    await rm(directory, { recursive: true });
+    await writeFile(directory, 'Fixture obstruction');
+    return new Response(
+      new ReadableStream({
+        cancel() {
+          cancelled = true;
+        },
+      }),
+    );
+  };
+  const updates = new ReleaseUpdates(root, '0.2.0', publicKey, 'linux', 'x64', request);
+  await updates.check('stable');
+  await expect(updates.download()).rejects.toThrow();
+  expect(cancelled).toBe(true);
+  expect(updates.info().state).toBe('available');
+});
 function envelope(value = manifest()) {
   const payload = Buffer.from(JSON.stringify(value));
   return {

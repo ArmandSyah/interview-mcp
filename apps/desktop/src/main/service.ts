@@ -1323,6 +1323,9 @@ export class WorkbenchService {
     await this.designs.flush();
     if (this.store.isLoaded) await this.store.persist();
   }
+  cancelSandboxSetup(): void {
+    this.sandbox?.cancelPending();
+  }
   /**
    * Cancel chat and release connections. Save pending data by default.
    * Set save to false only after prepareClose succeeds and further writes are disabled.

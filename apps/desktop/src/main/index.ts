@@ -142,6 +142,8 @@ void app.whenReady().then(async () => {
     if (draftFlushed || !service) return;
     event.preventDefault();
     closeRequested = true;
+    updates.cancelPending();
+    service.cancelSandboxSetup();
     window?.webContents.send('workbench:event', { type: 'flush-before-close' });
   });
   const vault = {
@@ -197,7 +199,21 @@ void app.whenReady().then(async () => {
         throw new Error('Untrusted IPC sender');
       if (finalizingClose && !['close-ready', 'cancel', 'snapshot'].includes(channel))
         throw new Error('The window is closing.');
-      if (closeRequested && ['chat', 'grade'].includes(channel))
+      if (
+        closeRequested &&
+        [
+          'chat',
+          'grade',
+          'sandbox-inspect',
+          'sandbox-enable',
+          'sandbox-stop',
+          'run',
+          'settings',
+          'update-check',
+          'update-download',
+          'update-install',
+        ].includes(channel)
+      )
         throw new Error('The window is closing.');
       const operation = Promise.resolve().then(() => action(...args));
       if (['close-ready', 'cancel', 'snapshot'].includes(channel)) return operation;
@@ -264,6 +280,7 @@ void app.whenReady().then(async () => {
       });
       if (result.response !== 1) return null;
     }
+    if (closeRequested || finalizingClose) throw new Error('The window is closing.');
     return service.enableSandbox();
   });
   handler('license-notices', async () => {
@@ -287,6 +304,7 @@ void app.whenReady().then(async () => {
     if (service.snapshot().busy)
       throw new Error('Finish or stop the current practice operation first');
     const installer = await updates.installerPath();
+    if (closeRequested || finalizingClose) throw new Error('The window is closing.');
     const confirmation = await dialog.showMessageBox(window!, {
       type: 'question',
       title: 'Open verified installer?',
@@ -297,6 +315,7 @@ void app.whenReady().then(async () => {
       cancelId: 0,
     });
     if (confirmation.response !== 1) return;
+    if (closeRequested || finalizingClose) throw new Error('The window is closing.');
     const backup = await service.exportWorkspace();
     const directory = join(store.root, 'backups');
     await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -308,6 +327,7 @@ void app.whenReady().then(async () => {
       await file.close();
     }
     if (installer.endsWith('.AppImage')) await chmod(installer, 0o700);
+    if (closeRequested || finalizingClose) throw new Error('The window is closing.');
     const error = await shell.openPath(installer);
     if (error) throw new Error(error);
   });
