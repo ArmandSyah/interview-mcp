@@ -19,6 +19,7 @@ export const allowedTools = new Set([
   'get_progress',
   'list_design_problems',
   'start_design_session',
+  'get_design_session',
   'get_design_brief',
   'save_design_checkpoint',
   'list_design_checkpoints',

@@ -213,6 +213,12 @@ def start_design_session(problem_id: str) -> DesignSessionRead:
     return design_repo.start(problem_id)
 
 
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False})
+def get_design_session(session_id: str) -> DesignSessionRead:
+    """Return a design session for your account without changes to saved data."""
+    return design_repo.get(session_id)
+
+
 @mcp.tool
 def get_design_brief(session_id: str) -> DesignBrief:
     """Read this session's pinned requirements; does not reveal future hints."""
