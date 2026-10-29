@@ -808,7 +808,19 @@
       ],
       "changes": "The Windows guide selects a source revision with successful installer and desktop checks, supplies the missing dependency commands, and explains the export archive limitation. The release plan retains duplicate-order rejection and states the payment fee calculation base correctly.",
       "verification": "An independent agent compared the guide with the workflow, package configuration, artifact script, and installer tests. It checked the changed prose against Issue 9 and corrected wording. Structural and diff checks passed. The official payment provider pricing and fee pages support the fee example.",
-      "remaining": "Complete a contextual dictionary check of every word in the unchanged account and payment paragraphs. This review does not establish full document conformity."
+      "remaining": "No contextual dictionary check remains open within the four account/payment sections reviewed. This scoped review does not establish full-document conformity.",
+      "contextual_check": {
+        "sections": [
+          "User sign-ups",
+          "Account records and ownership",
+          "Revenue model",
+          "Checkout and fulfillment"
+        ],
+        "reference": "ASD-STE100 Issue 9, Parts 1 and 2. PROCESS is retained as a technical verb for computer system operations under Rule 1.12 (PDF page 58).",
+        "corrections": "The independent reviewer checked meaning, part of speech, forms, noun groups, and sentence structure in context. It corrected PKCE wording and the signing-directory reference, and removed three added table hyphens.",
+        "preserved": "Prices, numbers, identifiers, link URLs, UI labels, eight sign-in steps, and eight account-relationship bullets remain unchanged.",
+        "checks": "Structural and whitespace checks passed. Windows instructions did not change in this follow-up."
+      }
     },
     "queue_saved_practice_and_accounts": {
       "status": "local_verified_platform_checks_pending",
