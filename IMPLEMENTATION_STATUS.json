@@ -700,7 +700,6 @@
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
       "Startup and close: close during engine initialization, a native file picker, and sandbox installation",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
-      "Credential recovery: visible startup decryption error and recovery with fixture credentials",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
     ],
@@ -833,6 +832,20 @@
       ],
       "limits": "Local queue stories use the real backend and saved files. Remote account stories use an isolated protocol fixture, not Supabase authentication. The current Supabase endpoint does not advertise queue tools. Activation and mode selection remain separate operations; these tests inject failure before activation, not an unstated atomic navigation contract. Platform CI remains pending.",
       "data_effect": "No application behavior or saved data format changes. The account fixture queue capability is off by default."
+    },
+    "credential_recovery": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "An unreadable saved credential must not prevent use of a different readable credential. Repair or removal must preserve the other credential and all saved practice. An unavailable account credential must hide account data until the same account reconnects.",
+      "defect": "Startup decrypted the AI key and MCP credential in one try block. An AI-key error skipped MCP decryption. Subsequent settings recovery could remove that readable MCP credential because its runtime value was empty.",
+      "change": "Startup now unlocks each saved credential separately. Either failure keeps the existing recovery message. Healthy account access remains available. Saved credential and workspace formats do not change.",
+      "regression": "The native mixed-credential story failed before the fix: expected connected, received disconnected. All four corrected native stories passed on Linux in 27.5 seconds. Independent fresh-instance service tests cover API/MCP corruption with replacement/removal and preservation of the readable key and prior workspaces.",
+      "tests": [
+        "apps/desktop/tests/e2e/credential-recovery.spec.ts",
+        "apps/desktop/tests/service.test.ts"
+      ],
+      "limits": "Native source fixtures replace the OS credential API with deterministic test values. They do not establish OS encryption correctness or Supabase authentication. AI stays off. Windows CI includes the source stories before packaging.",
+      "independent_review": "A subagent identified the skipped-decryption defect, reviewed the native assertions, and added four fresh-load service regressions. All four focused regressions passed after the fix. Root reproduced the native failure and ran the four corrected native cases.",
+      "validation": "All 260 desktop tests passed, with two optional skips. All four native credential stories passed. Build, type checks, formatting, and diff checks passed. Full platform checks remain pending."
     }
   },
   "last_verified": {

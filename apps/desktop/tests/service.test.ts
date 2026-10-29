@@ -617,6 +617,129 @@ for (const failure of ['disk-replace', 'disk-remove', 'vault'] as const) {
   });
 }
 
+for (const unreadable of ['apiKey', 'mcpKey'] as const) {
+  for (const recovery of ['replace', 'remove'] as const) {
+    it(`credential recovery ${unreadable}/${recovery} keeps the readable credential after a fresh load`, async () => {
+      const vault: Vault = {
+        available: () => true,
+        encrypt: (value) => Buffer.from('fixture-vault:' + value).toString('base64'),
+        decrypt: (value) => {
+          const decoded = Buffer.from(value, 'base64').toString();
+          if (!decoded.startsWith('fixture-vault:'))
+            throw new Error('Fixture credential cannot be read');
+          return decoded.slice('fixture-vault:'.length);
+        },
+      };
+      const keys = { apiKey: 'fixture-kept-api', mcpKey: 'fixture-kept-mcp' };
+      const settings = {
+        ...defaultSettings,
+        connection: 'remote' as const,
+        mcpUrl: 'https://fixture.invalid/mcp',
+      };
+      const identity = {
+        userId: '11111111-1111-4111-8111-111111111111',
+        issuer: 'https://fixture.invalid/auth/v1',
+      };
+      const seeded = await fixture(undefined, vault);
+      seeded.mcp.connect.mockImplementation(async (...args: unknown[]) => {
+        const [config, key] = args as [typeof settings, string];
+        seeded.mcp.accountIdentity = null;
+        if (config.connection === 'remote') {
+          if (!key) throw new Error('Add an MCP bearer credential in Settings');
+          seeded.mcp.accountIdentity = identity;
+        }
+      });
+      await seeded.service.updateSettings({ ...settings, ...keys });
+      await seeded.service.startProblem(problem.id);
+      await seeded.service.saveCode(problem.id, '# Keep this account practice.\n');
+      const before = seeded.service.snapshot();
+      await seeded.service.close();
+      const file = join(seeded.store.root, 'workspace.json');
+      const corrupted = JSON.parse(await readFile(file, 'utf8'));
+      corrupted.credentials[unreadable] = Buffer.from('fixture-unreadable-value').toString(
+        'base64',
+      );
+      await writeFile(file, JSON.stringify(corrupted));
+
+      // A new service must obtain both credentials from the altered file.
+      const store = new LocalStore(seeded.store.root);
+      const service = new WorkbenchService(
+        store,
+        seeded.mcp as unknown as McpConnection,
+        vault,
+        () => {},
+      );
+      try {
+        await service.initialize();
+        const failed = service.snapshot();
+        expect(failed.error).toBe(
+          'Saved credentials could not be unlocked. Re-enter them in Settings.',
+        );
+        expect(failed.settings.provider).toBe('disabled');
+        expect(failed.settings.hasApiKey).toBe(unreadable !== 'apiKey');
+        expect(failed.settings.hasMcpKey).toBe(unreadable !== 'mcpKey');
+        expect(seeded.mcp.connect).toHaveBeenLastCalledWith(
+          settings,
+          unreadable === 'mcpKey' ? '' : keys.mcpKey,
+        );
+        if (unreadable === 'apiKey') {
+          expect(failed.connection).toBe('connected');
+          expect(failed.workspaceId).toBe(before.workspaceId);
+          expect(failed.sessions).toEqual(before.sessions);
+        } else {
+          expect(failed.connection).toBe('disconnected');
+          expect(failed.sessions).toEqual([]);
+        }
+        const replacement = 'fixture-replacement-' + unreadable;
+        const change =
+          recovery === 'replace'
+            ? { [unreadable]: replacement }
+            : unreadable === 'apiKey'
+              ? { clearApiKey: true }
+              : { clearMcpKey: true };
+        await service.updateSettings({ ...settings, ...change });
+        const saved = JSON.parse(await readFile(file, 'utf8'));
+        const readable = unreadable === 'apiKey' ? 'mcpKey' : 'apiKey';
+        // Real OS encryption can produce different ciphertext for the same key.
+        expect(vault.decrypt(saved.credentials[readable])).toBe(keys[readable]);
+        if (recovery === 'replace')
+          expect(vault.decrypt(saved.credentials[unreadable])).toBe(replacement);
+        else expect(saved.credentials).not.toHaveProperty(unreadable);
+        expect(Object.keys(saved.credentials).sort()).toEqual(
+          recovery === 'replace' ? ['apiKey', 'mcpKey'] : [readable],
+        );
+        for (const [scope, workspace] of Object.entries(corrupted.workspaces))
+          expect(saved.workspaces[scope]).toEqual(workspace);
+        expect(
+          Object.values(saved.workspaces as typeof store.state.workspaces).flatMap(
+            (workspace) => workspace.sessions,
+          ),
+        ).toEqual(before.sessions);
+        const recovered = service.snapshot();
+        expect(recovered.settings.provider).toBe('disabled');
+        expect(recovered.settings.hasApiKey).toBe(
+          unreadable !== 'apiKey' || recovery === 'replace',
+        );
+        expect(recovered.settings.hasMcpKey).toBe(
+          unreadable !== 'mcpKey' || recovery === 'replace',
+        );
+        if (unreadable !== 'mcpKey' || recovery === 'replace') {
+          expect(recovered.connection).toBe('connected');
+          expect(recovered.workspaceId).toBe(before.workspaceId);
+          expect(recovered.sessions).toEqual(before.sessions);
+        } else {
+          expect(recovered.connection).toBe('disconnected');
+          expect(recovered.sessions).toEqual([]);
+        }
+        for (const key of [...Object.values(keys), replacement, corrupted.credentials[unreadable]])
+          expect(JSON.stringify(recovered)).not.toContain(key);
+      } finally {
+        await service.close();
+      }
+    });
+  }
+}
+
 it.each([false, true])(
   'settings order earlier and queued code saves (failure=%s)',
   async (failure) => {
