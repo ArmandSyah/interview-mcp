@@ -25,9 +25,7 @@ jobs:
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
       - uses: astral-sh/setup-uv@v3
-        with:
-          python-version: '3.12'
-      - run: uv sync --frozen --dev
+      - run: uv sync --frozen --dev --python 3.12
         working-directory: .
       - name: Native window dependencies
         run: sudo apt-get update && sudo apt-get install -y libnss3 libasound2t64 xvfb
@@ -94,7 +92,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: apps/desktop
@@ -106,9 +104,7 @@ jobs:
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
       - uses: astral-sh/setup-uv@v3
-        with:
-          python-version: '3.12'
-      - run: uv sync --frozen --dev
+      - run: uv sync --frozen --dev --python 3.12
         working-directory: .
       - run: npm ci
       - run: npm run install:electron
