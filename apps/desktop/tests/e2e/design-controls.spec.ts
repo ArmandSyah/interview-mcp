@@ -152,8 +152,9 @@ test('Mock disables hints and the timer display stays at zero without finishing 
     await page.getByLabel('Practice mode').selectOption('guided');
     await expect(curated).toBeEnabled();
     await page.getByLabel('Practice mode').selectOption('mock');
-    await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    const pausedAt = new Date();
+    await page.clock.install({ time: new Date(pausedAt.getTime() - 60_000) });
+    await page.clock.pauseAt(pausedAt);
     await page.getByRole('button', { name: 'Start timer', exact: true }).click();
     await page.clock.runFor(3000);
     await expect(page.getByRole('button', { name: 'Pause timer', exact: true })).toHaveText(

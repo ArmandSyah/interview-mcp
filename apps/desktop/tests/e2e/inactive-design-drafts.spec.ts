@@ -29,8 +29,9 @@ for (const retry of ['mode', 'close'] as const) {
       await page.getByRole('button', { name: 'Coding', exact: true }).click();
       await expect.poll(mode.calls).toEqual([['coding']]);
       save = await gateIpc(app, 'design-save');
-      await page.clock.install();
-      await page.clock.pauseAt(new Date());
+      const pausedAt = new Date();
+      await page.clock.install({ time: new Date(pausedAt.getTime() - 60_000) });
+      await page.clock.pauseAt(pausedAt);
       await notes.fill('Late notes retained through failed saves');
       await mode.release(0);
       await expect
