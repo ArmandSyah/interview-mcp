@@ -2,7 +2,7 @@
   "status": "verified_preview",
   "goal": "Desktop coding and system-design practice, public release preparation, and Supabase remote MCP development",
   "database": "SQLAlchemy 2.x with local SQLite. Schema version 4.",
-  "delivery_scope": "The working desktop and private Supabase preview are verified. Public sign-up, payments, and trusted installer publication remain release work.",
+  "delivery_scope": "The desktop passed its recorded platform checks. Supabase version 5 is deployed with database and rejected-request checks. Fresh signed-in v5 calls remain unverified. Public sign-up, payments, and trusted installer publication remain release work.",
   "delivery_audit": [
     {
       "requirement": "Coding practice with an editor, hints, tests, submission, and saved drafts",
@@ -21,8 +21,8 @@
     },
     {
       "requirement": "Use the Supabase Free project without a VPS",
-      "result": "verified_private_preview",
-      "evidence": "Function version 4 is ACTIVE. Live tests verified two accounts, access controls, token replacement, remote practice, and local Piston execution. Both temporary accounts were deleted."
+      "result": "deployed_private_preview_authenticated_retest_pending",
+      "evidence": "Function version 5 is ACTIVE after restoration of the existing Free project. Deployed database contracts and HTTP rejection checks passed. Earlier version 4 tests verified two real accounts, token replacement, remote practice, and local Piston. A fresh signed-in version 5 test remains unverified. See docs/deployments/2026-11-05-supabase.md."
     },
     {
       "requirement": "Plans for sign-up, revenue, deployment, and public packages",
@@ -153,14 +153,14 @@
       "data_effect": "The public source question prose changes after review. Existing attempts retain their saved question snapshots. New attempts use the revised catalog after the next content load. Legacy attempts without a recoverable snapshot remain unpinned. No code, test fixture, saved answer, or runtime schema changes.",
       "reviewed_example": "Six prose fields changed in the public delivery-hold question. Three selected fields and 83 protected values remain unchanged. The independent agent checked all nine selected fields against Part 1 and Part 2 and found no remaining required prose edits. Its review records 51 contextual word checks, subject terms, sentence counts, hashes, and preserved requirements. It excludes hints, solutions, tests, and whole-question conformity.",
       "review_record": "docs/language-review/delivery-hold-review.json",
-      "cloud_catalog": "A new catalog migration supplies the reviewed question revision and retains previous revisions for saved attempts. The earlier applied migration stays unchanged. The catalog generator now checks the new migration. No remote migration has been applied from this branch.",
-      "merged_validation": "PR 37 merged as e210025 after all seven checks passed. The combined audit at 201b616 also passed backend, authoring, Linux, Windows, Edge Function, and PostgreSQL checks. The reviewed catalog migration remains undeployed remotely."
+      "cloud_catalog": "Migration 20261105132724_public_catalog.sql is deployed. It supplies the reviewed question revision and retains all ten previous revisions unchanged. The filename now matches the actual Supabase migration timestamp. SQL bytes did not change.",
+      "merged_validation": "PR 37 merged as e210025 after all seven checks passed. The combined audit at 201b616 passed backend, authoring, Linux, Windows, Edge Function, and PostgreSQL checks. The reviewed catalog reached Supabase on 5 November 2026."
     },
     "independent_verification": {
       "status": "source_review_and_platform_checks_complete",
       "required": "A subagent independently examines functionality and language rewrites. Record its findings and verify each correction.",
       "final_source_review": "An independent agent reviewed bf68ab1, the native test log, the lock assertions, and the deliverable records. It found no blocking code issue. It identified two stale records about sandbox coverage and remote migration parity. Both records were corrected. Platform checks and remote deployment remain separate verification tasks.",
-      "platform_verification": "Full Linux and Windows checks passed after the independently reviewed launcher correction. Installer metadata and lifecycle evidence also passed independent review. Remote deployment remains pending."
+      "platform_verification": "Full Linux and Windows checks passed after the independently reviewed launcher correction. Installer evidence passed independent review. Supabase deployment is complete with the verification limits in docs/deployments/2026-11-05-supabase.md."
     }
   },
   "ui_interaction_audit": {
@@ -788,7 +788,7 @@
       "windows_check": "The Windows workflow now runs content, signed-update, and update-close source fixtures before packaging. Results remain pending until that branch completes CI. Packaged tests still check the preview configuration."
     },
     "design_completion_recovery": {
-      "status": "merged_platform_and_postgres_verified_remote_deployment_pending",
+      "status": "deployed_database_verified_authenticated_remote_retest_pending",
       "requirements": "Read the owned backend status before editing a saved design session. Keep local notes, scene, review, chat, and IDs. Lock uncertain sessions after a lost completion response. Finish must wait for accepted reads and writes. Concurrent Finish requests must keep the first saved completion time.",
       "changes": "The new get_design_session tool returns the existing session shape. The desktop validates identity and completion fields, saves status locally, and exposes retry after errors. A transient connection revision forces a status refresh after token replacement. The existing draft barrier orders completion after pending drafts and before subsequent edits. Both backends preserve completed_at with an atomic COALESCE update.",
       "data_effect": "No saved workspace fields change. Existing content and practice records stay intact. Earlier completion times keep their stored values. Older servers without the owned-read tool cannot unlock saved design drafts. The new Supabase migration replaces the private dispatcher while preserving the public local-execution wrapper.",
@@ -801,7 +801,7 @@
       ],
       "verification": "Desktop build, type checks, and formatting passed. The full desktop suite passed 255 tests with two optional skips. All 14 selected native stories passed, including account isolation, token replacement, restart recovery, lost response, load errors, and finish retry. The stronger held-read assertion passed its focused rerun. Python design/cloud checks passed 19 tests with 20 PostgreSQL tests skipped. Deno lint, type checks, and all 14 protocol tests passed.",
       "independent_review": "Independent probes reproduced the stale-read and accepted-write races. The final barrier waits for both operations. A lost response remains locked until an owned read completes. The reviewer found no further blocking issue in the reviewed lifecycle, ownership, SQL, or permissions. Another agent reviewed the new documentation with the official Issue 9 rules and dictionary.",
-      "remaining": "Apply the Supabase migration and deploy its function. The remote project has not received this change.",
+      "remaining": "No pending deployment. The deployed database passed ownership, completed-status read, and completion retry checks under simulated claims. Fresh signed-in version 5 requests remain unverified because the earlier management login expired.",
       "limits": "The lost-response native fixture uses a source bootstrap and skips packaged executables. Windows CI now runs that source test before packaging. Local native tests ran on Linux.",
       "platform_checks": "All seven PR38 checks passed at 1f9d8bd5f029f661b537b74ddb9ccc41d2ccf340, including Desktop run 40732868239 on Windows and Linux and Supabase run 40732868250. PR38 merged as 70507044279ad886ff3339797989d012a7bb55b8. This merge includes the exact PR36 content commits. Windows installer run 40889630561 passed on that merge."
     },
@@ -992,7 +992,7 @@
       "windows": "270 unit tests passed, with three platform/optional skips. All 45 configured source stories passed. All 204 applicable packaged stories passed, with 39 explicit skips. Packaged trace diagnostics passed.",
       "other_checks": "Backend CI, container build, remote integration, Supabase Edge Function checks, and PostgreSQL checks all passed on the same commit.",
       "scope": "The recorded interaction matrix has no remaining failed or unverified story. This records tested scenarios and configurations, not proof about every possible execution.",
-      "remote_deployment": "The public-catalog and design-session-recovery migrations and updated Supabase function still require remote deployment."
+      "remote_deployment": "Both pending migrations and function version 5 are deployed. Database checks passed and HTTP rejects missing or invalid credentials. The repository migration filenames match remote history. See docs/deployments/2026-11-05-supabase.md for evidence and the signed-in test limit."
     }
   },
   "last_verified": {
@@ -1009,5 +1009,20 @@
     "desktop_notices": "Collector handles absent platform-specific optional packages; project/font/dependency notices packaged; 44 package entries lack published notice files and still need release review",
     "ci": "Desktop workflow 39623646553 passed Windows and Linux native package checks. Supabase workflow 39623646495 passed Edge Function and PostgreSQL checks. Both runs verified code commit e46fabf.",
     "documentation": "README setup selects feat/interview-desktop. The sandbox guide has current links and commands. Demo dimensions agree with the files. No application behavior or saved data changed in this documentation pass."
+  },
+  "supabase_deployment": {
+    "date": "2026-11-05",
+    "project_ref": "jwaprdinilnnvryvodwh",
+    "project_status": "ACTIVE_HEALTHY",
+    "plan": "free",
+    "function_version": 5,
+    "source_commit": "a462d564ba9d4b27febeddf30e1fa8f8ae5ce81e",
+    "applied_migrations": [
+      "20261105132724_public_catalog",
+      "20261105132732_design_session_recovery"
+    ],
+    "record": "docs/deployments/2026-11-05-supabase.md",
+    "checks": "Exact deployed source comparison, old catalog hash preservation, transaction-scoped SQL contracts, HTTP rejection checks, advisor review, and cleanup passed.",
+    "limits": "SQL checks use simulated claims. No fresh successful Auth login or signed-in MCP call ran on version 5. The earlier version 4 account test remains historical evidence."
   }
 }
