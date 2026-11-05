@@ -3,7 +3,9 @@
 This branch adds payment code for a proposed USD 10 monthly plan.
 Paddle is the selected provider for sandbox tests.
 The code defaults to sandbox mode. It does not charge real cards in that mode.
-No Paddle account, product, secret, webhook destination, or live payment was created for this change.
+The sandbox catalog, server secrets, and webhook destination are configured.
+No live payment service is active.
+See the [sandbox deployment record](deployments/2026-11-05-billing.md) for verified results and unfinished checks.
 The existing desktop app and MCP routes keep their current behavior.
 
 The new `billing` Edge Function handles checkout, account status, the customer portal, and subscription webhooks.
@@ -78,7 +80,7 @@ Existing local exercises remain available without a subscription.
 ## Configuration
 
 These values belong to the Edge Function environment unless the table states otherwise.
-No value below has been provisioned by this branch.
+The sandbox deployment uses these settings. Live settings remain disabled.
 
 | Variable | Purpose |
 | --- | --- |
@@ -203,8 +205,10 @@ Missing cancellation webhooks also prevent replacement until the database receiv
 Future operator recovery must inspect provider state using the saved transaction or server-created reservation metadata.
 It must confirm ownership before it repairs a reservation. It must not create a replacement after an unverified timeout.
 Refunds, disputes, missed-event reconciliation, request limits, and launch policies need separate work before live billing.
-Provider credentials, catalog setup, notification setup, and a real sandbox checkout test also remain pending.
-This code is a tested integration scaffold, not an activated payment service.
+Provider credentials, catalog setup, and notification setup are complete in sandbox.
+The real sandbox checkout opens, but the browser test stopped before payment submission.
+Payment completion, webhook delivery, portal access, cancellation, and replacement checkout still need real provider tests.
+No paid service is active.
 
 The focused Deno tests use injected HTTP responses. They make no Paddle network requests.
 They cover account access, customer ownership, fixed prices, concurrent checkout, signatures, retries, and storage failures.
