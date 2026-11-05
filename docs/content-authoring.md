@@ -6,7 +6,7 @@ Installers contain only the five public coding examples and five development des
 
 These tools validate a file that you select.
 They do not examine private repositories or copy drafts into installers.
-They do not call a model, contact checkout, publish content, or install content.
+The curriculum commands do not call a model, contact checkout, publish content, or install content.
 
 ## Draft contract
 
@@ -62,6 +62,176 @@ It does not give approval for sale.
 Correct JSON fixtures and function signatures do not show that expected answers are correct.
 Do not copy third-party interview content.
 Do not record approval without a review.
+
+## Question language review
+
+`tools.language_review` examines a question file or an unreviewed draft manifest.
+It reads the local ASD-STE100 Issue 9 PDF with its Part 2 dictionary.
+The tool records dictionary entries, parts of speech, PDF pages, and possible rule errors.
+The report identifies the specified context checks that a reviewer must complete.
+The tool does not give an automatic conformity verdict or content approval.
+
+Install the authoring dependencies:
+
+```bash
+uv sync --group authoring --dev
+```
+
+Download [Issue 9 from ASD](https://www.asd-ste100.org/assets/files/ASD-STE100_ISSUE9.pdf).
+Keep the PDF outside the repository.
+The repository does not contain a dictionary copy.
+
+To examine one question without a model:
+
+```bash
+uv run --group authoring python -m tools.language_review audit /private/question.json \
+  --item question-id --dictionary-pdf /private/ASD-STE100_ISSUE9.pdf \
+  --report /private/question-language-report.json
+```
+
+Supply `--item` for each selected ID. Unknown or duplicate IDs cause an error.
+The tool does not examine other files or repositories.
+It accepts a standalone coding question, a standalone design question, or a `DraftManifest`.
+Released manifests and signed packages are not draft inputs.
+A missing coding or design array has no items.
+
+For a candidate rewrite, install [Ollama](https://ollama.com/download).
+Start Ollama before the model download.
+The default model tag is `qwen3:4b-instruct`.
+
+```bash
+ollama pull qwen3:4b-instruct
+uv run --group authoring python -m tools.language_review rewrite /private/question.json \
+  --item question-id --dictionary-pdf /private/ASD-STE100_ISSUE9.pdf \
+  --output /private/question-candidate.json --report /private/question-rewrite-report.json
+```
+
+`--ollama-url` defaults to `http://127.0.0.1:11434`. `--model` selects the installed model tag.
+Only the rewrite command uses these arguments.
+
+The tool examines model metadata before it sends question text.
+It rejects cloud models, remote endpoints, redirects, and unknown model metadata.
+It does not install a model or use a paid provider.
+Each rewrite uses at most one model request, with no automatic retries.
+
+The model returns proposed changes. Fields without proposed changes keep their previous text.
+The report gives the number of changed fields. An empty set of changes does not show conformity.
+
+In local tests, `qwen3:4b-instruct` repeated source text and paths. It did not correct a full question.
+The tool rejected repeated paths. These results do not show that the model can make the necessary corrections.
+A `qwen3:4b` test changed one phrase but left known rule errors.
+You can select a different installed model or correct a candidate before the audit command.
+
+The model receives only selected prose, declared terms, rule screens, and related dictionary alternatives.
+It does not receive canonical solutions, private tests, example inputs or outputs, unselected items, or the full PDF.
+
+The prompt has a maximum size of 24,000 UTF-8 bytes, including instructions and its JSON schema.
+Each selected text field has a maximum of 20,000 characters.
+The model context has 32,768 tokens. The maximum model output is 6,000 tokens.
+The HTTP read timeout is 300 seconds. The response body has a maximum of 60,000 bytes.
+
+### Editable text and protected data
+
+| Source | Editable text |
+| --- | --- |
+| Coding | `description_md`, constraints, example explanations, and follow-up questions. |
+| Design | `brief_md`, requirements, constraints, scenarios, and rubric prompts. |
+| With `--include-hints` | Coding hints and common mistakes, or design hints. |
+
+Titles, IDs, metadata, code, tests, example inputs and outputs, and unselected items keep their previous values.
+Array lengths and indices do not change.
+The tool also compares code blocks, quoted text, identifiers, numbers, operators, recognized formulas, and resource references.
+These comparisons do not show that two sentences have the same meaning.
+The reviewer must examine requirements, limits, negation, units, sequence, ownership, failures, and hint depth.
+
+The tool protects hyphenated text as a possible formula by default.
+For a prose word such as `non-overlapping`, add `--prose-hyphen non-overlapping`.
+This argument lets the tool change that word outside code and quoted text.
+It does not approve the word or its meaning.
+Do not declare formulas as prose. A declaration removes their formula protection outside code and quoted text.
+
+Supply each prose word one time. The word must occur in the selected text.
+Use the same arguments when you audit the candidate.
+The report records these declarations for independent review.
+
+An AI rewrite cannot keep an `authored_with: "human"` claim.
+The rewrite command rejects human-only drafts. The audit command can examine them.
+New question text invalidates previous content approval.
+The tool does not change installed content, saved attempts, or their pinned revisions.
+
+### Reports, corrections, and errors
+
+Each report identifies the selected IDs and paths, source hash, candidate hash, tool version, PDF hash, and requested model tag.
+Content hashes use normalized JSON with UTF-8 text, sorted keys, and no separator whitespace.
+JSON formatting outside text fields does not change these hashes.
+The PDF hash identifies the bytes that the parser reads.
+
+Counts show included items, excluded items, changed text fields, and text fields without changes.
+Excluded items are the unselected items. The tool does not skip selected items.
+The excluded leaf count includes protected scalar values and empty text fields.
+An empty selection or an item without question text causes an error.
+
+`entry_found` identifies a dictionary entry. It does not approve a word's contextual meaning or part of speech.
+`form_review` identifies a possible base form for review.
+`unapproved_entry` and `not_indexed` identify words that you must examine.
+
+Rule screens identify long sentences, long paragraphs, semicolons, possible contractions, and `-ing` forms.
+Their word counts are approximate. The reviewer must apply the standard's counting rules and sentence types.
+
+With `--terms /private/terms.json`, supply up to 100 declared terms:
+
+```json
+{"terms": [{"text": "array", "kind": "technical_noun", "meaning": "An indexed sequence of values."}]}
+```
+
+Each term has `text`, `kind`, and `meaning`.
+The permitted kind values are `technical_noun`, `technical_verb`, and `name`.
+Declarations record proposed terms. A reviewer must examine their permitted use.
+
+After you correct the candidate text, examine it with the same source and selection:
+
+```bash
+uv run --group authoring python -m tools.language_review audit /private/question.json \
+  --item question-id --dictionary-pdf /private/ASD-STE100_ISSUE9.pdf \
+  --candidate /private/question-candidate.json --report /private/corrected-language-report.json
+```
+
+The tool rejects protected changes before it writes a candidate.
+Use new output paths. The tool does not replace source files or previous artifacts.
+Each file write is atomic. The candidate and report are not one transaction.
+
+If the report write has an error, the new candidate can stay without a report.
+Do not use that candidate for release until its report and independent review are completed.
+
+Exit code `0` shows that the tool wrote the report. It does not show conformity or release approval.
+Exit code `2` identifies an input, model, or file error. Exit code `130` identifies a user interruption.
+Malformed responses, tool requests, changed literals, and token-limit responses cause errors without automatic retries.
+The source files keep their previous values after errors or interruption.
+
+### Reviewed example
+
+The [Delivery Hold Clusters question](../problems/examples/0015-delivery-hold-clusters.json) contains a corrected example for all users.
+The tool examined nine selected fields. Six text fields changed, and three fields kept their text.
+The tool did not change the other 83 values.
+
+A different AI agent examined the corrected text. It used Part 1 and Part 2 of ASD-STE100 Issue 9.
+The [review record](language-review/delivery-hold-review.json) gives each selected field, word check, rule check, and hash.
+The word checks include the meaning and part of speech for each word in its sentence.
+The [term file](language-review/delivery-hold-terms.json) gives the technical terms for this example.
+
+The review found no necessary changes to the selected text.
+It does not include hints, solutions, tests, or the other fields.
+These results are for the selected fields only.
+The AI review gives no approval for a commercial release.
+
+The corrected text gives cluster membership and output endpoints.
+It keeps the gap formula, limits, output sequence, and follow-up questions.
+The source commit in the record identifies the previous text.
+
+Previous attempts keep their saved question snapshots.
+New local attempts use the updated catalog after the next content load.
+For Supabase, the new catalog migration supplies the updated text.
+Attempts without a snapshot that the app can get stay `unpinned`.
 
 ## Review-bound compilation
 

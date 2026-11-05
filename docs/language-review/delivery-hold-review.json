@@ -1,0 +1,946 @@
+{
+  "format_version": 1,
+  "standard": "ASD-STE100 Issue 9, Part 1 and Part 2",
+  "reviewer": "Independent dictionary-parser agent",
+  "review_method": "Manual contextual review, with exact official-PDF references and local dictionary assistance. Dictionary lookup status alone does not establish acceptance.",
+  "result": "No remaining required prose edits found in the nine selected fields.",
+  "whole_question_conformity": "not_claimed",
+  "scope": {
+    "item_id": "0015-delivery-hold-clusters",
+    "selected_field_count": 9,
+    "fields": [
+      {
+        "path": "/description_md",
+        "source_text_sha256": "cfe2f311229019f7be4de00ec44a6bea422c36f09f8b81c496e8109222b5e108",
+        "candidate_text_sha256": "e08961ca20b03adc2325dbf816782e70f32283df30658eb52ced30225649b2f7",
+        "changed": true,
+        "formula_only": false,
+        "paragraphs": [
+          {
+            "sentences": 2,
+            "word_counts": [
+              10,
+              8
+            ]
+          },
+          {
+            "sentences": 4,
+            "word_counts": [
+              12,
+              20,
+              14,
+              11
+            ]
+          },
+          {
+            "sentences": 3,
+            "word_counts": [
+              6,
+              16,
+              9
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/constraints/0",
+        "source_text_sha256": "b8cd88a1e9389007c06cad52088f8fe6976ce3a22f09b0dad2b9a20be16f656d",
+        "candidate_text_sha256": "b8cd88a1e9389007c06cad52088f8fe6976ce3a22f09b0dad2b9a20be16f656d",
+        "changed": false,
+        "formula_only": true,
+        "paragraphs": [
+          {
+            "sentences": 1,
+            "word_counts": [
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/constraints/1",
+        "source_text_sha256": "6b7f6668aba591956dec13ac9aad98695e90cba852673f756534a5844ba0c094",
+        "candidate_text_sha256": "6b7f6668aba591956dec13ac9aad98695e90cba852673f756534a5844ba0c094",
+        "changed": false,
+        "formula_only": false,
+        "paragraphs": [
+          {
+            "sentences": 1,
+            "word_counts": [
+              9
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/constraints/2",
+        "source_text_sha256": "3118a17080cf1d6b58a2ced46b91052cc5eba6117a09f1bb005115cf1cd22445",
+        "candidate_text_sha256": "3118a17080cf1d6b58a2ced46b91052cc5eba6117a09f1bb005115cf1cd22445",
+        "changed": false,
+        "formula_only": true,
+        "paragraphs": [
+          {
+            "sentences": 1,
+            "word_counts": [
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/constraints/3",
+        "source_text_sha256": "01e26079c447effb66e0746310768612fbc60fa1d3d39d79447869b90aaef48f",
+        "candidate_text_sha256": "d5365f007c077900c0719b1d0f077690ff4b0bf76d851933e684e7a160d7accf",
+        "changed": true,
+        "formula_only": false,
+        "paragraphs": [
+          {
+            "sentences": 2,
+            "word_counts": [
+              14,
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/follow_up_questions/0",
+        "source_text_sha256": "79aea41b984da5c3008da6f5c165b15485f8d8dc9e61d9c3c8335b872274da72",
+        "candidate_text_sha256": "5622e634a44ed2e3a722f895ec63d7f17266f36fa753afe6e6347aa762dd4a03",
+        "changed": true,
+        "formula_only": false,
+        "paragraphs": [
+          {
+            "sentences": 1,
+            "word_counts": [
+              16
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/follow_up_questions/1",
+        "source_text_sha256": "3124026f99115ad4a7ba1c43685630077f3e30d107966c794af6dc26ac65111c",
+        "candidate_text_sha256": "ec57ae3883528fca7ef379f2b1cc7e010cbb53621c57d38409aec4ab127c5886",
+        "changed": true,
+        "formula_only": false,
+        "paragraphs": [
+          {
+            "sentences": 1,
+            "word_counts": [
+              11
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/follow_up_questions/2",
+        "source_text_sha256": "ff615704c1dc6ab2d1d628f67dab1e033262aa216a5ab1f948cd748488730e0a",
+        "candidate_text_sha256": "c651cf98e74b8f5329646c80a323cbd1cfb4f205c4f634e9d98d103734916db4",
+        "changed": true,
+        "formula_only": false,
+        "paragraphs": [
+          {
+            "sentences": 1,
+            "word_counts": [
+              15
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/examples/0/explanation",
+        "source_text_sha256": "86a694c902416a59a3c907a5b681f8523041cd71fef9784bd75349d8e5d9acf6",
+        "candidate_text_sha256": "cf1f9b5339e7a3637a954697017bc88c99e3aa71ea40151ec7710ffc8f885026",
+        "changed": true,
+        "formula_only": false,
+        "paragraphs": [
+          {
+            "sentences": 2,
+            "word_counts": [
+              10,
+              8
+            ]
+          }
+        ]
+      }
+    ],
+    "source_selected_fields_obtained_with": "tools.language_review.select_fields",
+    "excluded_content": "Code, canonical solution, tests, IDs, title, metadata, example inputs and outputs, hints, and all other unselected fields. The reviewer did not inspect their contents."
+  },
+  "hashes": {
+    "format": "canonical-json-utf8-v1 for selected text; raw byte SHA256 for files",
+    "candidate_file_sha256": "cd9258ae07922fe77e616b4ab9e955f98e7345ba5aa21b0c4eeb829a030da81d",
+    "candidate_canonical_json_sha256": "2c39af784c037577080e1287ec96bc2cb199359e0b796d6b547175442f48707d",
+    "terms_file_sha256": "78145104cb30ff657bde810e3b4f229d5212d87fe2aec81e02cb81e43a0ba8f1",
+    "terms_canonical_json_sha256": "61092ac3af88341ede77458347a61167156d88a568a5deffc25b92517d225212",
+    "official_dictionary_pdf_sha256": "d1f4ea9e7cd6e46b47aa9057209f99e78c0e9cfc4e27a5b07895b05c1a166431"
+  },
+  "official_reference": {
+    "source": "https://www.asd-ste100.org/assets/files/ASD-STE100_ISSUE9.pdf",
+    "writing_rules_pdf_pages": [
+      45,
+      48,
+      49,
+      51,
+      52,
+      53,
+      57,
+      58,
+      59,
+      63,
+      67,
+      68,
+      77,
+      80,
+      85,
+      87,
+      95,
+      101,
+      107,
+      111,
+      115,
+      123,
+      124,
+      125
+    ],
+    "dictionary_intro_pdf_pages": [
+      133,
+      134,
+      135
+    ]
+  },
+  "rule_checks": [
+    {
+      "rules": "1.1-1.14",
+      "result": "General words have permitted contextual meanings, parts of speech and forms. Subject terms are accepted only for the stated mathematical, logistics and software meanings. The earlier false MERGED noun declaration is absent."
+    },
+    {
+      "rules": "2.1-2.2",
+      "result": "Noun groups remain within three words. Examples include input hold IDs, minimum start day and maximum end day."
+    },
+    {
+      "rules": "3.1-3.7",
+      "result": "The text uses simple present forms, permitted CAN constructions and commands. It contains no passive sentences, complex tenses or verb forms ending in -ing. GETS, HAS, INCLUDES and RECORDS have permitted forms. RETURN is the established software technical verb."
+    },
+    {
+      "rules": "4.1-4.5",
+      "result": "The text retains necessary words and articles. It contains no contractions. THE CLUSTER now replaces the unapproved adjective use THAT CLUSTER."
+    },
+    {
+      "rules": "5.1-5.5",
+      "result": "Output instructions use commands with one instruction per sentence. Their word counts are 6, 16 and 9. Conditions precede the related statements. There are no notes containing commands."
+    },
+    {
+      "rules": "6.1-6.6",
+      "result": "The description develops representation, membership, and output in three paragraphs. Paragraph sentence counts are 2, 4 and 3. The longest descriptive sentence has 20 words."
+    },
+    {
+      "rules": "7",
+      "result": "No safety instructions occur in the selected prose. Severity labels and safety consequences are not applicable."
+    },
+    {
+      "rules": "8.1-8.7",
+      "result": "There are no semicolons. Identifiers and numbers retain their exact text. The quantity 2 days counts as one word. Formula operators were conservatively counted as separate tokens in the recorded formula counts."
+    },
+    {
+      "rules": "9 and applicable grammar rules",
+      "result": "The text avoids the rejected ARRIVE, conjunctive AS, ORIGINAL, SO, WHAT, EARLIER and LATER uses. Pronoun references and the endpoint explanation are clear within the selected description."
+    }
+  ],
+  "general_word_checks": [
+    {
+      "surface": "a",
+      "base": "A",
+      "part_of_speech": "art",
+      "pdf_pages": [
+        149
+      ],
+      "context_check": "Introduces a system or an output range.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "after",
+      "base": "AFTER",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        158
+      ],
+      "context_check": "Places clusters after clusters with smaller start values.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "and",
+      "base": "AND",
+      "part_of_speech": "conj",
+      "pdf_pages": [
+        163
+      ],
+      "context_check": "Connects endpoints and mathematical conditions.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "are",
+      "base": "BE",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        175
+      ],
+      "context_check": "States cluster membership or range identities.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "as",
+      "base": "AS",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        167
+      ],
+      "context_check": "States the representation of holds as ranges.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "at",
+      "base": "AT",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        169
+      ],
+      "context_check": "Part of the numerical upper-bound expression at most.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "can",
+      "base": "CAN",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        183
+      ],
+      "context_check": "Asks about a possible method.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "change",
+      "base": "CHANGE",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        188
+      ],
+      "context_check": "Asks how to make the system different.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "contain",
+      "base": "CONTAIN",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        201
+      ],
+      "context_check": "States that a cluster includes a hold.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "correct",
+      "base": "CORRECT",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        203
+      ],
+      "context_check": "The clusters agree with the stated rules.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "different",
+      "base": "DIFFERENT",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        217
+      ],
+      "context_check": "Distinguishes grace values for delivery regions.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "distance",
+      "base": "DISTANCE",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        221
+      ],
+      "context_check": "Measures the separation of two day endpoints. The equation fixes its numerical meaning.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "each",
+      "base": "EACH",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        227
+      ],
+      "context_check": "Applies to every range, hold, cluster or delivery region.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "end",
+      "base": "END",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        232
+      ],
+      "context_check": "Names an interval endpoint. It is not used as a verb.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "for",
+      "base": "FOR",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        254
+      ],
+      "context_check": "Introduces a condition or associates a result with its cluster.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "from",
+      "base": "FROM",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        257
+      ],
+      "context_check": "Identifies the first endpoint of the measured gap.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "gets",
+      "base": "GET",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        262
+      ],
+      "context_check": "The system obtains a new input hold.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "has",
+      "base": "HAVE",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        269
+      ],
+      "context_check": "A delivery region possesses a grace value.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "have",
+      "base": "HAVE",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        269
+      ],
+      "context_check": "The ranges possess the stated overlap relationship.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "how",
+      "base": "HOW",
+      "part_of_speech": "adv",
+      "pdf_pages": [
+        272
+      ],
+      "context_check": "Asks for a manner or method.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "if",
+      "base": "IF",
+      "part_of_speech": "conj",
+      "pdf_pages": [
+        275
+      ],
+      "context_check": "Introduces a stated condition.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "in",
+      "base": "IN",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        279
+      ],
+      "context_check": "Shows membership within a cluster.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "includes",
+      "base": "INCLUDE",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        280
+      ],
+      "context_check": "States that endpoints are part of a range.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "input",
+      "base": "INPUT",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        284
+      ],
+      "context_check": "Names data supplied to the function. It modifies hold IDs.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "is",
+      "base": "BE",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        175
+      ],
+      "context_check": "States a property, identity or mathematical equality.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "its",
+      "base": "ITS",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        290
+      ],
+      "context_check": "Refers to the endpoints of the range.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "keep",
+      "base": "KEEP",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        293
+      ],
+      "context_check": "Continues to have correct clusters or the input IDs.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "maximum",
+      "base": "MAXIMUM",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        308
+      ],
+      "context_check": "Selects the greatest end-day value.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "minimum",
+      "base": "MINIMUM",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        311
+      ],
+      "context_check": "Selects the least start-day value.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "most",
+      "base": "MOST",
+      "part_of_speech": "adv",
+      "pdf_pages": [
+        313
+      ],
+      "context_check": "Part of at most, which states the maximum permitted gap.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "new",
+      "base": "NEW",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        316
+      ],
+      "context_check": "A hold has not been supplied before.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "of",
+      "base": "OF",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        320
+      ],
+      "context_check": "Associates endpoints with holds and clusters.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "put",
+      "base": "PUT",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        346
+      ],
+      "context_check": "Places each result cluster in the required sequence.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "records",
+      "base": "RECORD",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        353
+      ],
+      "context_check": "The system stores the hold data.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "same",
+      "base": "SAME",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        367
+      ],
+      "context_check": "Identifies one cluster or one shared hold.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "smaller",
+      "base": "SMALL",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        381
+      ],
+      "context_check": "Compares numerical start values. SMALLER is expressly listed on PDF381.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "start",
+      "base": "START",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        388
+      ],
+      "context_check": "Names the beginning day of a hold.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "subsequent",
+      "base": "SUBSEQUENT",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        392
+      ],
+      "context_check": "Identifies the following hold in time without requiring immediate adjacency.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "system",
+      "base": "SYSTEM",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        398
+      ],
+      "context_check": "The related software parts perform the hold operation.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "the",
+      "base": "THE",
+      "part_of_speech": "art",
+      "pdf_pages": [
+        401
+      ],
+      "context_check": "Refers to an identified entity or property.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "their",
+      "base": "THEIR",
+      "part_of_speech": "adj",
+      "pdf_pages": [
+        401
+      ],
+      "context_check": "Associates ranges or a gap with the holds.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "they",
+      "base": "THEY",
+      "part_of_speech": "pron",
+      "pdf_pages": [
+        402
+      ],
+      "context_check": "Refers to the two clusters in the preceding clause.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "time",
+      "base": "TIME",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        405
+      ],
+      "context_check": "One at a time describes one input occurrence.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "to",
+      "base": "TO",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        405
+      ],
+      "context_check": "Identifies the second endpoint of a measured gap.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "use",
+      "base": "USE",
+      "part_of_speech": "v",
+      "pdf_pages": [
+        420
+      ],
+      "context_check": "Employs the specified minimum and maximum as result endpoints.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "value",
+      "base": "VALUE",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        421
+      ],
+      "context_check": "Names the numerical grace parameter.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "values",
+      "base": "VALUE",
+      "part_of_speech": "n",
+      "pdf_pages": [
+        421
+      ],
+      "context_check": "Names numerical start parameters. This is a countable noun plural.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "when",
+      "base": "WHEN",
+      "part_of_speech": "conj",
+      "pdf_pages": [
+        427
+      ],
+      "context_check": "Introduces the time at which the system gets a hold.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "with",
+      "base": "WITH",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        430
+      ],
+      "context_check": "Connects holds, ranges and clusters to their properties.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "without",
+      "base": "WITHOUT",
+      "part_of_speech": "prep",
+      "pdf_pages": [
+        430
+      ],
+      "context_check": "States the absence of overlap.",
+      "result": "accepted_in_selected_context"
+    },
+    {
+      "surface": "you",
+      "base": "YOU",
+      "part_of_speech": "pron",
+      "pdf_pages": [
+        433
+      ],
+      "context_check": "Addresses the reader.",
+      "result": "accepted_in_selected_context"
+    }
+  ],
+  "technical_term_checks": [
+    {
+      "text": "logistics system",
+      "kind": "technical_noun",
+      "meaning": "A system that records delivery operations.",
+      "rule_1_categories": [
+        5,
+        19
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "delivery hold",
+      "kind": "technical_noun",
+      "meaning": "An inclusive range of days when a delivery is held.",
+      "rule_1_categories": [
+        5,
+        20
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "hold",
+      "kind": "technical_noun",
+      "meaning": "Short form of delivery hold.",
+      "rule_1_categories": [
+        5,
+        20
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "range",
+      "kind": "technical_noun",
+      "meaning": "An interval with its start and end values included.",
+      "rule_1_categories": [
+        7
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "cluster",
+      "kind": "technical_noun",
+      "meaning": "A group of holds connected by overlap or gaps at most grace_days.",
+      "rule_1_categories": [
+        7,
+        19
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "gap",
+      "kind": "technical_noun",
+      "meaning": "The later start day minus the earlier end day for holds without overlap.",
+      "rule_1_categories": [
+        7
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "overlap",
+      "kind": "technical_noun",
+      "meaning": "A nonempty intersection of day ranges.",
+      "rule_1_categories": [
+        7
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "ID",
+      "kind": "technical_noun",
+      "meaning": "An identifier for an input hold.",
+      "rule_1_categories": [
+        19
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "return",
+      "kind": "technical_verb",
+      "meaning": "Supply the function result to its caller.",
+      "rule_1_categories": [
+        "technical_verb_2a"
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "delivery region",
+      "kind": "technical_noun",
+      "meaning": "A geographical area with a specified delivery policy.",
+      "rule_1_categories": [
+        5,
+        20
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "input",
+      "kind": "technical_noun",
+      "meaning": "Data supplied to the function.",
+      "rule_1_categories": [
+        19
+      ],
+      "decision": "accepted_for_the_selected_subject_context"
+    },
+    {
+      "text": "day / days",
+      "kind": "technical_noun",
+      "rule_1_categories": [
+        9
+      ],
+      "decision": "Time units are permitted. The example uses 2 days."
+    },
+    {
+      "text": "one / two / first",
+      "kind": "technical_noun",
+      "rule_1_categories": [
+        9
+      ],
+      "decision": "Cardinal and ordinal number uses are permitted."
+    },
+    {
+      "text": "start day / end day",
+      "kind": "technical_noun",
+      "rule_1_categories": [
+        7,
+        9
+      ],
+      "decision": "These are interval endpoint names. The text also preserves the exact parameter identifiers."
+    }
+  ],
+  "semantic_checks": [
+    {
+      "requirement": "Inclusive endpoints",
+      "result": "Each range includes its start and end days."
+    },
+    {
+      "requirement": "Input bounds and validity",
+      "result": "The zero-to-100000 hold count, endpoint inequality and zero-to-1000000000 grace bound remain unchanged. Empty input remains permitted."
+    },
+    {
+      "requirement": "Overlap and gap alternatives",
+      "result": "Overlap or a gap at most grace_days places two holds in the same cluster."
+    },
+    {
+      "requirement": "Gap arithmetic",
+      "result": "For b < c, the gap remains c - b. The selected example retains 5 - 3 = 2 days. It does not count only the intervening dates."
+    },
+    {
+      "requirement": "Transitive membership",
+      "result": "The shared-hold sentence makes the transitive cluster requirement explicit."
+    },
+    {
+      "requirement": "Output endpoint meaning",
+      "result": "Each output cluster uses the minimum start day and maximum end day of its holds. This states the meaning of the source merged clusters without adding an algorithm."
+    },
+    {
+      "requirement": "Output sequence",
+      "result": "Each cluster follows clusters with smaller start_day values."
+    },
+    {
+      "requirement": "Follow-ups",
+      "result": "The selected questions retain one-at-a-time input, input-hold ID provenance and different regional grace values."
+    },
+    {
+      "requirement": "No solution disclosure",
+      "result": "The selected prose defines behavior without supplying the implementation or complexity analysis."
+    }
+  ],
+  "required_edits": [],
+  "limitations": [
+    "This review covers the nine selected prose fields only. It does not establish conformity of the whole question, source file, repository, or draft term-definition prose.",
+    "The hash of the complete candidate file binds the selected review to that file. It does not imply that excluded field contents were inspected.",
+    "The review checks the written requirements. It does not run or assess the canonical solution or exercise tests.",
+    "Technical term decisions apply only to the meanings and uses in these selected fields. A declaration does not approve unrelated uses of the same word.",
+    "The local dictionary helper does not automatically approve contextual use. The record resolves forms and subject terms separately."
+  ],
+  "source_commit": "c20ea3b58ff1467a3f016312807e0c88bfb3b2bc",
+  "source_file": "problems/examples/0015-delivery-hold-clusters.json",
+  "source_file_sha256": "1c86f3ac24c262f66b7fd7fd456b8505c489c312acd3a713875d05f8c16fc221",
+  "candidate_file": "problems/examples/0015-delivery-hold-clusters.json",
+  "terms_file": "docs/language-review/delivery-hold-terms.json",
+  "candidate_file_note": "The repository keeps its previous JSON layout. The canonical JSON hash matches the reviewed candidate. The raw candidate hash identifies the separate review artifact."
+}
