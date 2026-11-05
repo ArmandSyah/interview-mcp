@@ -26,6 +26,6 @@ jobs:
         working-directory: experiments/strands-coach
       - name: Test Strands, AgentCore, and actual MCP reads without inference
         working-directory: experiments/strands-coach
-        run: uv run --locked --extra agentcore pytest -q
+        run: uv run --locked --extra agentcore python -m pytest -q
         env:
           INTERVIEW_SERVER_PYTHON: ${{ github.workspace }}/.venv/bin/python

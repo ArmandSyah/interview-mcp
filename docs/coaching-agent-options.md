@@ -66,9 +66,12 @@ The existing coding `get_hint` tool is excluded because it records events and ca
 Code limits each turn to four model calls, four admitted tool calls, and one published hint.
 The lab does not replace the desktop coach. Execution, submission, and saved desktop practice keep their existing controls.
 
+The optional [AgentCore exercise](../experiments/strands-coach/AGENTCORE.md) provides local HTTP routes through SDK 1.25.3.
+It requires a local bearer credential and fixed session, retains the Strands limits, and verifies cancellation through the SDK worker.
+This local credential does not verify a Supabase account. The exercise is not a deployable hosted service.
+
 Before desktop integration, evaluate real local model behavior and preserve the existing service dispatcher.
 That dispatcher must retain argument binding, approval, cancellation, and result validation.
-Do not give the agent direct access to every MCP tool.
 See [Strands MCP integration](https://strandsagents.com/docs/user-guide/sdk/tools/mcp-tools/).
 
 ## Optional AWS deployment
@@ -76,8 +79,6 @@ See [Strands MCP integration](https://strandsagents.com/docs/user-guide/sdk/tool
 The user has no AWS account. No AWS resource is necessary for the local milestone.
 Create an AWS account only when a hosted trial is selected.
 Choose a region and model after a small coaching evaluation.
-
-The proposed hosted path is:
 
 ```text
 Desktop -> authenticated coach API -> Strands on AgentCore -> owned MCP tools
@@ -105,7 +106,6 @@ See [runtime sessions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devg
 Start with Runtime alone. Add Gateway or managed memory only for a demonstrated requirement.
 Use redacted tracing with a short retention period.
 Do not log account tokens or complete private drafts.
-Current SDK and CLI commands can differ from older tutorials.
 Check installed versions and command help before deployment.
 See [AgentCore deployment](https://strandsagents.com/docs/user-guide/sdk/deploy/deploy_to_bedrock_agentcore/).
 
@@ -139,8 +139,8 @@ See [Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/).
 
 ## Verification milestones
 
-1. Completed: 31 tests passed with the installed SDK, scripted model responses, and real local MCP coding and design reads.
-2. Completed: tests cover fixed identifiers, denied tools, call limits, invalid evidence, hint publication, timeout, and cancellation.
+1. Completed: 48 tests passed with Strands, the optional AgentCore SDK, scripted model responses, and real local MCP coding and design reads.
+2. Completed: tests cover identifiers, local credentials, request validation, tool limits, hint publication, concurrency, timeout, and cancellation.
 3. Evaluate a local model for useful hints, factual errors, and unwanted solution disclosure.
 4. Integrate desktop events and verify existing approval and draft-preservation stories.
 5. Prepare reviewed AWS infrastructure, usage caps, and cleanup commands before any hosted trial.

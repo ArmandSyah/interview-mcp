@@ -23,7 +23,7 @@ async function setup(configured = false, viewport = { width: 1440, height: 1000 
     if (new URL(route.request().url()).origin === new URL(base).origin) return route.continue();
     return route.abort();
   });
-  if (configured) await page.route('**/config.json', (route) => route.fulfill(json(config)));
+  await page.route('**/config.json', (route) => route.fulfill(json(configured ? config : { paymentMode: 'sandbox' })));
   return { page, context };
 }
 async function signin(page) {
@@ -55,6 +55,33 @@ try {
   assert(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Mobile horizontal overflow');
   await mobile.page.screenshot({ path: `${screenshotDir}/interview-site-mobile.png`, fullPage: true });
   checks.push('Mobile layout has no horizontal overflow at 390 px');
+
+  for (const [configured, transactionId, shouldInitialize] of [
+    [true, `txn_${'b'.repeat(26)}`, true],
+    [true, 'txn_invalid', false],
+    [false, `txn_${'b'.repeat(26)}`, false],
+  ]) {
+    const paymentLink = await setup(configured);
+    const billingRequests = [];
+    await paymentLink.page.route('https://qa.supabase.co/functions/v1/billing/**', (route) => {
+      billingRequests.push(route.request().method());
+      return route.fulfill(json(status));
+    });
+    await paymentLink.page.route('https://cdn.paddle.com/paddle/v2/paddle.js', (route) => route.fulfill({ contentType: 'application/javascript', body: `window.Paddle={Environment:{set:(value)=>{window.qaEnvironment=value}},Initialize:(value)=>{window.qaPaddleInit=value;window.qaAutoTransaction=new URL(location.href).searchParams.get('_ptxn')},Checkout:{open:()=>{throw new Error('Payment links must not call Checkout.open')}}};` }));
+    await paymentLink.page.goto(`${base}/?_ptxn=${transactionId}`);
+    await paymentLink.page.waitForLoadState('networkidle');
+    if (shouldInitialize) {
+      assert.equal(await paymentLink.page.evaluate(() => window.qaAutoTransaction), transactionId);
+      assert.equal(await paymentLink.page.evaluate(() => window.qaEnvironment), 'sandbox');
+      assert.equal(await paymentLink.page.evaluate(() => window.qaPaddleInit.checkout.settings.allowLogout), false);
+      await paymentLink.page.evaluate(() => window.qaPaddleInit.eventCallback({ name: 'checkout.completed' }));
+    } else assert.equal(await paymentLink.page.evaluate(() => window.qaPaddleInit), undefined);
+    assert.deepEqual(billingRequests, [], 'A signed-out payment link must not create a checkout or grant account access');
+    assert(!(await paymentLink.page.locator('#account-panel').isVisible()));
+    assert(await paymentLink.page.locator('#checkout').isDisabled());
+    await paymentLink.context.close();
+  }
+  checks.push('Configured payment links initialize sandbox Paddle without creating a transaction or granting access; malformed and unconfigured links stay inactive');
 
   const { page, context } = await setup(true);
   let signupBody;

@@ -55,7 +55,7 @@ function loadPaddle() {
   paddleReady ??= new Promise((resolve, reject) => {
     const script = document.createElement('script'); script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
     script.onload = () => {
-      try { window.Paddle.Environment.set('sandbox'); window.Paddle.Initialize({ token: config.paddleClientToken, eventCallback: (event) => { if (event.name === 'checkout.completed') void refreshStatus(); } }); resolve(window.Paddle); } catch { paddleReady = undefined; script.remove(); reject(new Error('Paddle sandbox could not initialize.')); }
+      try { window.Paddle.Environment.set('sandbox'); window.Paddle.Initialize({ token: config.paddleClientToken, checkout: { settings: { allowLogout: false, showAddDiscounts: false } }, eventCallback: (event) => { if (event.name === 'checkout.completed') void refreshStatus(); } }); resolve(window.Paddle); } catch { paddleReady = undefined; script.remove(); reject(new Error('Paddle sandbox could not initialize.')); }
     };
     script.onerror = () => { paddleReady = undefined; script.remove(); reject(new Error('Paddle sandbox could not load.')); };
     document.head.append(script);
@@ -115,6 +115,10 @@ element('portal').addEventListener('click', async () => {
 });
 try {
   config = validateConfig(await (await fetch('config.json', { cache: 'no-store' })).json());
+  // Paddle reads its payment-link transaction. A URL visit must not create a new checkout.
+  if (config.billingReady && /^txn_[a-z0-9]{26}$/.test(new URL(location.href).searchParams.get('_ptxn') || '')) {
+    void loadPaddle().catch((error) => message('billing-note', error.message));
+  }
   if (config.accountsReady) {
     client = createClient(config.supabaseUrl, config.publishableKey, { auth: { flowType: 'pkce', detectSessionInUrl: true } });
     client.auth.onAuthStateChange((_event, value) => { queueMicrotask(() => setSession(value)); });
