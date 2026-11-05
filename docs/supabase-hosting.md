@@ -22,9 +22,11 @@ The status result contains the available capabilities.
 The function does not advertise unavailable execution, payment, or recall tools.
 
 Account registration and desktop sign-in are not implemented.
-Live tests verified account tokens, token replacement, owned practice, and local Docker execution.
+Earlier version 4 tests verified account tokens, token replacement, owned practice, and local Docker execution.
 The tests used two temporary accounts, then removed those accounts and their records.
 They did not verify public registration or a desktop sign-in page.
+Version 5 deployment checks cover database contracts and HTTP authentication failures.
+They do not repeat the earlier signed-in account tests.
 Use the local engine for usual desktop practice.
 
 ## Desktop connection
@@ -240,29 +242,44 @@ The function URL has this form:
 https://<project-ref>.supabase.co/functions/v1/interview-mcp
 ```
 
-The recorded remote deployment predates two repository migrations:
+The existing Free project was restored on 5 November 2026.
+Function version 5 is active at this endpoint:
 
-- `20261028163500_public_catalog.sql` adds the reviewed public question revision.
-- `20261028165000_design_session_recovery.sql` adds design-session recovery.
-
-The updated function must also be deployed for design-session recovery.
-These changes have local and CI checks, but no recorded remote deployment.
-Compare remote migration history with the repository before deployment.
-After Supabase CLI authentication, link the selected project:
-
-```bash
-supabase link --project-ref <project-ref>
-supabase db push --dry-run
+```text
+https://jwaprdinilnnvryvodwh.supabase.co/functions/v1/interview-mcp
 ```
 
-Examine the proposed changes before database deployment.
-For a new project, apply the migrations before the function deployment:
+Both pending migrations are deployed:
+
+- `20261105132724_public_catalog.sql` adds the reviewed public question revision.
+- `20261105132732_design_session_recovery.sql` adds design-session recovery.
+
+The repository filenames now match the timestamps assigned by Supabase.
+Their SQL contents did not change.
+The previous filenames started with `20261028163500` and `20261028165000`.
+The three earlier migrations keep their filenames and contents.
+
+Database checks passed with temporary records in a transaction that was rolled back.
+The checks covered ownership, old revisions, checkpoint retries, completion retries, and local execution reports.
+HTTP checks confirmed rejection of missing tokens, invalid tokens, and browser origins.
+A fresh signed-in account test remains unverified because the earlier management login expired.
+The connected deployment tools do not supply the administrator key required by that test.
+
+See the [deployment record](deployments/2026-11-05-supabase.md) for evidence and limits.
+
+For a future deployment, compare remote migration history with the repository first.
+Check the installed command-line interface (CLI) version and command options:
 
 ```bash
-supabase db push
-supabase functions deploy interview-mcp
+supabase --version
+supabase db push --help
+supabase functions deploy --help
 ```
 
+CLI version 3 defaults database commands to the local environment.
+Hosted database deployment requires `--remote`. Unattended changes require `--yes`.
+See the [CLI version 3 changes](https://supabase.com/changelog/supabase-cli-v3).
+Apply reviewed database migrations before the corresponding Edge Function.
 Do not run `supabase config push` to change unrelated project authentication settings.
 An account session token is necessary for MCP requests.
 The Supabase management sign-in is not an app account token.
