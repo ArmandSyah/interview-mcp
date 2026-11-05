@@ -25,7 +25,7 @@ async function billing(path, method = 'GET') {
     if (current !== epoch || session?.user.id !== user) throw new Error('The account changed. Please retry.');
     if (!response.ok) {
       if (response.status === 401) throw new Error('Sign in with a confirmed account to continue.');
-      if (response.status === 409) throw new Error(data.error === 'no_billing_account' ? 'This account has no sandbox billing customer yet.' : data.error === 'subscription_exists' ? 'This account already has a sandbox subscription.' : 'This checkout needs review before another payment can start.');
+      if (response.status === 409) throw new Error(data.error === 'no_billing_account' ? 'This account has no sandbox billing customer yet.' : data.error === 'already_subscribed' ? 'This account already has a sandbox subscription.' : 'This checkout needs review before another payment can start.');
       throw new Error('The sandbox billing service is unavailable. Please retry later.');
     }
     return data;

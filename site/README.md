@@ -25,7 +25,7 @@ Edit `public/config.json` with public values only:
 - `paddleClientToken`: a Paddle sandbox client token that starts with `test_`.
 - `paymentMode`: `sandbox`.
 
-The build rejects unknown fields, secret keys, live tokens, and billing URLs outside the configured project.
+The build rejects unknown fields, secret keys, live tokens, and billing URLs outside the configured project. These checks also apply when accounts are disabled. The build copies only the listed website assets and removes stale output.
 
 Never add a Supabase service key, Paddle API key, or webhook secret here. Store those secrets in server settings. Do not store card numbers or security codes. Paddle provides HTTPS checkout and its customer portal. The browser sends only a verified transaction identifier to Paddle checkout.
 
@@ -40,3 +40,12 @@ The current download is an unsigned Windows development artifact. GitHub require
 ## Verification
 
 Configuration tests cover disabled defaults, secret rejection, billing destinations, and portal destinations. Browser checks use mocked account and payment services. They do not prove a real provider integration.
+
+Run the browser checks against the local preview:
+
+```sh
+npx playwright install chromium
+npm run test:browser
+```
+
+These checks mock account and payment requests. They do not send email or charge cards. The Website workflow repeats them on pull requests.

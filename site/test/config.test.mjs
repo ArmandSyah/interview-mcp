@@ -22,5 +22,15 @@ test('a complete sandbox config enables the integration', () => {
 });
 test('portal redirects stay on Paddle sandbox', () => {
   assert.equal(portalURL('https://sandbox-customer-portal.paddle.com/session/example'), 'https://sandbox-customer-portal.paddle.com/session/example');
-  for (const value of ['javascript:alert(1)', 'https://sandbox-customer-portal.paddle.com.attacker.invalid/', 'https://user:secret@sandbox-customer-portal.paddle.com/']) assert.throws(() => portalURL(value));
+  for (const value of ['javascript:alert(1)', 'https://sandbox-customer-portal.paddle.com.attacker.invalid/', 'https://user:secret@sandbox-customer-portal.paddle.com/', 'https://sandbox-customer-portal.paddle.com:8443/']) assert.throws(() => portalURL(value));
+});
+
+test('disabled accounts still reject nonpublic Paddle values and unbound billing URLs', () => {
+  for (const paddleClientToken of ['pdl_sdbx_apikey_example', 'live_example']) {
+    assert.throws(() => validateConfig({ paymentMode: 'sandbox', paddleClientToken }), /sandbox/);
+  }
+  assert.throws(() => validateConfig({ paymentMode: 'sandbox', billingUrl: 'https://attacker.invalid' }), /Billing must use/);
+});
+test('Supabase projects cannot use alternate ports', () => {
+  assert.throws(() => validateConfig({ ...config, supabaseUrl: 'https://example.supabase.co:8443' }), /HTTPS origin/);
 });

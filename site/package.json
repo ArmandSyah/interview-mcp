@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node test/config.test.mjs"
+    "test": "node test/config.test.mjs && node test/build.test.mjs",
+    "test:browser": "node test/browser-qa.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.118.0"
   },
   "devDependencies": {
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0"
   }
 }
