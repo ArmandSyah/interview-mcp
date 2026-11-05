@@ -28,11 +28,11 @@ begin
   perform set_config('role','authenticated',true);
   perform set_config('request.jwt.claims',jsonb_build_object('sub',alice,'role','authenticated')::text,true);
   actual := public.iwb_practice('list_problems','{}');
-  if jsonb_array_length(actual)<>5 then raise exception 'list_problems({}): expected 5, actual %',actual; end if;
+  if jsonb_array_length(actual) is distinct from 5 then raise exception 'list_problems({}): expected 5, actual %',actual; end if;
   actual := public.iwb_practice('list_design_problems','{}');
-  if jsonb_array_length(actual)<>5 then raise exception 'list_design_problems({}): expected 5, actual %',actual; end if;
+  if jsonb_array_length(actual) is distinct from 5 then raise exception 'list_design_problems({}): expected 5, actual %',actual; end if;
   actual := public.iwb_practice('get_problem_description',jsonb_build_object('attempt_id',old_attempt));
-  if position((old_payload->>'description_md') in (actual #>> '{}'))=0 then raise exception 'get_problem_description(%): expected old description, actual %',old_attempt,actual; end if;
+  if coalesce(position((old_payload->>'description_md') in (actual #>> '{}')),0)=0 then raise exception 'get_problem_description(%): expected old description, actual %',old_attempt,actual; end if;
   actual := public.iwb_practice('get_local_execution_plan',jsonb_build_object('attempt_id',old_attempt));
   if actual->>'problem_revision' is distinct from 'd0e746007e964dab25d8fb0584f62821ba1880c6f58ebd39faa7d0da4f5a7503' then
     raise exception 'get_local_execution_plan(%): expected old revision, actual %',old_attempt,actual;
@@ -61,7 +61,7 @@ begin
   begin perform public.iwb_practice('finish_design_session',ids); exception when others then message := sqlerrm; end;
   if message is distinct from 'Review this checkpoint before finishing the session.' then raise exception 'finish_design_session(%), before review: expected rejection, actual %',ids,message; end if;
   actual := public.iwb_practice('evaluate_design',ids);
-  if jsonb_array_length(actual->'items')<>6 then raise exception 'evaluate_design(%): expected six review items, actual %',ids,actual; end if;
+  if jsonb_array_length(actual->'items') is distinct from 6 then raise exception 'evaluate_design(%): expected six review items, actual %',ids,actual; end if;
   finished := public.iwb_practice('finish_design_session',ids);
   if finished->>'status' is distinct from 'completed' or finished->>'completed_at' is null then raise exception 'finish_design_session(%): expected completion timestamp, actual %',ids,finished; end if;
   actual := public.iwb_practice('finish_design_session',ids);
