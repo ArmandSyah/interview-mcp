@@ -706,11 +706,7 @@
       "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
     },
     "remaining_checks": [
-      "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
-      "Startup and close: close during engine initialization, a native file picker, and sandbox installation",
-      "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
-      "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
-      "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
+      "Run full Windows and Linux checks for the combined changes, including native window controls and packaged tests. Investigate any failure before merge."
     ],
     "design_completion_story": {
       "result": "passed_native_source",
@@ -855,6 +851,109 @@
       "limits": "Native source fixtures replace the OS credential API with deterministic test values. They do not establish OS encryption correctness or Supabase authentication. AI stays off. Windows CI includes the source stories before packaging.",
       "independent_review": "A subagent identified the skipped-decryption defect, reviewed the native assertions, and added four fresh-load service regressions. All four focused regressions passed after the fix. Root reproduced the native failure and ran the four corrected native cases.",
       "validation": "All 260 desktop tests passed, with two optional skips. All four native credential stories passed. Build, type checks, formatting, and diff checks passed. Full platform checks remain pending."
+    },
+    "pending_dialog_close": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Native close must cancel unanswered file selections and consent decisions. A late response must not authorize an export, pack installation, sandbox setup, or installer launch. Close must still wait for an accepted write and preserve saved practice.",
+      "defect": "File selection and consent kept their IPC operations pending. The renderer and main process waited for these operations before close, so an unanswered dialog prevented shutdown.",
+      "change": "Each dialog decision now races a permanent per-call cancellation. Native close cancels pending decisions. Accepted file writes and installations remain in the existing shutdown queue.",
+      "data_effect": "No saved data format changes. An unanswered selection returns the existing cancellation result. Earlier practice records remain valid.",
+      "reproduction": "The unanswered solution-export test failed before the file-selection fix. Both unanswered consent tests failed before the shared cancellation fix. Each failure reached its five-second native-close deadline.",
+      "tests": [
+        "apps/desktop/tests/e2e/file-dialog-close.spec.ts",
+        "apps/desktop/tests/e2e/file-dialog-recovery.spec.ts",
+        "apps/desktop/tests/e2e/sandbox-close.spec.ts",
+        "apps/desktop/tests/e2e/update-close.spec.ts",
+        "apps/desktop/tests/e2e/native-picker-close.spec.ts"
+      ],
+      "limits": "Controlled response tests exercise late decisions and file writes with real Electron, renderer, service, backend, and saved files. Two additional stories use the real Linux open/save dialogs and confirm process closure with a pending picker. Windows native picker behavior remains pending platform CI. The stories do not inspect OS dialog appearance.",
+      "validation": "All 27 file-selection, consent, content-pack, and export regression stories passed on Linux in 1.5 minutes. Both additional write/recovery stories and both real native picker stories passed in 14.6 seconds. Type checks, formatting, and diff checks passed.",
+      "independent_review": "A separate agent reviewed every affected handler, cancellation lifetime, accepted-write tracking, and saved-data assertions. It added two consent stories and two write/recovery stories. Its final read-only review found no blocking issue. Root ran all native tests."
+    },
+    "engine_startup_close": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Native close must cancel unfinished engine startup, preserve saved practice, and wait for backend cleanup. File loads and accepted writes must finish. A later connection attempt must remain usable.",
+      "defect": "Shutdown awaited initialization without cancelling its pending handshake or discovery requests. A stalled response prevented native closure.",
+      "change": "A main-owned AbortController covers startup only. The service loads saved state before checking cancellation and passes the signal through engine discovery. MCP startup forwards the signal to handshake, tool discovery, and account identity requests. Connection cleanup retains its promise so repeated close calls wait for the same disposal.",
+      "data_effect": "No saved data format changes. Existing settings, account mappings, and practice remain valid. Cancellation does not interrupt file loading or an accepted account-map write. Normal reconnect and practice operations retain their existing behavior.",
+      "reproduction": "The real-backend handshake test failed before the fix because native close exceeded five seconds with its response held.",
+      "native_verification": "Six stories hold real backend replies at initialize, tools/list, coding catalog, progress, design catalog, and installed-pack catalog. Each requires native closure, a backend exit event, a dead child PID, and exact saved workspace bytes. All six passed. The final combined run passed all 11 stories, including page-load recovery and accepted-export/final-save recovery, in 43.2 seconds.",
+      "service_verification": "Seven independent service cases cover cancellation during file loading, connection, and four discovery requests, plus ordinary startup. Three real HTTP cases cover handshake, tools, and identity cancellation, late responses, cleared metadata, repeated close, and a fresh account connection. The full desktop suite passed 267 tests with two optional skips. After the final metadata guards, all 13 focused service/MCP tests passed with one optional skip. Type, formatting, and diff checks passed.",
+      "independent_review": "A separate agent reviewed startup and cleanup lifetimes, found the SDK repeated-close timing issue, supplied ten service/HTTP cases, and checked the final implementation. Root reproduced the native failure and ran every test. The final review found no blocking issue.",
+      "tests": [
+        "apps/desktop/tests/e2e/engine-startup-close.spec.ts",
+        "apps/desktop/tests/service-startup-cancel.test.ts",
+        "apps/desktop/tests/mcp-startup-cancel.test.ts"
+      ],
+      "limits": "Native source tests hold backend wire responses. Windows runs the source fixture before packaging. HTTP tests use synthetic credentials on loopback and do not test Supabase authentication. Windows checks remain pending. A separate unreadable-workspace startup dialog still needs a close test."
+    },
+    "workspace_load_error_close": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Permit native closure while a workspace-load error dialog is unanswered. Preserve unreadable workspace bytes and do not start the backend.",
+      "defect": "The outer initialization error dialog did not use pending-dialog cancellation, so close waited for its response.",
+      "change": "The error dialog now uses the same cancellation helper as other pending dialogs. No saved-data or error-message changes.",
+      "validation": "The invalid-JSON case failed before the fix at its five-second close deadline. Both invalid-JSON and invalid-settings cases passed after the fix. All five combined load-error/page-load recovery stories passed on Linux in 4.3 seconds. Each new case verifies no backend spawn and exact saved bytes. Type and diff checks passed.",
+      "tests": [
+        "apps/desktop/tests/e2e/workspace-load-close.spec.ts"
+      ],
+      "limits": "Source fixtures hold the native dialog response. Windows checks remain pending.",
+      "independent_review": "A separate agent checked cancellation and unloaded-store protection. It found no blocking issue in the implementation or the two data-preservation stories."
+    },
+    "panel_resize": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Stop panel resizing when its pointer is released or cancelled, capture is lost, or the window loses focus. Other pointers must not control the active drag. Preserve panel size limits and permit a fresh drag.",
+      "defect": "Resize handlers removed their pointer-move listener only on pointerup. A cancelled drag continued resizing the coach panel from 400 to 280 pixels in the reproduced case.",
+      "change": "Both panel separators remove drag listeners on release, cancellation, lost capture, and blur. They filter events by the active pointer ID and release capture after cleanup. Saved data and size limits do not change.",
+      "validation": "The coach cancellation story failed before the fix. All ten native stories passed on Linux in 21.6 seconds. Both panels cover four drag endings, later motion, a fresh drag, unrelated pointer events, and visible size bounds. Build, formatting, and diff checks passed.",
+      "independent_review": "A separate agent reviewed listener removal, capture-release ordering, pointer isolation, and the native assertions. It found no blocking issue.",
+      "tests": [
+        "apps/desktop/tests/e2e/panel-resize.spec.ts"
+      ],
+      "limits": "Cancellation and blur use controlled browser events with real mouse drags. Windows and full platform checks remain pending."
+    },
+    "sandbox_setup_recovery": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Honor sandbox consent. Show setup progress, preserve practice on failure, and permit setup/repair/owned-stop retry. Preserve opt-out across restart. Cancel installation during close and stop only an owned container without deleting runtime data.",
+      "defect": "A generic Docker stop failure reset status.managed to false. The UI then disabled Stop app-owned sandbox while the known owned container remained running.",
+      "change": "Generic operation errors preserve the last known managed flag. Explicit ownership failures still clear it. Every stop attempt continues to revalidate ownership before any stop command. No saved-data format changes.",
+      "native_validation": "The first native run passed three new stories and reproduced the disabled Stop button in the fourth. After the one-argument correction, all 17 combined sandbox UI stories passed on Linux in 51.7 seconds. The four new stories cover consent choices, held image/runtime progress, sanitized setup error/retry, repair without runtime reinstallation, owned stop failure/retry, opt-out/restart, and close during installation.",
+      "unit_validation": "All 17 sandbox unit tests passed. The new regression preserves retry after a failed stop, then changes ownership and verifies that retry does not issue another stop command.",
+      "preservation": "Native stories compare exact practice sessions, persisted opt-in/opt-out, retained Python/container metadata, cancelled runtime requests, and exact owned stop targets. No down or remove command is permitted.",
+      "independent_review": "A separate agent designed the four native stories and fixture, identified the stop-retry defect, and reviewed the ownership-preserving correction. Root reviewed the fixture and assertions, reproduced the failure, added the unit regression, and ran all tests.",
+      "tests": [
+        "apps/desktop/tests/e2e/sandbox-setup.spec.ts",
+        "apps/desktop/tests/e2e/sandbox-setup-fixture.ts",
+        "apps/desktop/tests/sandbox.test.ts"
+      ],
+      "limits": "The source fixture replaces only Docker execution, runtime HTTP, and discovery environment boundaries. The real manager, ownership checks, consent handler, service, backend, renderer, and saved files remain. These stories do not execute a privileged container. Windows source checks remain pending."
+    },
+    "window_controls": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Window controls must preserve practice. Menu Quit must wait for pending drafts. A second instance must focus the existing window without another backend.",
+      "change": "A process without the instance lock skips initialization. The primary window restores only when minimized, which preserves maximized state.",
+      "data_effect": "No saved workspace format changes. Existing sessions and active selections remain valid.",
+      "tests": [
+        "apps/desktop/tests/e2e/window-controls.spec.ts"
+      ],
+      "validation": "Five native Linux stories passed. They cover minimum size, maximize, restore, fullscreen, zoom, pending coding/design writes, and two real second-process launches. Lock records identify both process IDs and their actual lock results.",
+      "limits": "Linux uses Xvfb with Openbox. Windows source checks include both second-process stories. Packaged runs skip these two source-bootstrap stories. Platform checks remain pending.",
+      "windows_fixture_correction": "Windows run 42024437139 passed 43 configured source stories but failed both second-instance lock assertions. Playwright launches Electron through a Windows shell, so app.process() supplied the shell executable and PID. The fixture now reads process.execPath, process.pid, and the sandbox switch inside Electron. It still requires two exact lock records, normal secondary exit, one backend, correct focus/window state, and preserved practice. All five corrected window stories passed locally in 17.8 seconds. An independent agent confirmed the diagnosis and correction. Type and formatting checks passed. Application code does not change; new platform verification is pending."
+    },
+    "design_controls_and_chat_history": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Palette additions must support Undo and Redo. Clear canvas must support cancellation and Undo. Preserve existing mock hints, timer, chat retention, and approval keyboard behavior.",
+      "defect": "Palette changes did not immediately enter undo history. Undo after Clear canvas could therefore leave the canvas empty.",
+      "change": "Palette additions explicitly enter Excalidraw undo history. No saved workspace format changes.",
+      "tests": [
+        "apps/desktop/tests/e2e/design-controls.spec.ts",
+        "apps/desktop/tests/e2e/chat-history.spec.ts"
+      ],
+      "validation": "The Clear canvas Undo story failed before the fix. Both design and all three chat stories passed afterward. Checks cover exact component bindings, Undo/Redo, restart, mock hints, timer zero, keyboard approval focus, and 200-message retention across streaming and restart.",
+      "limits": "Chat tests use a controlled local provider. They do not call paid AI services. Timer tests preserve the existing behavior: reaching zero does not complete practice."
+    },
+    "final_local_integration": {
+      "validation": "All 11 window, design controls, chat history, and design artifact stories passed in 1.1 minutes. All 271 desktop unit tests passed, with two optional skips. Type checks, formatting, build, and workflow YAML parsing passed.",
+      "platform_status": "Full Windows and Linux checks remain pending for the combined changes."
     }
   },
   "last_verified": {

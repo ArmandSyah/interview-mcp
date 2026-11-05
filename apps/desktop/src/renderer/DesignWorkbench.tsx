@@ -5,6 +5,7 @@ import {
   MainMenu,
   convertToExcalidrawElements,
   exportToBlob,
+  CaptureUpdateAction,
 } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import type {
@@ -224,7 +225,10 @@ export function DesignWorkbench({
         label: { text: kind, fontSize: 18, fontFamily: 5 },
       },
     ]);
-    api.current.updateScene({ elements: [...api.current.getSceneElements(), ...elements] });
+    api.current.updateScene({
+      elements: [...api.current.getSceneElements(), ...elements],
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
   }
   async function exportDesign(format: 'excalidraw' | 'workspace' | 'png') {
     if (format !== 'png') {

@@ -303,6 +303,30 @@ it('cancels a runtime download on exit and still stops the owned container', asy
   expect(state.python).toBe(false);
 });
 
+it('preserves owned stop retry after a command failure and rechecks ownership', async () => {
+  const { manager, state, run, mutations } = fixture();
+  try {
+    await manager.enable();
+    const original = run.getMockImplementation()!;
+    run.mockImplementation(async (args, options) => {
+      if (args.includes('stop')) throw new Error('registry-secret-should-never-be-shown');
+      return original(args, options);
+    });
+    await expect(manager.stop()).rejects.toThrow('Sandbox setup failed.');
+    expect(manager.status()).toMatchObject({ phase: 'error', managed: true });
+    expect(manager.status().message).not.toContain('registry-secret');
+    expect(state.running).toBe(true);
+    run.mockImplementation(original);
+    const attempted = mutations().length;
+    state.foreign = true;
+    await expect(manager.stop()).rejects.toThrow('ownership');
+    expect(manager.status()).toMatchObject({ phase: 'error', managed: false });
+    expect(mutations()).toHaveLength(attempted);
+  } finally {
+    await manager.close();
+  }
+});
+
 it('rechecks ownership before stopping instead of trusting an earlier ready result', async () => {
   const { manager, state, mutations } = fixture();
   await manager.enable();

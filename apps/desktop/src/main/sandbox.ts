@@ -382,6 +382,7 @@ export class ManagedSandbox {
           this.publish(
             'error',
             'Sandbox setup failed. Check Docker and port 2000; existing practice files and runtime data were kept.',
+            this.current.managed,
           );
         // Never expose raw Docker output: it can contain registry credentials/paths.
         throw new Error(this.current.message);

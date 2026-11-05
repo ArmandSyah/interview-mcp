@@ -605,7 +605,7 @@ for (const failure of ['disk-replace', 'disk-remove', 'vault'] as const) {
       expect(await readFile(join(store.root, 'workspace.json'), 'utf8')).toBe(disk);
       expect(mcp.connect).toHaveBeenCalledTimes(connections);
       await service.reconnect();
-      expect(mcp.connect).toHaveBeenLastCalledWith(defaultSettings, 'fixture-old-mcp');
+      expect(mcp.connect).toHaveBeenLastCalledWith(defaultSettings, 'fixture-old-mcp', undefined);
       await service.updateSettings({ ...defaultSettings, provider: 'ollama', ...changes });
       expect(service.settings().provider).toBe('ollama');
       expect(service.settings().hasApiKey).toBe(failure !== 'disk-remove');
@@ -681,6 +681,7 @@ for (const unreadable of ['apiKey', 'mcpKey'] as const) {
         expect(seeded.mcp.connect).toHaveBeenLastCalledWith(
           settings,
           unreadable === 'mcpKey' ? '' : keys.mcpKey,
+          undefined,
         );
         if (unreadable === 'apiKey') {
           expect(failed.connection).toBe('connected');
@@ -1474,6 +1475,7 @@ it('requires sandbox opt-in, reconnects the engine URL, and wraps only code exec
   expect(mcp.connect).toHaveBeenLastCalledWith(
     expect.objectContaining({ pistonUrl: 'http://127.0.0.1:2000', managedSandbox: true }),
     '',
+    undefined,
   );
   expect(
     JSON.parse(await readFile(join(store.root, 'workspace.json'), 'utf8')).settings.managedSandbox,

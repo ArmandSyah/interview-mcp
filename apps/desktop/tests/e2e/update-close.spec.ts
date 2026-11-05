@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { launch } from './desktop';
 import { signedUpdateFixture, type UpdateFixture } from './signed-update-fixture';
 
-for (const stage of ['metadata', 'download', 'consent', 'hash'] as const) {
+for (const stage of ['metadata', 'download', 'consent', 'unanswered consent', 'hash'] as const) {
   test(`native close cancels update ${stage} and cannot open an installer`, async () => {
     test.skip(
       Boolean(process.env.INTERVIEW_DESKTOP_EXECUTABLE),
@@ -31,10 +31,11 @@ for (const stage of ['metadata', 'download', 'consent', 'hash'] as const) {
         exact: true,
       });
       if (stage !== 'metadata') await check.click();
-      if (stage === 'consent' || stage === 'hash') await download.click();
+      if (stage === 'consent' || stage === 'unanswered consent' || stage === 'hash')
+        await download.click();
       await app.evaluate((_electron, stage) => {
         (globalThis as typeof globalThis & { updateFixture: UpdateFixture }).updateFixture.hold =
-          stage;
+          stage === 'unanswered consent' ? 'consent' : stage;
       }, stage);
       if (stage === 'metadata') await check.click();
       else if (stage === 'download') await download.click();
@@ -69,14 +70,24 @@ for (const stage of ['metadata', 'download', 'consent', 'hash'] as const) {
         code: 'ENOENT',
       });
       if (stage === 'download') expect(await readdir(join(data, 'updates', '99.0.0'))).toEqual([]);
+      if (stage === 'unanswered consent')
+        expect(
+          await readdir(join(data, 'backups')).catch((error: NodeJS.ErrnoException) => {
+            if (error.code !== 'ENOENT') throw error;
+            return [];
+          }),
+        ).toEqual([]);
     } finally {
-      await app
-        .evaluate(() =>
-          (
-            globalThis as typeof globalThis & { updateFixture: UpdateFixture }
-          ).updateFixture.releaseHeld?.(),
-        )
-        .catch(() => {});
+      if (stage === 'unanswered consent')
+        await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
+      else
+        await app
+          .evaluate(() =>
+            (
+              globalThis as typeof globalThis & { updateFixture: UpdateFixture }
+            ).updateFixture.releaseHeld?.(),
+          )
+          .catch(() => {});
       await app.close().catch(() => {});
     }
   });

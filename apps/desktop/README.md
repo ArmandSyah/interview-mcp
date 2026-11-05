@@ -372,10 +372,11 @@ The build puts installers in `apps/desktop/release`.
 Use `npm run package` for an unpacked build.
 These commands prepare packages for the host operating system.
 
-Linux headless tests can use:
+Linux headless tests require Xvfb and Openbox.
+Install both packages before this command:
 
 ```bash
-xvfb-run -a npm run test:desktop
+xvfb-run -a sh -c 'openbox --sm-disable > /tmp/interview-openbox.log 2>&1 & npm run test:desktop'
 ```
 
 Set `INTERVIEW_DESKTOP_EXECUTABLE` to an unpacked executable to do packaged tests.

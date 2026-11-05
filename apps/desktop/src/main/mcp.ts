@@ -42,6 +42,7 @@ export const allowedTools = new Set([
 
 export class McpConnection {
   private client: Client | null = null;
+  private closing: Promise<void> = Promise.resolve();
   tools: Tool[] = [];
   accountIdentity: { userId: string; issuer: string } | null = null;
   private localExecution = false;
@@ -56,10 +57,17 @@ export class McpConnection {
     private readonly pistonFetch: typeof fetch = fetch,
   ) {}
 
-  async connect(settings: StoredSettings, key: string): Promise<void> {
+  async connect(settings: StoredSettings, key: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     await this.close();
+    signal?.throwIfAborted();
     const client = new Client({ name: 'interview-workbench', version: '0.2.0' });
     this.client = client;
+    // Start and retain cleanup before the SDK rejects its aborted handshake.
+    const abort = () => {
+      void this.close();
+    };
+    signal?.addEventListener('abort', abort, { once: true });
     try {
       if (settings.connection === 'remote') {
         if (!key) throw new Error('Add an MCP bearer credential in Settings');
@@ -75,6 +83,7 @@ export class McpConnection {
           new StreamableHTTPClientTransport(url, {
             requestInit: { headers: { Authorization: `Bearer ${key}` } },
           }),
+          { signal },
         );
       } else {
         const python =
@@ -113,14 +122,19 @@ export class McpConnection {
         });
         // Do not forward sidecar logs to the renderer or persist private content.
         transport.stderr?.on('data', () => {});
-        await client.connect(transport);
+        await client.connect(transport, { signal });
       }
-      const advertised = (await client.listTools()).tools;
+      const advertised = (await client.listTools(undefined, { signal })).tools;
+      signal?.throwIfAborted();
       if (
         settings.connection === 'remote' &&
         advertised.some((tool) => tool.name === 'get_connection_identity')
       ) {
-        const response = await client.callTool({ name: 'get_connection_identity', arguments: {} });
+        const response = await client.callTool(
+          { name: 'get_connection_identity', arguments: {} },
+          { signal },
+        );
+        signal?.throwIfAborted();
         if (response.isError) throw new Error('Cannot verify the remote account identity');
         const raw =
           response.structuredContent ??
@@ -171,6 +185,8 @@ export class McpConnection {
     } catch (error) {
       await this.close();
       throw error;
+    } finally {
+      signal?.removeEventListener('abort', abort);
     }
   }
 
@@ -254,6 +270,7 @@ export class McpConnection {
     this.accountIdentity = null;
     this.localExecution = false;
     this.pistonUrl = '';
-    await client?.close().catch(() => {});
+    if (client) this.closing = client.close().catch(() => {});
+    await this.closing;
   }
 }

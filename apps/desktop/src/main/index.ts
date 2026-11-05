@@ -46,12 +46,29 @@ let draftFlushed = false;
 let finalizingClose = false;
 let closeCommit: Promise<void> | null = null;
 let initialization: Promise<void> = Promise.resolve();
+const startupController = new AbortController();
 let rendererLoaded = false;
 const pendingRequests = new Set<Promise<unknown>>();
+const cancelDialogs = new Set<() => void>();
 const devUrl = process.env.INTERVIEW_DESKTOP_DEV_URL;
 
+async function dialogDecision<T>(show: () => Promise<T>): Promise<T | null> {
+  if (closeRequested) return null;
+  let cancel!: () => void;
+  const cancelled = new Promise<null>((resolve) => {
+    cancel = () => resolve(null);
+  });
+  cancelDialogs.add(cancel);
+  try {
+    const result = await Promise.race([cancelled, show()]);
+    return closeRequested ? null : result;
+  } finally {
+    cancelDialogs.delete(cancel);
+  }
+}
+
 app.on('second-instance', () => {
-  window?.restore();
+  if (window?.isMinimized()) window.restore();
   window?.focus();
 });
 async function finishQuit() {
@@ -75,6 +92,7 @@ app.on('before-quit', (event) => {
 });
 
 void app.whenReady().then(async () => {
+  if (!locked) return;
   const root = app.isPackaged ? process.resourcesPath : resolve(__dirname, '../../../..');
   const renderer = resolve(__dirname, '../renderer');
   protocol.handle('interview', (request) => {
@@ -143,6 +161,8 @@ void app.whenReady().then(async () => {
     if (draftFlushed || !service || !rendererLoaded) return;
     event.preventDefault();
     closeRequested = true;
+    startupController.abort();
+    for (const cancel of cancelDialogs) cancel();
     updates.cancelPending();
     service.cancelSandboxSetup();
     window?.webContents.send('workbench:event', { type: 'flush-before-close' });
@@ -269,17 +289,19 @@ void app.whenReady().then(async () => {
   handler('sandbox-enable', async () => {
     if (service.snapshot().busy) throw new Error('Wait for the current operation');
     if (!service.settings().managedSandbox) {
-      const result = await dialog.showMessageBox(window!, {
-        type: 'warning',
-        title: 'Enable local code execution?',
-        message: 'Piston needs a privileged Docker container on your computer.',
-        detail:
-          'Use only your own trusted workstation or an isolated local Docker VM. The app downloads a pinned image and Python runtime, binds port 2000 to loopback, and disables networking for solutions. It manages only its own container, stops it when idle or on exit, and keeps runtime data. Existing sandboxes are reused without changes. No model is installed and no paid service is provisioned.',
-        buttons: ['Keep practicing without execution', 'Enable local execution'],
-        defaultId: 0,
-        cancelId: 0,
-      });
-      if (result.response !== 1) return null;
+      const result = await dialogDecision(() =>
+        dialog.showMessageBox(window!, {
+          type: 'warning',
+          title: 'Enable local code execution?',
+          message: 'Piston needs a privileged Docker container on your computer.',
+          detail:
+            'Use only your own trusted workstation or an isolated local Docker VM. The app downloads a pinned image and Python runtime, binds port 2000 to loopback, and disables networking for solutions. It manages only its own container, stops it when idle or on exit, and keeps runtime data. Existing sandboxes are reused without changes. No model is installed and no paid service is provisioned.',
+          buttons: ['Keep practicing without execution', 'Enable local execution'],
+          defaultId: 0,
+          cancelId: 0,
+        }),
+      );
+      if (result?.response !== 1) return null;
     }
     if (closeRequested || finalizingClose) throw new Error('The window is closing.');
     return service.enableSandbox();
@@ -306,16 +328,18 @@ void app.whenReady().then(async () => {
       throw new Error('Finish or stop the current practice operation first');
     const installer = await updates.installerPath();
     if (closeRequested || finalizingClose) throw new Error('The window is closing.');
-    const confirmation = await dialog.showMessageBox(window!, {
-      type: 'question',
-      title: 'Open verified installer?',
-      message:
-        'Your practice data will be backed up first. The installer may close this app. Open it now?',
-      buttons: ['Keep practicing', 'Back up & open installer'],
-      defaultId: 0,
-      cancelId: 0,
-    });
-    if (confirmation.response !== 1) return;
+    const confirmation = await dialogDecision(() =>
+      dialog.showMessageBox(window!, {
+        type: 'question',
+        title: 'Open verified installer?',
+        message:
+          'Your practice data will be backed up first. The installer may close this app. Open it now?',
+        buttons: ['Keep practicing', 'Back up & open installer'],
+        defaultId: 0,
+        cancelId: 0,
+      }),
+    );
+    if (confirmation?.response !== 1) return;
     if (closeRequested || finalizingClose) throw new Error('The window is closing.');
     const backup = await service.exportWorkspace();
     const directory = join(store.root, 'backups');
@@ -334,12 +358,14 @@ void app.whenReady().then(async () => {
   });
   handler('export-workspace', async () => {
     const data = await service.exportWorkspace();
-    const result = await dialog.showSaveDialog(window!, {
-      title: 'Export practice backup (without credentials)',
-      defaultPath: 'interview-practice-backup.json',
-      filters: [{ name: 'Practice backup', extensions: ['json'] }],
-    });
-    if (result.canceled || !result.filePath) return null;
+    const result = await dialogDecision(() =>
+      dialog.showSaveDialog(window!, {
+        title: 'Export practice backup (without credentials)',
+        defaultPath: 'interview-practice-backup.json',
+        filters: [{ name: 'Practice backup', extensions: ['json'] }],
+      }),
+    );
+    if (!result || result.canceled || !result.filePath) return null;
     await writeExport(result.filePath, data);
     return result.filePath;
   });
@@ -365,12 +391,14 @@ void app.whenReady().then(async () => {
     if (!trust.contentPublicKey)
       throw new Error('Content signing is not configured in this preview build');
     if (service.snapshot().busy) throw new Error('Wait for the current operation');
-    const result = await dialog.showOpenDialog(window!, {
-      title: 'Select your signed content pack and license',
-      properties: ['openFile', 'multiSelections'],
-      filters: [{ name: 'Signed JSON', extensions: ['json'] }],
-    });
-    if (result.canceled) return;
+    const result = await dialogDecision(() =>
+      dialog.showOpenDialog(window!, {
+        title: 'Select your signed content pack and license',
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Signed JSON', extensions: ['json'] }],
+      }),
+    );
+    if (!result || result.canceled) return;
     if (result.filePaths.length !== 2)
       throw new Error('Select exactly one signed pack file and its signed license file');
     const selected = [];
@@ -424,12 +452,14 @@ void app.whenReady().then(async () => {
       data = bytes;
     } else data = await service.designExport(format);
     const extension = format === 'workspace' ? 'json' : format;
-    const result = await dialog.showSaveDialog(window!, {
-      title: 'Export your design',
-      defaultPath: `my-design.${extension}`,
-      filters: [{ name: 'Design export', extensions: [extension] }],
-    });
-    if (result.canceled || !result.filePath) return null;
+    const result = await dialogDecision(() =>
+      dialog.showSaveDialog(window!, {
+        title: 'Export your design',
+        defaultPath: `my-design.${extension}`,
+        filters: [{ name: 'Design export', extensions: [extension] }],
+      }),
+    );
+    if (!result || result.canceled || !result.filePath) return null;
     await writeExport(result.filePath, data);
     return result.filePath;
   });
@@ -477,22 +507,26 @@ void app.whenReady().then(async () => {
     return closeCommit;
   });
   handler('corpus', async () => {
-    const result = await dialog.showOpenDialog(window!, {
-      title: 'Select exported runtime questions',
-      properties: ['openDirectory'],
-    });
-    return result.canceled ? null : result.filePaths[0];
+    const result = await dialogDecision(() =>
+      dialog.showOpenDialog(window!, {
+        title: 'Select exported runtime questions',
+        properties: ['openDirectory'],
+      }),
+    );
+    return !result || result.canceled ? null : result.filePaths[0];
   });
   handler('export', async () => {
     const snapshot = service.snapshot();
     const session = snapshot.sessions.find((item) => item.problem.id === snapshot.activeProblemId);
     if (!session) throw new Error('Open a problem first');
-    const result = await dialog.showSaveDialog(window!, {
-      title: 'Export your solution',
-      defaultPath: `${session.problem.id}-solution.py`,
-      filters: [{ name: 'Python', extensions: ['py'] }],
-    });
-    if (result.canceled || !result.filePath) return null;
+    const result = await dialogDecision(() =>
+      dialog.showSaveDialog(window!, {
+        title: 'Export your solution',
+        defaultPath: `${session.problem.id}-solution.py`,
+        filters: [{ name: 'Python', extensions: ['py'] }],
+      }),
+    );
+    if (!result || result.canceled || !result.filePath) return null;
     await writeExport(result.filePath, session.code);
     return result.filePath;
   });
@@ -534,16 +568,18 @@ void app.whenReady().then(async () => {
     }
     if (window.isDestroyed()) return;
     window.show();
-    await service.initialize();
+    await service.initialize(startupController.signal);
   } catch (error) {
-    await dialog.showMessageBox(window, {
-      type: 'error',
-      title: 'Cannot open workspace',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Startup failed. Your saved workspace was not overwritten.',
-    });
+    await dialogDecision(() =>
+      dialog.showMessageBox(window!, {
+        type: 'error',
+        title: 'Cannot open workspace',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Startup failed. Your saved workspace was not overwritten.',
+      }),
+    );
   } finally {
     initialized();
   }
