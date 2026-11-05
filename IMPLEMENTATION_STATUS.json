@@ -952,7 +952,8 @@
         "apps/desktop/tests/e2e/window-controls.spec.ts"
       ],
       "validation": "Five native Linux stories passed. They cover minimum size, maximize, restore, fullscreen, zoom, pending coding/design writes, and two real second-process launches. Lock records identify both process IDs and their actual lock results.",
-      "limits": "Linux uses Xvfb with Openbox. Windows source checks include both second-process stories. Packaged runs skip these two source-bootstrap stories. Platform checks remain pending."
+      "limits": "Linux uses Xvfb with Openbox. Windows source checks include both second-process stories. Packaged runs skip these two source-bootstrap stories. Platform checks remain pending.",
+      "windows_fixture_correction": "Windows run 42024437139 passed 43 configured source stories but failed both second-instance lock assertions. Playwright launches Electron through a Windows shell, so app.process() supplied the shell executable and PID. The fixture now reads process.execPath, process.pid, and the sandbox switch inside Electron. It still requires two exact lock records, normal secondary exit, one backend, correct focus/window state, and preserved practice. All five corrected window stories passed locally in 17.8 seconds. An independent agent confirmed the diagnosis and correction. Type and formatting checks passed. Application code does not change; new platform verification is pending."
     },
     "design_controls_and_chat_history": {
       "status": "local_verified_platform_checks_pending",
