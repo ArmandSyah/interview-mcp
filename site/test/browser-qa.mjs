@@ -14,7 +14,7 @@ const jwt = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toStrin
 const session = { access_token: jwt, refresh_token: 'test-refresh', expires_in: 3600, token_type: 'bearer', user };
 const status = { mode: 'sandbox', status: 'none', entitled: false, currentPeriodEnd: null, scheduledCancelAt: null };
 const json = (data) => ({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(data) });
-async function setup(configured = false, viewport = { width: 1440, height: 1000 }) {
+async function setup(configured = false, viewport = { width: 1440, height: 1000 }, signupMode) {
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
@@ -23,7 +23,7 @@ async function setup(configured = false, viewport = { width: 1440, height: 1000 
     if (new URL(route.request().url()).origin === new URL(base).origin) return route.continue();
     return route.abort();
   });
-  await page.route('**/config.json', (route) => route.fulfill(json(configured ? config : { paymentMode: 'sandbox' })));
+  await page.route('**/config.json', (route) => route.fulfill(json(configured ? { ...config, ...(signupMode ? { signupMode } : {}) } : { paymentMode: 'sandbox' })));
   return { page, context };
 }
 async function signin(page) {
@@ -83,7 +83,51 @@ try {
   }
   checks.push('Configured payment links initialize sandbox Paddle without creating a transaction or granting access; malformed and unconfigured links stay inactive');
 
-  const { page, context } = await setup(true);
+  for (const signupMode of [undefined, 'private']) {
+    const privateSite = await setup(true, undefined, signupMode);
+    const { page } = privateSite;
+    let signupCount = 0, signinCount = 0, checkoutCount = 0;
+    await page.route('https://qa.supabase.co/auth/v1/**', (route) => {
+      const endpoint = new URL(route.request().url()).pathname.split('/').at(-1);
+      if (endpoint === 'signup') { signupCount++; return route.fulfill(json(user)); }
+      if (endpoint === 'token') { signinCount++; return route.fulfill(json(session)); }
+      if (endpoint === 'user') return route.fulfill(json(user));
+      throw new Error(`Unexpected private auth route ${endpoint}`);
+    });
+    await page.route('https://qa.supabase.co/functions/v1/billing/**', (route) => {
+      assert.equal(route.request().headers().authorization, `Bearer ${jwt}`);
+      const endpoint = new URL(route.request().url()).pathname.split('/').at(-1);
+      if (endpoint === 'status') return route.fulfill(json(status));
+      if (endpoint === 'checkout') { checkoutCount++; return route.fulfill(json({ transactionId: `txn_${'c'.repeat(26)}` })); }
+      throw new Error(`Unexpected private billing route ${endpoint}`);
+    });
+    await page.route('https://cdn.paddle.com/paddle/v2/paddle.js', (route) => route.fulfill({ contentType: 'application/javascript', body: `window.Paddle={Environment:{set:()=>{}},Initialize:()=>{},Checkout:{open:(value)=>{window.qaPrivateCheckout=value}}};` }));
+    await page.goto(base);
+    await page.locator('#account-open').click();
+    await page.waitForFunction(() => !document.querySelector('#auth-submit').disabled);
+    assert(await page.locator('#auth-toggle').isHidden());
+    assert(await page.locator('#auth-toggle').isDisabled());
+    // Force the disabled control to dispatch its event. DOM changes must not enable signup.
+    await page.locator('#auth-toggle').evaluate((toggle) => {
+      toggle.hidden = false; toggle.disabled = false; toggle.click();
+      toggle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    assert.equal(await page.locator('#account-heading').textContent(), 'Sign in');
+    await page.locator('#email').fill(user.email);
+    await page.locator('#password').fill('test-password-only');
+    await page.locator('#auth-submit').click();
+    await page.locator('#account-panel').waitFor({ state: 'visible' });
+    assert.equal(signinCount, 1);
+    assert.equal(signupCount, 0);
+    await page.locator('#checkout').click();
+    await page.waitForFunction(() => !!window.qaPrivateCheckout);
+    assert.equal(checkoutCount, 1);
+    assert.equal(signupCount, 0);
+    await privateSite.context.close();
+  }
+  checks.push('Missing and private signup modes block forced signup toggles while existing sign-in and sandbox checkout work');
+
+  const { page, context } = await setup(true, undefined, 'public');
   let signupBody;
   let statusWaiter;
   let observeDelayedStatus = () => {};
@@ -136,7 +180,7 @@ try {
   await page.locator('#auth-submit').click();
   await page.locator('#account-panel').waitFor({ state: 'visible' });
   await page.waitForFunction(() => document.querySelector('#subscription-status').textContent.includes('none'));
-  checks.push('Signup creates PKCE challenge and requires confirmation; signin loads owned status');
+  checks.push('Explicit public signup creates PKCE challenge and requires confirmation; signin loads owned status');
   await page.locator('#checkout').click();
   await page.waitForFunction(() => window.qaPaddleCalls?.some(([type]) => type === 'checkout'));
   const calls = await page.evaluate(() => window.qaPaddleCalls);

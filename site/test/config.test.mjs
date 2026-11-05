@@ -20,6 +20,17 @@ test('production and secret credentials cannot enter the sandbox site', () => {
 test('a complete sandbox config enables the integration', () => {
   assert.equal(validateConfig(config).billingReady, true);
 });
+test('signup defaults to private without disabling existing accounts or billing', () => {
+  const value = validateConfig(config);
+  assert.equal(value.signupMode, 'private');
+  assert.equal(value.accountsReady, true);
+  assert.equal(value.billingReady, true);
+  assert.equal(validateConfig({ paymentMode: 'sandbox' }).signupMode, 'private');
+});
+test('signup accepts only explicit private or public string values', () => {
+  for (const signupMode of ['private', 'public']) assert.equal(validateConfig({ ...config, signupMode }).signupMode, signupMode);
+  for (const signupMode of ['', 'PUBLIC', 'enabled', true, null]) assert.throws(() => validateConfig({ ...config, signupMode }));
+});
 test('portal redirects stay on Paddle sandbox', () => {
   assert.equal(portalURL('https://sandbox-customer-portal.paddle.com/session/example'), 'https://sandbox-customer-portal.paddle.com/session/example');
   for (const value of ['javascript:alert(1)', 'https://sandbox-customer-portal.paddle.com.attacker.invalid/', 'https://user:secret@sandbox-customer-portal.paddle.com/', 'https://sandbox-customer-portal.paddle.com:8443/']) assert.throws(() => portalURL(value));

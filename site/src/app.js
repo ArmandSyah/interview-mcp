@@ -10,7 +10,8 @@ function controls() {
   element('checkout').disabled = !session || !config?.billingReady || pendingBilling;
   element('portal').disabled = !session || !config?.billingUrl || pendingBilling;
   element('auth-submit').disabled = !config?.accountsReady || pendingAuth;
-  element('auth-toggle').disabled = pendingAuth;
+  element('auth-toggle').hidden = config?.signupMode !== 'public';
+  element('auth-toggle').disabled = pendingAuth || !config?.accountsReady || config?.signupMode !== 'public';
   element('sign-out').disabled = pendingBilling;
 }
 async function billing(path, method = 'GET') {
@@ -71,12 +72,15 @@ for (const name of ['coding', 'design']) element(`show-${name}`).addEventListene
 element('account-open').addEventListener('click', () => { if (session) element('account-panel').scrollIntoView({ behavior: 'smooth' }); else element('account-dialog').showModal(); });
 element('account-close').addEventListener('click', () => element('account-dialog').close());
 element('auth-toggle').addEventListener('click', () => {
+  if (pendingAuth || !config?.accountsReady || config?.signupMode !== 'public') return;
   signingUp = !signingUp; message('account-heading', signingUp ? 'Create an account' : 'Sign in');
   message('auth-submit', signingUp ? 'Create account' : 'Sign in'); message('auth-toggle', signingUp ? 'Use an existing account' : 'Create an account');
   element('password').autocomplete = signingUp ? 'new-password' : 'current-password'; message('auth-message', '');
 });
 element('account-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); if (!client || pendingAuth) return; pendingAuth = true; controls();
+  event.preventDefault(); if (!client || pendingAuth) return;
+  if (signingUp && config?.signupMode !== 'public') { message('auth-message', 'Account creation is private. Use an existing account.'); return; }
+  pendingAuth = true; controls();
   const email = element('email').value.trim(), password = element('password').value;
   const create = signingUp;
   message('auth-message', create ? 'Creating your account…' : 'Signing in…');

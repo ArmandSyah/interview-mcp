@@ -1,11 +1,13 @@
 export function validateConfig(input) {
-  const fields = ['supabaseUrl', 'publishableKey', 'billingUrl', 'paddleClientToken', 'paymentMode'];
+  const fields = ['supabaseUrl', 'publishableKey', 'billingUrl', 'paddleClientToken', 'paymentMode', 'signupMode'];
   if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some((key) => !fields.includes(key)) || Object.values(input).some((value) => typeof value !== 'string')) throw new Error('Only public website settings are permitted.');
+  const signupMode = input.signupMode ?? 'private';
+  if (!['private', 'public'].includes(signupMode)) throw new Error('Signup mode must be private or public.');
   if (input.paymentMode !== 'sandbox') throw new Error('Only sandbox payments are enabled in this preview.');
   if (input.paddleClientToken && !input.paddleClientToken.startsWith('test_')) throw new Error('Use a Paddle sandbox client token.');
   if (!input.supabaseUrl && !input.publishableKey) {
     if (input.billingUrl) throw new Error('Billing must use this Supabase project.');
-    return { ...input, accountsReady: false, billingReady: false };
+    return { ...input, signupMode, accountsReady: false, billingReady: false };
   }
   const project = new URL(input.supabaseUrl);
   if (project.protocol !== 'https:' || project.port || !project.hostname.endsWith('.supabase.co') || project.pathname !== '/' || project.username || project.password || project.search || project.hash) throw new Error('Use the Supabase project HTTPS origin.');
@@ -19,7 +21,7 @@ export function validateConfig(input) {
     const billing = new URL(input.billingUrl);
     if (billing.origin !== project.origin || billing.pathname !== '/functions/v1/billing' || billing.search || billing.hash || billing.username || billing.password) throw new Error('Billing must use this Supabase project.');
   }
-  return { ...input, supabaseUrl: project.origin, accountsReady: true, billingReady: !!input.billingUrl && !!input.paddleClientToken };
+  return { ...input, signupMode, supabaseUrl: project.origin, accountsReady: true, billingReady: !!input.billingUrl && !!input.paddleClientToken };
 }
 
 export function portalURL(value) {

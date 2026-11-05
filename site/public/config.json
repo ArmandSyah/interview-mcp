@@ -3,5 +3,6 @@
   "publishableKey": "",
   "billingUrl": "",
   "paddleClientToken": "",
-  "paymentMode": "sandbox"
+  "paymentMode": "sandbox",
+  "signupMode": "private"
 }
