@@ -110,7 +110,8 @@ jobs:
       - run: npm run install:electron
       - run: npm run backend
       - run: npm run build
-      - run: npm test
+      - name: Test Windows services without competing backend processes
+        run: npm test -- --maxWorkers=1
       - name: Test configured Windows source flows
         run: npx playwright test tests/e2e/content-stories.spec.ts tests/e2e/signed-update.spec.ts tests/e2e/update-close.spec.ts tests/e2e/design-completion-recovery.spec.ts tests/e2e/startup-recovery.spec.ts tests/e2e/credential-recovery.spec.ts tests/e2e/file-dialog-close.spec.ts tests/e2e/engine-startup-close.spec.ts tests/e2e/workspace-load-close.spec.ts tests/e2e/sandbox-setup.spec.ts tests/e2e/window-controls.spec.ts --output=test-results-source-distribution
       - run: npx electron-builder --win --publish never
