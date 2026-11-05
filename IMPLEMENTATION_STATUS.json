@@ -697,8 +697,6 @@
       "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
     },
     "remaining_checks": [
-      "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
-      "Startup and close: close during sandbox installation",
       "Windows: minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
@@ -905,6 +903,22 @@
         "apps/desktop/tests/e2e/panel-resize.spec.ts"
       ],
       "limits": "Cancellation and blur use controlled browser events with real mouse drags. Windows and full platform checks remain pending."
+    },
+    "sandbox_setup_recovery": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Honor sandbox consent. Show setup progress, preserve practice on failure, and permit setup/repair/owned-stop retry. Preserve opt-out across restart. Cancel installation during close and stop only an owned container without deleting runtime data.",
+      "defect": "A generic Docker stop failure reset status.managed to false. The UI then disabled Stop app-owned sandbox while the known owned container remained running.",
+      "change": "Generic operation errors preserve the last known managed flag. Explicit ownership failures still clear it. Every stop attempt continues to revalidate ownership before any stop command. No saved-data format changes.",
+      "native_validation": "The first native run passed three new stories and reproduced the disabled Stop button in the fourth. After the one-argument correction, all 17 combined sandbox UI stories passed on Linux in 51.7 seconds. The four new stories cover consent choices, held image/runtime progress, sanitized setup error/retry, repair without runtime reinstallation, owned stop failure/retry, opt-out/restart, and close during installation.",
+      "unit_validation": "All 17 sandbox unit tests passed. The new regression preserves retry after a failed stop, then changes ownership and verifies that retry does not issue another stop command.",
+      "preservation": "Native stories compare exact practice sessions, persisted opt-in/opt-out, retained Python/container metadata, cancelled runtime requests, and exact owned stop targets. No down or remove command is permitted.",
+      "independent_review": "A separate agent designed the four native stories and fixture, identified the stop-retry defect, and reviewed the ownership-preserving correction. Root reviewed the fixture and assertions, reproduced the failure, added the unit regression, and ran all tests.",
+      "tests": [
+        "apps/desktop/tests/e2e/sandbox-setup.spec.ts",
+        "apps/desktop/tests/e2e/sandbox-setup-fixture.ts",
+        "apps/desktop/tests/sandbox.test.ts"
+      ],
+      "limits": "The source fixture replaces only Docker execution, runtime HTTP, and discovery environment boundaries. The real manager, ownership checks, consent handler, service, backend, renderer, and saved files remain. These stories do not execute a privileged container. Windows source checks remain pending."
     }
   },
   "last_verified": {
