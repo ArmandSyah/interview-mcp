@@ -769,7 +769,7 @@
       "windows_check": "The Windows workflow now runs content, signed-update, and update-close source fixtures before packaging. Results remain pending until that branch completes CI. Packaged tests still check the preview configuration."
     },
     "design_completion_recovery": {
-      "status": "local_verified_platform_and_cloud_checks_pending",
+      "status": "merged_platform_and_postgres_verified_remote_deployment_pending",
       "requirements": "Read the owned backend status before editing a saved design session. Keep local notes, scene, review, chat, and IDs. Lock uncertain sessions after a lost completion response. Finish must wait for accepted reads and writes. Concurrent Finish requests must keep the first saved completion time.",
       "changes": "The new get_design_session tool returns the existing session shape. The desktop validates identity and completion fields, saves status locally, and exposes retry after errors. A transient connection revision forces a status refresh after token replacement. The existing draft barrier orders completion after pending drafts and before subsequent edits. Both backends preserve completed_at with an atomic COALESCE update.",
       "data_effect": "No saved workspace fields change. Existing content and practice records stay intact. Earlier completion times keep their stored values. Older servers without the owned-read tool cannot unlock saved design drafts. The new Supabase migration replaces the private dispatcher while preserving the public local-execution wrapper.",
@@ -782,8 +782,34 @@
       ],
       "verification": "Desktop build, type checks, and formatting passed. The full desktop suite passed 255 tests with two optional skips. All 14 selected native stories passed, including account isolation, token replacement, restart recovery, lost response, load errors, and finish retry. The stronger held-read assertion passed its focused rerun. Python design/cloud checks passed 19 tests with 20 PostgreSQL tests skipped. Deno lint, type checks, and all 14 protocol tests passed.",
       "independent_review": "Independent probes reproduced the stale-read and accepted-write races. The final barrier waits for both operations. A lost response remains locked until an owned read completes. The reviewer found no further blocking issue in the reviewed lifecycle, ownership, SQL, or permissions. Another agent reviewed the new documentation with the official Issue 9 rules and dictionary.",
-      "remaining": "Run full platform and PostgreSQL CI. Apply the Supabase migration and deploy its function after checks pass. The remote project has not received this change.",
-      "limits": "The lost-response native fixture uses a source bootstrap and skips packaged executables. Windows CI now runs that source test before packaging. Local native tests ran on Linux."
+      "remaining": "Apply the Supabase migration and deploy its function. The remote project has not received this change.",
+      "limits": "The lost-response native fixture uses a source bootstrap and skips packaged executables. Windows CI now runs that source test before packaging. Local native tests ran on Linux.",
+      "platform_checks": "All seven PR38 checks passed at 1f9d8bd5f029f661b537b74ddb9ccc41d2ccf340, including Desktop run 40732868239 on Windows and Linux and Supabase run 40732868250. PR38 merged as 70507044279ad886ff3339797989d012a7bb55b8. This merge includes the exact PR36 content commits. Windows installer run 40889630561 passed on that merge."
+    },
+    "startup_document_recovery": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "If the first workspace page cannot load, offer Retry and Close. Permit native window closure while the error dialog is unanswered. Do not start the backend or change saved data before the page loads.",
+      "evidence": "PR37 Desktop run 40727641635 failed three Linux stories at initial document load, before their scenario or after restart. Traces show an empty chrome-error://chromewebdata/ page and no backend spawn. The original load error code is unavailable. The Windows chat story exceeded its five-second reconnect assertion while the replacement backend initialized. Its initial backend needed 7.18 seconds.",
+      "changes": "Page load recovery offers an explicit retry. Native close ends the pending startup choice. The affected reconnect assertion uses the existing 20-second connection deadline and also requires connected readiness. There is no automatic test retry.",
+      "data_effect": "Saved workspace formats and successful startup behavior do not change. A failed document load does not read or write the saved workspace.",
+      "tests": [
+        "apps/desktop/tests/e2e/startup-recovery.spec.ts",
+        "apps/desktop/tests/e2e/action-races.spec.ts"
+      ],
+      "limits": "The source bootstrap injects the document fetch failure and captures the native dialog options. It does not establish the cause of the earlier intermittent navigation failure. Windows runs this source fixture before packaging.",
+      "validation": "The unanswered-dialog close test failed against the first patch and passed after the closure correction. All 25 final native regression stories passed on Linux in 1.5 minutes. All 17 diagnostic tests passed. Build, type checks, formatting, and diff checks passed. The independent reviewer found no remaining blocking issue in the startup patch.",
+      "diagnostics": "Connection evidence now records document load phases and numeric failure codes. It excludes document URLs and error descriptions. This permits a more specific diagnosis if the intermittent initial page failure recurs.",
+      "ci_limits": "GitHub check 122951205010 confirms that the earlier Windows job exceeded its 35-minute limit. The complete Windows job now permits 45 minutes; individual test deadlines remain unchanged except for the documented reconnect setup assertion. Both desktop jobs select Python 3.12 through uv sync, replacing the unsupported python-version input on setup-uv v3.",
+      "trace_check": "PR39 Linux job 123510210835 stopped because the diagnostic archive contained no screencast frame. The probe now uses a real click and waits for a recorded frame before closure. Both native probes and the unchanged artifact verifier passed locally, including DOM snapshots, screenshots, and intentional failure records."
+    },
+    "installation_document_review": {
+      "files": [
+        "docs/windows-install.md",
+        "docs/public-release-plan.md"
+      ],
+      "changes": "The Windows guide selects a source revision with successful installer and desktop checks, supplies the missing dependency commands, and explains the export archive limitation. The release plan retains duplicate-order rejection and states the payment fee calculation base correctly.",
+      "verification": "An independent agent compared the guide with the workflow, package configuration, artifact script, and installer tests. It checked the changed prose against Issue 9 and corrected wording. Structural and diff checks passed. The official payment provider pricing and fee pages support the fee example.",
+      "remaining": "Complete a contextual dictionary check of every word in the unchanged account and payment paragraphs. This review does not establish full document conformity."
     }
   },
   "last_verified": {
