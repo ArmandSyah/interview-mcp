@@ -143,8 +143,9 @@
       "cloud_catalog": "A new catalog migration supplies the reviewed question revision and retains previous revisions for saved attempts. The earlier applied migration stays unchanged. The catalog generator now checks the new migration. No remote migration has been applied from this branch."
     },
     "independent_verification": {
-      "status": "in_progress",
-      "required": "A subagent independently examines functionality and language rewrites. Record its findings and verify each correction."
+      "status": "source_review_complete_platform_checks_pending",
+      "required": "A subagent independently examines functionality and language rewrites. Record its findings and verify each correction.",
+      "final_source_review": "An independent agent reviewed bf68ab1, the native test log, the lock assertions, and the deliverable records. It found no blocking code issue. It identified two stale records about sandbox coverage and remote migration parity. Both records were corrected. Platform checks and remote deployment remain separate verification tasks."
     }
   },
   "ui_interaction_audit": {
@@ -703,7 +704,7 @@
     "coverage_review": {
       "method": "An independent subagent mapped the renderer components and native handlers to existing native, unit, and process tests. This is a source coverage review, not a claim that the remaining interactions passed.",
       "scope_corrections": "There is no archive-restore UI. Timer start/pause, guided/mock selection, reflection history expansion, coding error dismissal, and account isolation have coverage. The remaining list names specific uncovered actions rather than indefinite additional testing.",
-      "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
+      "race_candidates": "The initial sandbox response race is corrected and verified. Native close cancels active Docker inspection. The sandbox-setup stories now cover close during installation and owned-container cleanup. Their controlled Docker boundary and native results are recorded in sandbox_setup_recovery."
     },
     "remaining_checks": [
       "Run full Windows and Linux checks for the combined changes, including native window controls and packaged tests. Investigate any failure before merge."
@@ -952,7 +953,8 @@
     },
     "final_local_integration": {
       "validation": "All 11 window, design controls, chat history, and design artifact stories passed in 1.1 minutes. All 271 desktop unit tests passed, with two optional skips. Type checks, formatting, build, and workflow YAML parsing passed.",
-      "platform_status": "Full Windows and Linux checks remain pending for the combined changes."
+      "platform_status": "Full Windows and Linux checks remain pending for the combined changes.",
+      "combined_backend": "After merging main at bf68ab1, all 338 backend and authoring tests passed, with 31 optional skips and 30 existing datetime warnings."
     }
   },
   "last_verified": {
