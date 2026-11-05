@@ -2,6 +2,8 @@
 
 Status: release proposal with a private preview of Supabase practice.
 Public accounts and checkout are not available.
+The later [subscription comparison](subscription-options.md) evaluates a USD 10 monthly service, signup, and download hosting.
+That proposal preserves existing perpetual pack licenses and free local practice.
 The desktop app is the first release.
 The [Supabase guide](supabase-hosting.md) identifies the deployed tools and remaining work.
 
