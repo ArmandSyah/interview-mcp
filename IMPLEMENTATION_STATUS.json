@@ -109,16 +109,16 @@
       "independent_review": "A subagent independently examined the workflow, lifecycle test, PowerShell arguments, data-retention checks, artifact generator, and Issue 9 writing. It found broken relative links in the extracted guide and compound procedural instructions. The corrections passed independent metadata and source review.",
       "windows_ci": "Windows installer preview workflow 40688491316 passed for 9224097. The actual Windows installation, removal, and reinstallation test passed in 56.6 seconds. Preview artifact 12816695170 and evidence artifact 12815564364 were uploaded. The downloaded archives passed their published SHA-256 checks. The preview expires on 2026-11-27. The installer has 158124386 bytes and SHA-256 69e9a0724f61c66784970d569fd95d07614251e1833d369d5753bc739b5df2bb. Its build identity identifies 9224097ac5743a52bedee907e74bb80c58ef431d. The final Windows screenshot shows the retained code after reinstallation. The Windows and Linux jobs in Desktop workflow 40688491295 also passed.",
       "latest_preview": {
-        "source_commit": "bf68ab1d867ab6a6fea98f5d43c876661f439f0d",
-        "workflow_run": 42024489925,
-        "artifact_id": 13412489850,
-        "artifact_url": "https://github.com/ArmandSyah/interview-mcp/actions/runs/42024489925/artifacts/13412489850",
-        "expires_at": "2026-12-05T12:11:52Z",
-        "bytes": 158137758,
-        "sha256": "214368a2bd3b813809a36885fb9a146bfbf5bf9add1201d60a40c7755173d83b",
-        "verification": "The Windows installation, removal, and reinstallation test passed in 54.8 seconds. The downloaded executable matches its published checksum and build identity. The final screenshot shows the retained coding draft after reinstallation.",
-        "limits": "This unsigned development preview contains the combined audit fixes. Full Desktop workflow 42024437139 remains pending. The artifact is not a published release.",
-        "independent_verification": "A separate agent verified the lifecycle log, both Electron connection records, restored-code screenshot, installer byte count, checksum, build identity, and pinned guide links. The evidence covers same-version installation and reinstallation. It does not establish cross-version upgrades or publisher signing."
+        "source_commit": "201b616da921f3cac90d95f63523f89cc7faaf24",
+        "workflow_run": 42026596914,
+        "artifact_id": 13413888550,
+        "artifact_url": "https://github.com/ArmandSyah/interview-mcp/actions/runs/42026596914/artifacts/13413888550",
+        "expires_at": "2026-12-05T12:27:23Z",
+        "bytes": 158137663,
+        "sha256": "89ebbcc14a4ba85d03f993cd1c2b192c6edbd44b4f339e239f47a9bcc94e1868",
+        "verification": "The Windows installation, removal, and reinstallation test passed in 50.9 seconds. The downloaded executable matches its checksum, byte count, source commit, and workflow identity.",
+        "limits": "This unsigned development preview contains the combined audit fixes and corrected Windows test launcher. Full Desktop workflow 42026571701 remains pending. The artifact is not a published release.",
+        "independent_verification": "A separate agent verified the lifecycle log, checksum, byte count, build identity, and pinned guide links. Runtime files are identical to bf68ab1, so its earlier functional review still applies. The corrected launcher fixture has a separate independent review. Evidence does not establish cross-version upgrades or publisher signing."
       }
     },
     "download_website": {
@@ -953,7 +953,8 @@
       ],
       "validation": "Five native Linux stories passed. They cover minimum size, maximize, restore, fullscreen, zoom, pending coding/design writes, and two real second-process launches. Lock records identify both process IDs and their actual lock results.",
       "limits": "Linux uses Xvfb with Openbox. Windows source checks include both second-process stories. Packaged runs skip these two source-bootstrap stories. Platform checks remain pending.",
-      "windows_fixture_correction": "Windows run 42024437139 passed 43 configured source stories but failed both second-instance lock assertions. Playwright launches Electron through a Windows shell, so app.process() supplied the shell executable and PID. The fixture now reads process.execPath, process.pid, and the sandbox switch inside Electron. It still requires two exact lock records, normal secondary exit, one backend, correct focus/window state, and preserved practice. All five corrected window stories passed locally in 17.8 seconds. An independent agent confirmed the diagnosis and correction. Type and formatting checks passed. Application code does not change; new platform verification is pending."
+      "windows_fixture_correction": "Windows run 42024437139 passed 43 configured source stories but failed both second-instance lock assertions. Playwright launches Electron through a Windows shell, so app.process() supplied the shell executable and PID. The fixture now reads process.execPath, process.pid, and the sandbox switch inside Electron. It still requires two exact lock records, normal secondary exit, one backend, correct focus/window state, and preserved practice. All five corrected window stories passed locally in 17.8 seconds. An independent agent confirmed the diagnosis and correction. Type and formatting checks passed. Application code does not change; new platform verification is pending.",
+      "windows_source_verification": "The configured Windows source stage passed in Desktop run 42026571701 at 201b616. It includes the corrected minimized and maximized second-instance stories. Full packaged verification remains pending."
     },
     "design_controls_and_chat_history": {
       "status": "local_verified_platform_checks_pending",
