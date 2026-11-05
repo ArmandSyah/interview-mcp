@@ -20,7 +20,11 @@ export type Config = {
 const customerSchema = z.object({ customer_id: paddleId('ctm').nullable(), binding_id: z.uuid() });
 const claimSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('claimed'), reservation_id: z.uuid() }),
-  z.object({ state: z.literal('ready'), transaction_id: paddleId('txn') }),
+  z.object({
+    state: z.literal('ready'),
+    reservation_id: z.uuid(),
+    transaction_id: paddleId('txn'),
+  }),
   z.object({ state: z.enum(['pending', 'uncertain', 'subscribed']) }),
 ]);
 const statusSchema = z.object({
@@ -69,9 +73,6 @@ function checkTransaction(transaction: Transaction, customerId: string, priceId:
     transaction.currency_code !== 'USD' || transaction.collection_mode !== 'automatic' ||
     transaction.discount_id !== null
   ) throw new HttpError(409, 'checkout_requires_reconciliation');
-  if (!['draft', 'ready'].includes(transaction.status)) {
-    throw new HttpError(409, 'checkout_requires_reconciliation');
-  }
 }
 
 export function createBillingHandler(
@@ -145,7 +146,7 @@ export function createBillingHandler(
       if (!matchesPlan(await provider.price(), config.priceId)) {
         return respond({ error: 'price_not_configured' }, 503);
       }
-      const claim = claimSchema.parse(await store.call('checkout_claim', args));
+      let claim = claimSchema.parse(await store.call('checkout_claim', args));
       if (claim.state !== 'claimed' && claim.state !== 'ready') {
         return respond({
           error: claim.state === 'subscribed'
@@ -157,8 +158,49 @@ export function createBillingHandler(
         const customer = customerSchema.parse(await store.call('customer', args));
         if (!customer.customer_id) throw new Error('Missing customer binding');
         const transaction = await provider.transaction(claim.transaction_id);
+        if (transaction.id !== claim.transaction_id) {
+          throw new HttpError(409, 'checkout_requires_reconciliation');
+        }
         checkTransaction(transaction, customer.customer_id, config.priceId);
-        return respond({ transactionId: transaction.id });
+        if (
+          ['draft', 'ready'].includes(transaction.status) && transaction.subscription_id === null
+        ) {
+          return respond({ transactionId: transaction.id });
+        }
+        let canceledAt: string | null = null;
+        if (transaction.status === 'completed' && transaction.subscription_id) {
+          const subscription = await provider.subscription(transaction.subscription_id);
+          if (
+            subscription.id !== transaction.subscription_id ||
+            subscription.customer_id !== customer.customer_id ||
+            subscription.status !== 'canceled' ||
+            !subscription.canceled_at || Date.parse(subscription.canceled_at) > now()
+          ) throw new HttpError(409, 'checkout_requires_reconciliation');
+          canceledAt = subscription.canceled_at;
+        } else if (transaction.status !== 'canceled' || transaction.subscription_id !== null) {
+          throw new HttpError(409, 'checkout_requires_reconciliation');
+        }
+        // The store atomically replaces only this ready reservation. It also requires
+        // the cancellation webhook and rejects every potentially billable subscription.
+        const recovered = z.discriminatedUnion('state', [
+          z.object({ state: z.literal('claimed'), reservation_id: z.uuid() }),
+          z.object({ state: z.literal('uncertain') }),
+        ]).parse(
+          await store.call('checkout_recover', {
+            ...args,
+            reservation_id: claim.reservation_id,
+            transaction_id: transaction.id,
+            customer_id: customer.customer_id,
+            transaction_status: transaction.status,
+            subscription_id: transaction.subscription_id,
+            subscription_status: canceledAt ? 'canceled' : null,
+            subscription_canceled_at: canceledAt,
+          }),
+        );
+        if (recovered.state !== 'claimed') {
+          throw new HttpError(409, 'checkout_requires_reconciliation');
+        }
+        claim = recovered;
       }
       try {
         const customer = customerSchema.parse(await store.call('customer', args));
@@ -176,6 +218,11 @@ export function createBillingHandler(
         }
         const transaction = await provider.createTransaction(customerId, claim.reservation_id);
         checkTransaction(transaction, customerId, config.priceId);
+        if (
+          !['draft', 'ready'].includes(transaction.status) || transaction.subscription_id !== null
+        ) {
+          throw new HttpError(409, 'checkout_requires_reconciliation');
+        }
         await store.call('checkout_finish', {
           ...args,
           reservation_id: claim.reservation_id,

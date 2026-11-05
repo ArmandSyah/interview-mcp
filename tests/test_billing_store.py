@@ -353,6 +353,7 @@ def test_checkout_failure_retry_preserves_new_reservation_and_owner(database: Da
     database.call("checkout_fail", reservation_id=new, uncertain=False)
     assert database.call("checkout_claim") == {
         "state": "ready",
+        "reservation_id": new,
         "transaction_id": "txn_known",
         "checkout_url": None,
     }
@@ -583,3 +584,255 @@ def test_invalid_events_leave_no_partial_billing_records(database: Database, cha
     database.call("apply_event", **event(**changes), success=False)
     assert database.sql("select count(*) from iwb_private.billing_events") == "0"
     assert database.sql("select count(*) from iwb_private.billing_subscriptions") == "0"
+
+
+def ready_recovery(database: Database) -> dict[str, object]:
+    claim = database.call("checkout_claim")
+    database.bind()
+    database.call(
+        "checkout_finish",
+        reservation_id=claim["reservation_id"],
+        transaction_id="txn_original",
+        checkout_url=None,
+    )
+    ready = database.call("checkout_claim")
+    assert ready["reservation_id"] == claim["reservation_id"]
+    return {
+        "reservation_id": claim["reservation_id"],
+        "transaction_id": "txn_original",
+        "customer_id": "ctm_alice",
+        "transaction_status": "canceled",
+        "subscription_id": None,
+        "subscription_status": None,
+        "subscription_canceled_at": None,
+    }
+
+
+def test_canceled_checkout_recovery_replaces_only_the_exact_ready_reservation(database: Database):
+    proof = ready_recovery(database)
+    recovered = database.call("checkout_recover", **proof)
+    assert recovered["state"] == "claimed"
+    assert recovered["reservation_id"] != proof["reservation_id"]
+    assert database.call("checkout_recover", **proof) == {"state": "uncertain"}
+    assert database.call("checkout_claim")["state"] == "pending"
+    assert "does not match" in database.call(
+        "checkout_fail",
+        reservation_id=proof["reservation_id"],
+        uncertain=False,
+        success=False,
+    )
+    assert "does not match" in database.call(
+        "checkout_finish",
+        reservation_id=proof["reservation_id"],
+        transaction_id="txn_late",
+        checkout_url=None,
+        success=False,
+    )
+    database.call(
+        "checkout_finish",
+        reservation_id=recovered["reservation_id"],
+        transaction_id="txn_returning",
+        checkout_url=None,
+    )
+    assert database.call("checkout_recover", **proof) == {"state": "uncertain"}
+    assert database.call("checkout_claim")["transaction_id"] == "txn_returning"
+
+
+def test_completed_checkout_recovers_after_owned_subscription_ends_without_removing_history(
+    database: Database,
+):
+    proof = ready_recovery(database)
+    assert apply(
+        database,
+        status="canceled",
+        current_period_end=None,
+        occurred_at="2020-01-03T00:00:00Z",
+    ) == {"outcome": "applied"}
+    proof.update(
+        transaction_status="completed",
+        subscription_id="sub_alice",
+        subscription_status="canceled",
+        subscription_canceled_at="2020-01-02T00:00:00Z",
+    )
+    recovered = database.call("checkout_recover", **proof)
+    assert recovered["state"] == "claimed"
+    database.call(
+        "checkout_finish",
+        reservation_id=recovered["reservation_id"],
+        transaction_id="txn_returning",
+        checkout_url=None,
+    )
+    assert apply(database, subscription_id="sub_returning") == {"outcome": "applied"}
+    assert database.call("status")["entitled"] is True
+    assert (
+        database.sql(
+            "select status from iwb_private.billing_subscriptions where subscription_id='sub_alice'"
+        )
+        == "canceled"
+    )
+    assert database.sql("select count(*) from iwb_private.billing_events") == "2"
+    assert database.sql("select count(*) from iwb_private.billing_subscriptions") == "2"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"account_id": BOB},
+        {"mode": "live"},
+        {"customer_id": "ctm_bob"},
+        {"reservation_id": "33333333-3333-4333-8333-333333333333"},
+        {"transaction_id": "txn_stale"},
+        {"transaction_status": "ready"},
+        {"subscription_id": "sub_unexpected"},
+        {"subscription_status": "canceled"},
+        {"subscription_canceled_at": "2020-01-02T00:00:00Z"},
+        {"transaction_status": "completed"},
+        {
+            "transaction_status": "completed",
+            "subscription_id": "sub_missing",
+            "subscription_status": "canceled",
+            "subscription_canceled_at": "2020-01-02T00:00:00Z",
+        },
+    ],
+)
+def test_recovery_rejects_wrong_owner_mode_stale_reservation_and_incomplete_proof(
+    database, changes
+):
+    proof = ready_recovery(database)
+    before = database.call("checkout_claim")
+    assert database.call("checkout_recover", **{**proof, **changes}) == {"state": "uncertain"}
+    assert database.call("checkout_claim") == before
+
+
+@pytest.mark.parametrize("canceled_at", [None, "infinity", "2100-01-01T00:00:00Z"])
+def test_completed_recovery_requires_a_finite_past_provider_cancellation(database, canceled_at):
+    proof = ready_recovery(database)
+    apply(database, status="canceled", current_period_end=None)
+    proof.update(
+        transaction_status="completed",
+        subscription_id="sub_alice",
+        subscription_status="canceled",
+        subscription_canceled_at=canceled_at,
+    )
+    assert database.call("checkout_recover", **proof) == {"state": "uncertain"}
+    assert database.call("checkout_claim")["state"] == "ready"
+
+
+@pytest.mark.parametrize("status", ["active", "trialing", "past_due", "paused", "conflict"])
+def test_recovery_rejects_billable_or_unresolved_subscriptions_even_without_entitlement(
+    database,
+    status,
+):
+    proof = ready_recovery(database)
+    apply(
+        database,
+        status="canceled" if status == "conflict" else status,
+        current_period_end="2000-01-01T00:00:00Z",
+    )
+    if status == "conflict":
+        assert apply(database) == {"outcome": "conflict"}
+    assert database.call("status")["entitled"] is False
+    before = database.sql("select to_jsonb(c) from iwb_private.billing_checkouts c")
+    assert database.call("checkout_recover", **proof) == {"state": "uncertain"}
+    assert database.sql("select to_jsonb(c) from iwb_private.billing_checkouts c") == before
+
+
+@pytest.mark.parametrize("state", ["pending", "uncertain"])
+def test_recovery_cannot_release_pending_or_uncertain_checkout(database, state):
+    proof = ready_recovery(database)
+    database.sql(f"""
+        update iwb_private.billing_checkouts set state='{state}', transaction_id=null,
+          checkout_url=null;
+    """)
+    assert database.call("checkout_recover", **proof) == {"state": "uncertain"}
+    assert database.call("checkout_claim")["state"] == state
+
+
+def test_concurrent_recovery_creates_one_replacement_and_blocks_losing_claim(database):
+    proof = ready_recovery(database)
+    barrier = Barrier(2)
+
+    def recover(_):
+        barrier.wait(timeout=10)
+        return database.call("checkout_recover", **proof)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(recover, range(2)))
+    assert sorted(result["state"] for result in results) == ["claimed", "uncertain"]
+    claimed = next(result for result in results if result["state"] == "claimed")
+    assert (
+        database.sql("select reservation_id from iwb_private.billing_checkouts")
+        == (claimed["reservation_id"])
+    )
+    assert database.sql("select count(*) from iwb_private.billing_checkouts") == "1"
+
+
+def test_recovery_waits_for_accepted_active_event_and_retains_existing_checkout(database):
+    proof = ready_recovery(database)
+    args = json.dumps({"mode": "sandbox", **event()}).replace("'", "''")
+    held = subprocess.Popen(
+        database.command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert held.stdin is not None and held.stdout is not None
+
+    def wait_for_event():
+        return any(line.strip() == "billing-event-held" for line in held.stdout)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        try:
+            held.stdin.write(
+                "begin; set role service_role; "
+                f"select public.iwb_billing('apply_event', '{args}');\n"
+                "\\echo billing-event-held\n"
+            )
+            held.stdin.flush()
+            assert pool.submit(wait_for_event).result(timeout=5), (
+                "The active event must be accepted"
+            )
+            recovery = pool.submit(database.call, "checkout_recover", **proof)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                if (
+                    database.sql("""
+                    select count(*) from pg_stat_activity where pid <> pg_backend_pid()
+                      and query like '%checkout_recover%' and wait_event_type='Lock';
+                """)
+                    == "1"
+                ):
+                    break
+                time.sleep(0.01)
+            else:
+                pytest.fail("Recovery did not wait for the accepted event's customer lock")
+            held.stdin.write("commit;\n\\q\n")
+            held.stdin.flush()
+            assert held.wait(timeout=5) == 0
+            assert recovery.result(timeout=5) == {"state": "uncertain"}
+        finally:
+            if held.poll() is None:
+                held.stdin.write("rollback;\n\\q\n")
+                held.stdin.flush()
+                try:
+                    held.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    held.kill()
+                    held.wait(timeout=5)
+            held.stdin.close()
+            held.stdout.close()
+            if held.stderr is not None:
+                held.stderr.close()
+    assert database.call("checkout_claim") == {"state": "subscribed"}
+    assert database.sql("select transaction_id from iwb_private.billing_checkouts") == (
+        "txn_original"
+    )
+
+
+@pytest.mark.parametrize("role", ["anon", "authenticated", "service_role"])
+def test_original_dispatcher_is_private_after_recovery_migration(database, role):
+    assert "permission denied" in database.sql(
+        f"set role {role}; select iwb_private.billing_initial('customer', '{{}}');",
+        success=False,
+    )

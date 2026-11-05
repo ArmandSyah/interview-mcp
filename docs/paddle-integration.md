@@ -94,6 +94,10 @@ No value below has been provisioned by this branch.
 | `BILLING_ALLOWED_ORIGINS` | Comma-separated exact HTTPS origins. Wildcards are not accepted. |
 | Website Paddle token | Public sandbox token with the `test_` prefix. This is separate from the secret API key. |
 
+The server API key needs `price.read`, `customer.write`, `transaction.read`, `transaction.write`, and `customer_portal_session.write`.
+Checkout recovery also needs `subscription.read` to verify the subscription's current state.
+These permissions belong to the server API key. The public website token does not use them.
+
 The preview origin is `https://interview-workbench-preview.higher-visio-3179.chatgpt.site`.
 The webhook needs gateway JWT verification disabled for this function alone.
 Its handler verifies Paddle signatures. Account routes still verify Supabase tokens.
@@ -140,9 +144,10 @@ The browser cannot call this dispatcher with its public key or user token.
 | --- | --- | --- |
 | `customer` | None | `{customer_id,binding_id}`. Customer ID may be null. |
 | `bind_customer` | `binding_id,customer_id` | `{customer_id}` with the canonical binding. |
-| `checkout_claim` | None | `claimed` with `reservation_id`, `ready` with `transaction_id`, or `pending`, `uncertain`, or `subscribed`. |
+| `checkout_claim` | None | `claimed` with `reservation_id`, `ready` with `reservation_id` and `transaction_id`, or `pending`, `uncertain`, or `subscribed`. |
 | `checkout_finish` | `reservation_id,transaction_id,checkout_url` | Persists the transaction against its reservation. This handler passes a null URL. |
 | `checkout_fail` | `reservation_id,uncertain` | Releases a definite failure or retains an uncertain reservation. |
+| `checkout_recover` | Provider facts and saved identifiers listed below | `claimed` with a new `reservation_id`, or `uncertain` with no state change. |
 | `status` | None | The account status response described above. |
 | `apply_event` | Event fields listed below | `{outcome}` as `applied`, `duplicate`, `stale`, `unbound`, or `conflict`. |
 
@@ -151,16 +156,42 @@ It also accepts `current_period_end`, `scheduled_cancel_at`, `payload_hash`, and
 Period and cancellation dates may be null.
 The dispatcher resolves account ownership from the customer ID. It does not accept an event account ID.
 
-## Recovery limits and validation
+`checkout_recover` accepts `reservation_id`, `transaction_id`, `customer_id`, and `transaction_status`.
+It also accepts `subscription_id`, `subscription_status`, and `subscription_canceled_at`.
+The Edge Function supplies these facts from authenticated provider reads. The browser supplies none of them.
+For a canceled transaction without a subscription, all three subscription fields are null.
+For a completed transaction, the subscription fields identify its canceled subscription and cancellation date.
+The date must be present, finite, and no later than the current time.
+
+## Checkout recovery
 
 A checkout reservation prevents concurrent requests from creating separate transactions.
-A repeat request reuses the saved transaction after provider validation.
+A repeat request reuses a draft or ready transaction after provider validation.
+The server verifies the saved transaction ID, bound customer, currency, item quantity, and configured price.
+The [transaction API](https://developer.paddle.com/api-reference/transactions/get-transaction/) supplies the transaction state and related subscription ID.
+
+The handler can replace a canceled transaction that has no subscription.
+It can also replace a completed transaction whose exact subscription Paddle confirms as canceled.
+The server verifies the subscription ID, customer ID, cancellation status, and cancellation date.
+The database must already contain that subscription's cancellation event for the same account.
+Paddle supplies these fields through its [subscription API](https://developer.paddle.com/api-reference/subscriptions/get-subscription/).
+Paddle does not permit a canceled subscription to restart, as its [cancellation guide](https://developer.paddle.com/api-reference/subscriptions/cancel-subscription/) explains.
+
+The database rejects recovery if another subscription for the account is unresolved or has any status except canceled.
+An expired active subscription remains blocked because a renewal can still occur.
+An active subscription with a scheduled cancellation also remains blocked until cancellation takes effect and its webhook arrives.
+Recovery compares the saved reservation and transaction IDs before it reserves a replacement.
+That comparison and the replacement occur in one database transaction. Concurrent requests can produce only one replacement reservation.
+Recovery does not grant entitlement or erase subscription history.
+
+## Remaining recovery limits and validation
+
 Timeouts, uncertain provider responses, and failed database writes retain the reservation.
 The handler does not clear reservations after a timer.
-Completed or canceled checkout transactions require reconciliation before another checkout can start.
-This branch does not yet implement automatic reconciliation or operator recovery commands.
+Pending and uncertain reservations still require operator recovery. This branch does not yet provide those commands.
+Missing cancellation webhooks also prevent replacement until the database receives the event.
 
-Recovery must inspect provider state using the saved transaction or server-created reservation metadata.
+Future operator recovery must inspect provider state using the saved transaction or server-created reservation metadata.
 It must confirm ownership before it repairs a reservation. It must not create a replacement after an unverified timeout.
 Refunds, disputes, missed-event reconciliation, request limits, and launch policies need separate work before live billing.
 Provider credentials, catalog setup, notification setup, and a real sandbox checkout test also remain pending.
@@ -168,7 +199,8 @@ This code is a tested integration scaffold, not an activated payment service.
 
 The focused Deno tests use injected HTTP responses. They make no Paddle network requests.
 They cover account access, customer ownership, fixed prices, concurrent checkout, signatures, retries, and storage failures.
-Separate PostgreSQL tests verify the durable event and reservation rules.
+They also cover canceled subscriptions, replacement races, changed ownership, missing cancellation proof, and uncertain replacement results.
+Separate PostgreSQL tests verify event order, reservation replacement, and a subscription event that arrives during recovery.
 
 ```sh
 cd supabase

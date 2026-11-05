@@ -17,6 +17,9 @@ const reservation = '33333333-3333-4333-8333-333333333333';
 const customer = `ctm_${'a'.repeat(26)}`;
 const priceId = `pri_${'a'.repeat(26)}`;
 const transactionId = `txn_${'a'.repeat(26)}`;
+const subscriptionId = `sub_${'a'.repeat(26)}`;
+const replacementId = `txn_${'b'.repeat(26)}`;
+const replacementReservation = '44444444-4444-4444-8444-444444444444';
 const origin = 'https://practice.example';
 const secret = 'test-only-webhook-secret';
 const timestamp = 1800000000000;
@@ -31,6 +34,7 @@ const price: Price = {
 const transaction: Transaction = {
   id: transactionId,
   customer_id: customer,
+  subscription_id: null,
   status: 'ready',
   currency_code: 'USD',
   collection_mode: 'automatic',
@@ -51,11 +55,23 @@ function fixture() {
       }
       if (operation === 'checkout_claim') {
         const result = claim;
-        claim = { state: 'pending' };
+        if (claim.state === 'claimed') claim = { state: 'pending' };
         return Promise.resolve(result);
       }
+      if (operation === 'checkout_recover') {
+        if (
+          claim.state !== 'ready' || claim.reservation_id !== args.reservation_id ||
+          claim.transaction_id !== args.transaction_id
+        ) return Promise.resolve({ state: 'uncertain' });
+        claim = { state: 'pending' };
+        return Promise.resolve({ state: 'claimed', reservation_id: replacementReservation });
+      }
       if (operation === 'checkout_finish') {
-        claim = { state: 'ready', transaction_id: args.transaction_id };
+        claim = {
+          state: 'ready',
+          reservation_id: args.reservation_id,
+          transaction_id: args.transaction_id,
+        };
       }
       if (operation === 'status') {
         return Promise.resolve({
@@ -78,6 +94,13 @@ function fixture() {
       return Promise.resolve(transaction);
     },
     transaction: () => Promise.resolve(transaction),
+    subscription: () =>
+      Promise.resolve({
+        id: subscriptionId,
+        customer_id: customer,
+        status: 'canceled',
+        canceled_at: '2026-11-01T00:00:00Z',
+      }),
     portal: (id) => {
       providerCalls.push(id);
       return Promise.resolve('https://sandbox-customer-portal.paddle.com/example');
@@ -203,10 +226,153 @@ Deno.test('checkout checks provider price and saved customer ownership', async (
   assertEquals((await f.handler(request('checkout'))).status, 503);
   assertEquals(f.calls.length, 0);
   f.provider.price = () => Promise.resolve(price);
-  f.setClaim({ state: 'ready', transaction_id: transactionId });
+  f.setClaim({ state: 'ready', reservation_id: reservation, transaction_id: transactionId });
   f.provider.transaction = () =>
     Promise.resolve({ ...transaction, customer_id: `ctm_${'b'.repeat(26)}` });
   assertEquals((await f.handler(request('checkout'))).status, 409);
+});
+function returningSubscriber(status: 'canceled' | 'completed' = 'completed') {
+  const f = fixture();
+  f.setClaim({ state: 'ready', reservation_id: reservation, transaction_id: transactionId });
+  f.provider.transaction = (id) =>
+    Promise.resolve(
+      id === replacementId ? { ...transaction, id: replacementId } : {
+        ...transaction,
+        status,
+        subscription_id: status === 'completed' ? subscriptionId : null,
+      },
+    );
+  f.provider.createTransaction = (customerId, reservationId) => {
+    assertEquals(customerId, customer);
+    assertEquals(reservationId, replacementReservation);
+    f.providerCalls.push('replacement');
+    return Promise.resolve({ ...transaction, id: replacementId });
+  };
+  return f;
+}
+Deno.test('canceled checkout and completed canceled subscription permit one replacement', async () => {
+  for (const status of ['canceled', 'completed'] as const) {
+    const f = returningSubscriber(status);
+    const response = await f.handler(request('checkout'));
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { transactionId: replacementId });
+    const recovery = f.calls.find((call) => call.operation === 'checkout_recover');
+    assertEquals(recovery?.args, {
+      account_id: account,
+      mode: 'sandbox',
+      reservation_id: reservation,
+      transaction_id: transactionId,
+      customer_id: customer,
+      transaction_status: status,
+      subscription_id: status === 'completed' ? subscriptionId : null,
+      subscription_status: status === 'completed' ? 'canceled' : null,
+      subscription_canceled_at: status === 'completed' ? '2026-11-01T00:00:00Z' : null,
+    });
+    // A later click reuses the replacement instead of creating another subscription.
+    assertEquals((await f.handler(request('checkout'))).status, 200);
+    assertEquals(f.providerCalls, ['replacement']);
+    assert(f.calls.every((call) => call.operation !== 'apply_event'));
+  }
+});
+Deno.test('parallel returning-subscriber checkouts have exactly one reservation winner', async () => {
+  const f = returningSubscriber();
+  const responses = await Promise.all([
+    f.handler(request('checkout')),
+    f.handler(request('checkout')),
+  ]);
+  assertEquals(responses.map((response) => response.status).sort(), [200, 409]);
+  assertEquals(f.providerCalls, ['replacement']);
+});
+Deno.test('active, past-due, paused, and trial subscriptions cannot authorize replacement', async () => {
+  for (const status of ['active', 'past_due', 'paused', 'trialing'] as const) {
+    const f = returningSubscriber();
+    f.provider.subscription = () =>
+      Promise.resolve({ id: subscriptionId, customer_id: customer, status, canceled_at: null });
+    assertEquals((await f.handler(request('checkout'))).status, 409);
+    assertEquals(f.providerCalls, []);
+    assert(!f.calls.some((call) => call.operation === 'checkout_recover'));
+  }
+});
+Deno.test('recovery rejects changed provider IDs, ownership, and invalid cancellation proof', async () => {
+  for (
+    const changed of [
+      { id: `sub_${'b'.repeat(26)}` },
+      { customer_id: `ctm_${'b'.repeat(26)}` },
+      { canceled_at: null },
+      { canceled_at: new Date(timestamp + 1000).toISOString() },
+    ]
+  ) {
+    const f = returningSubscriber();
+    f.provider.subscription = () =>
+      Promise.resolve({
+        id: subscriptionId,
+        customer_id: customer,
+        status: 'canceled',
+        canceled_at: '2026-11-01T00:00:00Z',
+        ...changed,
+      });
+    assertEquals((await f.handler(request('checkout'))).status, 409);
+    assertEquals(f.providerCalls, []);
+    assert(!f.calls.some((call) => call.operation === 'checkout_recover'));
+  }
+  for (
+    const changed of [
+      { id: replacementId, status: 'canceled', subscription_id: null },
+      { status: 'canceled', subscription_id: subscriptionId },
+      { status: 'completed', subscription_id: null },
+      { status: 'paid', subscription_id: subscriptionId },
+    ]
+  ) {
+    const f = returningSubscriber();
+    f.provider.transaction = () => Promise.resolve({ ...transaction, ...changed });
+    assertEquals((await f.handler(request('checkout'))).status, 409);
+    assertEquals(f.providerCalls, []);
+    assert(!f.calls.some((call) => call.operation === 'checkout_recover'));
+  }
+});
+Deno.test('missing cancellation webhook or changed database reservation blocks recovery', async () => {
+  const f = returningSubscriber();
+  const original = f.store.call;
+  f.store.call = (operation, args) =>
+    operation === 'checkout_recover'
+      ? Promise.resolve({ state: 'uncertain' })
+      : original(operation, args);
+  assertEquals((await f.handler(request('checkout'))).status, 409);
+  assertEquals(f.providerCalls, []);
+  assert(!f.calls.some((call) => call.operation === 'checkout_finish'));
+});
+Deno.test('provider recovery read failure leaves the saved checkout untouched', async () => {
+  for (const operation of ['transaction', 'subscription'] as const) {
+    const f = returningSubscriber();
+    f.provider[operation] = (): Promise<never> => Promise.reject(new ProviderError(true));
+    assertEquals((await f.handler(request('checkout'))).status, 503);
+    assertEquals(f.providerCalls, []);
+    assert(!f.calls.some((call) => ['checkout_recover', 'checkout_fail'].includes(call.operation)));
+  }
+});
+Deno.test('an ambiguous replacement result preserves the new reservation and blocks retry', async () => {
+  const f = returningSubscriber();
+  f.provider.createTransaction = () => {
+    f.providerCalls.push('replacement');
+    return Promise.reject(new ProviderError(true));
+  };
+  assertEquals((await f.handler(request('checkout'))).status, 503);
+  const failed = f.calls.find((call) => call.operation === 'checkout_fail');
+  assertEquals(failed?.args.reservation_id, replacementReservation);
+  assertEquals(failed?.args.uncertain, true);
+  assertEquals((await f.handler(request('checkout'))).status, 409);
+  assertEquals(f.providerCalls, ['replacement']);
+});
+Deno.test('pending and uncertain reservations never start automatic recovery', async () => {
+  for (const state of ['pending', 'uncertain']) {
+    const f = returningSubscriber();
+    f.setClaim({ state });
+    f.provider.transaction = () =>
+      Promise.reject(new Error('Must not read a provider transaction'));
+    assertEquals((await f.handler(request('checkout'))).status, 409);
+    assertEquals(f.providerCalls, []);
+    assert(!f.calls.some((call) => call.operation === 'checkout_recover'));
+  }
 });
 Deno.test('portal uses only the authenticated account customer', async () => {
   const f = fixture();
@@ -366,6 +532,52 @@ Deno.test('HTTP adapter treats transport and server failures as uncertain', asyn
     );
     assertEquals(error.uncertain, status === 408 || status >= 500);
   }
+});
+Deno.test('HTTP recovery reads exact provider IDs and retains only subscription facts', async () => {
+  const urls: string[] = [];
+  const provider = createPaddleProvider({
+    mode: 'sandbox',
+    apiKey: 'test-only',
+    priceId,
+    checkoutUrl: origin,
+  }, (input, init) => {
+    urls.push(String(input));
+    assertEquals(init?.method, 'GET');
+    assertEquals(init?.body, undefined);
+    if (String(input).includes('/transactions/')) {
+      return Promise.resolve(Response.json({
+        data: {
+          ...transaction,
+          status: 'completed',
+          subscription_id: subscriptionId,
+        },
+      }));
+    }
+    return Promise.resolve(Response.json({
+      data: {
+        id: subscriptionId,
+        customer_id: customer,
+        status: 'canceled',
+        canceled_at: '2026-11-01T00:00:00Z',
+        current_billing_period: null,
+        custom_data: { ignored: true },
+      },
+    }));
+  });
+  const completed = await provider.transaction(transactionId);
+  assertEquals(completed.subscription_id, subscriptionId);
+  assertEquals(await provider.subscription(subscriptionId), {
+    id: subscriptionId,
+    customer_id: customer,
+    status: 'canceled',
+    canceled_at: '2026-11-01T00:00:00Z',
+  });
+  assertEquals(urls, [
+    `https://sandbox-api.paddle.com/transactions/${transactionId}`,
+    `https://sandbox-api.paddle.com/subscriptions/${subscriptionId}`,
+  ]);
+  await assertRejects(() => provider.subscription('../customers'));
+  assertEquals(urls.length, 2);
 });
 Deno.test('Supabase adapters verify users and use the service-only dispatcher', async () => {
   const user = {

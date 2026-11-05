@@ -5,6 +5,7 @@ import {
   priceSchema,
   type Provider,
   ProviderError,
+  subscriptionSchema,
   transactionSchema,
 } from './contracts.ts';
 
@@ -71,6 +72,10 @@ export function createPaddleProvider(
     async transaction(id) {
       paddleId('txn').parse(id);
       return transactionSchema.parse(await request(`/transactions/${id}`));
+    },
+    async subscription(id) {
+      paddleId('sub').parse(id);
+      return subscriptionSchema.parse(await request(`/subscriptions/${id}`));
     },
     async portal(customerId) {
       paddleId('ctm').parse(customerId);

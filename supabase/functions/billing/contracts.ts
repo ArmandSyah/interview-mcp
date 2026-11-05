@@ -27,6 +27,7 @@ export const transactionSchema = z.object({
   id: paddleId('txn'),
   status: z.string(),
   customer_id: paddleId('ctm'),
+  subscription_id: paddleId('sub').nullable(),
   currency_code: z.string(),
   collection_mode: z.string(),
   discount_id: z.string().nullable(),
@@ -34,11 +35,19 @@ export const transactionSchema = z.object({
   checkout: z.object({ url: z.string().nullable() }).nullable(),
 });
 export type Transaction = z.infer<typeof transactionSchema>;
+export const subscriptionSchema = z.object({
+  id: paddleId('sub'),
+  customer_id: paddleId('ctm'),
+  status: z.enum(['active', 'canceled', 'past_due', 'paused', 'trialing']),
+  canceled_at: z.iso.datetime({ offset: true }).nullable(),
+});
+export type Subscription = z.infer<typeof subscriptionSchema>;
 export interface Provider {
   price(): Promise<Price>;
   createCustomer(email: string, bindingId: string): Promise<string>;
   createTransaction(customerId: string, reservationId: string): Promise<Transaction>;
   transaction(id: string): Promise<Transaction>;
+  subscription(id: string): Promise<Subscription>;
   portal(customerId: string): Promise<string>;
 }
 export class ProviderError extends Error {
