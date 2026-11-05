@@ -29,8 +29,9 @@ for (const saveFailure of [false, true]) {
       mode = await gateIpc(app, 'mode');
       await page.getByRole('button', { name: 'System design', exact: true }).click();
       await expect.poll(mode.calls).toEqual([['design']]);
-      await page.clock.install();
-      await page.clock.pauseAt(new Date());
+      const pausedAt = new Date();
+      await page.clock.install({ time: new Date(pausedAt.getTime() - 60_000) });
+      await page.clock.pauseAt(pausedAt);
       const editor = page.getByRole('textbox', { name: 'Python solution editor' });
       await editor.focus();
       await page.keyboard.press('ControlOrMeta+a');
