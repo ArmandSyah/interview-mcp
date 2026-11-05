@@ -1,6 +1,6 @@
 # Subscription, signup, and download options
 
-Research date: 2026-11-05. Status: proposal. Provider selection is pending.
+Research date: 2026-11-05. Status: proposal. Paddle sandbox is selected for the first integration.
 No merchant account, public checkout, or new account service is provisioned by this document.
 
 ## Scope and existing behavior
@@ -22,7 +22,7 @@ Do not convert these licenses into subscriptions or remove installed packs after
 
 Use Cloudflare Pages for the static website and GitHub Releases for installers.
 Use the existing Supabase project for Auth, account records, and separate billing Edge Functions.
-Use Paddle sandbox for the first payment integration, subject to the owner's provider selection.
+Use Paddle sandbox for the first payment integration, as selected by the owner.
 Use provider checkout and the customer portal. Do not build forms that receive card details.
 No AWS account or VPS is necessary for this path.
 

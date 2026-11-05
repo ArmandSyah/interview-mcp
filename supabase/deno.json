@@ -7,8 +7,8 @@
     "@std/assert": "jsr:@std/assert@1.0.19"
   },
   "tasks": {
-    "check": "deno check functions/interview-mcp/*.ts",
-    "test": "deno test --allow-net=127.0.0.1 --allow-env functions/interview-mcp/",
+    "check": "deno check functions/interview-mcp/*.ts functions/billing/*.ts",
+    "test": "deno test --allow-net=127.0.0.1 --allow-env functions/interview-mcp/ functions/billing/",
     "format:check": "deno fmt --check",
     "lint": "deno lint"
   },

@@ -1,0 +1,8 @@
+.uv-cache/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.trace.jsonl
+demo-data/
+demo-ids.json

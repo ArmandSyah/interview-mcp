@@ -1,0 +1,179 @@
+# Paddle sandbox integration
+
+This branch adds payment code for a proposed USD 10 monthly plan.
+Paddle is the selected provider for sandbox tests.
+The code defaults to sandbox mode. It does not charge real cards in that mode.
+No Paddle account, product, secret, webhook destination, or live payment was created for this change.
+The existing desktop app and MCP routes keep their current behavior.
+
+The new `billing` Edge Function handles checkout, account status, the customer portal, and subscription webhooks.
+The website calls this function with the signed-in user's Supabase access token.
+The function verifies that token through Supabase Auth. Anonymous users and users without a confirmed email cannot use account routes.
+The function derives account ownership from the verified user ID.
+It never accepts account IDs, customer IDs, prices, or redirect URLs from browser request bodies.
+
+## Routes
+
+The route prefix is `/functions/v1/billing`.
+Account responses have `Cache-Control: no-store`.
+`POST` account routes accept an empty JSON object. They reject unknown fields.
+
+| Route | Result | Effect |
+| --- | --- | --- |
+| `GET /status` | `{mode,status,entitled,currentPeriodEnd,scheduledCancelAt}` | Reads this account's billing state. No subscription returns `status: "none"`. |
+| `POST /checkout` | `{transactionId}` | Reserves one checkout, binds a provider customer, and creates or reuses a transaction. |
+| `POST /portal` | `{url}` | Creates a temporary portal link for the account's bound customer. The function does not store this link. |
+| `POST /webhook` | `{outcome}` | Verifies a Paddle signature and stores a subscription event. It needs no Supabase user token. |
+
+`401` means the identity or webhook signature failed verification.
+`403` means the browser origin is not allowed. `400` means input or provider data failed validation.
+`409` means a subscription exists or checkout requires reconciliation. The response identifies the reason.
+`413` means the body exceeds its limit. `503` means configuration, storage, or a provider service is unavailable.
+The webhook returns `503` for an unbound customer and `409` for conflicting events.
+Paddle can retry these events. No response contains a provider secret or a raw provider error.
+
+## Price and customer rules
+
+The server reads one configured Paddle price before checkout.
+That price must be active, cost `1000` cents in USD, and recur once each month.
+It must have no trial or regional price overrides.
+The server creates one item with quantity one and automatic payment collection.
+Tax follows the configured Paddle price and account rules. This code fixes the base price, not a universal tax-inclusive total.
+The browser does not choose a price or a customer.
+
+The database creates a stable binding ID for each account and mode.
+The server adds that ID to a new Paddle customer's metadata.
+The database binds the customer ID before the server creates a transaction.
+An existing binding wins concurrent requests. The server uses that canonical customer ID.
+A customer can belong to only one account within each mode.
+An account may have no provider customer before its first checkout.
+
+Webhook ownership comes from the stored customer binding.
+Provider metadata and the customer's email do not establish ownership.
+Sandbox and live records have separate keys. A sandbox event cannot create a live entitlement.
+Portal links require the same account check and stored customer binding.
+
+## Subscription events
+
+The handler verifies HMAC-SHA256 over the timestamp and exact request bytes before JSON parsing.
+It applies a five-second timestamp tolerance and checks signatures with WebCrypto.
+The database stores the event ID and a SHA-256 body hash. It does not store the raw body.
+The handler accepts subscription lifecycle events. It ignores other verified event types.
+These rules follow Paddle's [signature instructions](https://developer.paddle.com/webhooks/about/signature-verification/).
+
+The database applies each event atomically and compares its provider timestamp with the stored subscription timestamp.
+An exact duplicate has no additional effect. An older event cannot replace newer subscription state.
+Distinct events with equal timestamps require reconciliation and remove entitlement until a newer event resolves the conflict.
+A reused event ID with different content also produces a conflict.
+An unbound event remains available for retry after the server binds its customer.
+Paddle documents duplicate delivery and event order in its [access guide](https://developer.paddle.com/build/subscriptions/provision-access-webhooks/).
+
+The initial policy grants entitlement only to an active subscription with the configured plan and a future billing-period end.
+Trial, paused, canceled, past-due, changed-price, and unresolved states do not grant entitlement.
+A scheduled cancellation keeps access until its effective time or the billing-period end, whichever comes first.
+This strict past-due policy is an application choice. Paddle also supports grace-period policies.
+Checkout redirects and browser completion events never grant entitlement.
+Existing local exercises remain available without a subscription.
+
+## Configuration
+
+These values belong to the Edge Function environment unless the table states otherwise.
+No value below has been provisioned by this branch.
+
+| Variable | Purpose |
+| --- | --- |
+| `BILLING_MODE` | `sandbox` by default. Persistent records include this mode. |
+| `BILLING_LIVE_ENABLED` | Must equal `true` before the handler accepts `BILLING_MODE=live`. Leave unset during development. |
+| `SUPABASE_URL` | HTTPS project origin. |
+| `SUPABASE_ANON_KEY` | Public project key for token verification. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for the private billing dispatcher. Never place it in browser code. |
+| `PADDLE_API_KEY` | Server-only key from the matching Paddle environment. |
+| `PADDLE_WEBHOOK_SECRET` | Secret for the matching notification destination. |
+| `PADDLE_PRICE_ID` | The fixed USD 10 monthly price ID. |
+| `PADDLE_CHECKOUT_URL` | HTTPS payment page on an allowed origin. No query or fragment. |
+| `BILLING_ALLOWED_ORIGINS` | Comma-separated exact HTTPS origins. Wildcards are not accepted. |
+| Website Paddle token | Public sandbox token with the `test_` prefix. This is separate from the secret API key. |
+
+The preview origin is `https://interview-workbench-preview.higher-visio-3179.chatgpt.site`.
+The webhook needs gateway JWT verification disabled for this function alone.
+Its handler verifies Paddle signatures. Account routes still verify Supabase tokens.
+The existing MCP function does not need a CORS or authentication change.
+
+Paddle requires a payment page and account configuration for checkout.
+Configure the page as the payment link in the matching Paddle environment.
+Use the [transaction API](https://developer.paddle.com/api-reference/transactions/create-transaction/) for server-created checkout transactions.
+Use the [portal API](https://developer.paddle.com/api-reference/customer-portals/create-customer-portal-session/) for temporary customer links.
+
+The website initializes Paddle.js with its public sandbox token.
+It calls `Paddle.Environment.set('sandbox')` before `Paddle.Initialize({token})`.
+After `/checkout` succeeds, it calls `Paddle.Checkout.open({transactionId,settings:{allowLogout:false,showAddDiscounts:false}})`.
+The website must read `/status` after checkout. A browser callback is not proof of payment.
+See Paddle's [overlay guide](https://developer.paddle.com/build/checkout/build-overlay-checkout/) and [client token guide](https://developer.paddle.com/paddle-js/about/client-side-tokens/).
+
+## Storage contract
+
+### Payment data and secrets
+
+Paddle hosts checkout and the HTTPS customer portal. The application does not receive or store card numbers or security codes.
+The application does not store cardholder names, card expiry dates, payment-method tokens, or billing addresses.
+Supabase Auth stores the account email. The server sends that email to Paddle when it creates a customer.
+Billing tables contain account links, provider identifiers, normalized subscription facts, and event hashes.
+They contain no customer email or raw webhook body. The billing code does not log request bodies, tokens, or provider responses.
+
+Keep payment API keys, webhook secrets, and Supabase service keys in the Edge Function environment.
+The website accepts only public Supabase keys and a public Paddle sandbox client token.
+Both server and website restrict portal links to the exact HTTPS Paddle host for their environment.
+Do not log authorization headers, signed portal links, passwords, or payment data in later changes.
+
+On 2026-11-05, Gitleaks found no secrets in 120 commits reachable from the branch head.
+Separate scans found none in the new billing source, website public files, or generated website bundle.
+The inspected public website configuration contained empty credential fields and sandbox mode.
+These checks cover the local source and build. They do not inspect future deployment secrets or provider accounts.
+
+### Dispatcher
+
+The service role calls `public.iwb_billing(operation text, args jsonb)`.
+Each operation includes `mode`. Account operations also include the verified `account_id`.
+The browser cannot call this dispatcher with its public key or user token.
+
+| Operation | Additional arguments | Result |
+| --- | --- | --- |
+| `customer` | None | `{customer_id,binding_id}`. Customer ID may be null. |
+| `bind_customer` | `binding_id,customer_id` | `{customer_id}` with the canonical binding. |
+| `checkout_claim` | None | `claimed` with `reservation_id`, `ready` with `transaction_id`, or `pending`, `uncertain`, or `subscribed`. |
+| `checkout_finish` | `reservation_id,transaction_id,checkout_url` | Persists the transaction against its reservation. This handler passes a null URL. |
+| `checkout_fail` | `reservation_id,uncertain` | Releases a definite failure or retains an uncertain reservation. |
+| `status` | None | The account status response described above. |
+| `apply_event` | Event fields listed below | `{outcome}` as `applied`, `duplicate`, `stale`, `unbound`, or `conflict`. |
+
+`apply_event` accepts `event_id`, `occurred_at`, `subscription_id`, `customer_id`, `status`, and `price_id`.
+It also accepts `current_period_end`, `scheduled_cancel_at`, `payload_hash`, and the server-checked `price_matches` flag.
+Period and cancellation dates may be null.
+The dispatcher resolves account ownership from the customer ID. It does not accept an event account ID.
+
+## Recovery limits and validation
+
+A checkout reservation prevents concurrent requests from creating separate transactions.
+A repeat request reuses the saved transaction after provider validation.
+Timeouts, uncertain provider responses, and failed database writes retain the reservation.
+The handler does not clear reservations after a timer.
+Completed or canceled checkout transactions require reconciliation before another checkout can start.
+This branch does not yet implement automatic reconciliation or operator recovery commands.
+
+Recovery must inspect provider state using the saved transaction or server-created reservation metadata.
+It must confirm ownership before it repairs a reservation. It must not create a replacement after an unverified timeout.
+Refunds, disputes, missed-event reconciliation, request limits, and launch policies need separate work before live billing.
+Provider credentials, catalog setup, notification setup, and a real sandbox checkout test also remain pending.
+This code is a tested integration scaffold, not an activated payment service.
+
+The focused Deno tests use injected HTTP responses. They make no Paddle network requests.
+They cover account access, customer ownership, fixed prices, concurrent checkout, signatures, retries, and storage failures.
+Separate PostgreSQL tests verify the durable event and reservation rules.
+
+```sh
+cd supabase
+deno check functions/billing/*.ts
+deno test --allow-env functions/billing/
+```
+
+Sources checked: 2026-11-05.

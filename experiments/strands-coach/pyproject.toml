@@ -1,0 +1,18 @@
+[project]
+name = "interview-strands-coach-lab"
+version = "0.1.0"
+description = "Optional local coaching experiment with Strands and Ollama"
+requires-python = ">=3.12"
+dependencies = ["strands-agents[ollama]==1.64.0", "httpx==0.28.1"]
+
+[dependency-groups]
+dev = ["pytest>=9", "pytest-asyncio>=1", "ruff>=0.15"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

@@ -2,7 +2,7 @@
 
 Start with Python Strands and local Ollama for hands-on agent development.
 This path needs no AWS account and creates no cloud bill.
-Keep the existing desktop coach available while the new adapter passes its tests.
+The [local Strands lab](../experiments/strands-coach/README.md) is available as a separate command-line example.
 AI stays off by default.
 
 Strands supplies an agent loop, model interfaces, tools, and hooks.
@@ -45,28 +45,28 @@ See [hook events](https://strandsagents.com/docs/user-guide/sdk/agents/hooks-eve
 
 ## Local prototype
 
-Use an optional Python dependency group or a separate experiment directory.
-Resolve and lock a compatible `strands-agents[ollama]` release before integration.
-The repository already requires Python 3.12.
+The [lab README](../experiments/strands-coach/README.md) contains installation, demo, and test commands.
+The experiment has its own dependency file and lock file, with Strands 1.64.0.
+It requires Python 3.12 or later and does not change desktop dependencies.
 
 Always supply an explicit `OllamaModel` with a loopback host and an installed model ID.
 Bare `Agent()` defaults to Bedrock and requires AWS credentials.
 Use a local model that supports tool calls.
 See the [Ollama provider](https://strandsagents.com/docs/user-guide/sdk/model-providers/ollama/) and [Strands package](https://pypi.org/project/strands-agents/).
 
-Connect the prototype to the existing local MCP process through standard input and output.
-Alternatively, use Streamable HTTP with an account token for the hosted preview.
-Do not use a Supabase project secret as an account token.
-Strands `MCPClient` supports these transports and HTTP authentication headers.
+The lab connects to the existing local MCP process through standard input and output.
+Its helper creates separate demo records. Server startup can seed or migrate the selected database.
+The agent reads fixed practice identifiers and cannot choose an owner or another checkpoint.
+Hosted HTTP transport and account authentication remain future work.
 See [MCP transports](https://strandsagents.com/docs/user-guide/sdk/tools/mcp-transports/).
 
-Give the prototype an explicit tool list after discovery.
-Do not load shell, file, browser, or arbitrary HTTP tools from examples.
-For the first command-line prototype, expose only catalog, description, snapshot, and hint tools.
-Keep code execution and submission in the desktop during this stage.
-This prototype does not replace the existing desktop coach or change saved practice.
+The model receives only `read_context` and `publish_hint` tools.
+MCP calls read the problem description or the design brief and saved checkpoint.
+The existing coding `get_hint` tool is excluded because it records events and can invoke another model.
+Code limits each turn to four model calls, four admitted tool calls, and one published hint.
+The lab does not replace the desktop coach. Execution, submission, and saved desktop practice keep their existing controls.
 
-After the prototype passes, route its tool requests through the existing desktop service dispatcher.
+Before desktop integration, evaluate real local model behavior and preserve the existing service dispatcher.
 That dispatcher must retain argument binding, approval, cancellation, and result validation.
 Do not give the agent direct access to every MCP tool.
 See [Strands MCP integration](https://strandsagents.com/docs/user-guide/sdk/tools/mcp-tools/).
@@ -139,12 +139,12 @@ See [Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/).
 
 ## Verification milestones
 
-1. Test the local adapter with deterministic model responses and real MCP contracts.
-2. Verify tool rejection, fixed arguments, budgets, cancellation, and session isolation.
+1. Completed: 31 tests passed with the installed SDK, scripted model responses, and real local MCP coding and design reads.
+2. Completed: tests cover fixed identifiers, denied tools, call limits, invalid evidence, hint publication, timeout, and cancellation.
 3. Evaluate a local model for useful hints, factual errors, and unwanted solution disclosure.
 4. Integrate desktop events and verify existing approval and draft-preservation stories.
 5. Prepare reviewed AWS infrastructure, usage caps, and cleanup commands before any hosted trial.
 6. Verify live authentication, subscription checks, ownership, cancellation, and measured costs after deployment.
 
-The local prototype and AWS deployment are planned work in this document.
-Research did not create AWS resources or make paid model calls.
+Ruff and lock checks passed. The lab has not been verified on Windows or with hosted account authentication.
+No model inference ran during verification. No AWS resources were created, and no paid model calls were made.

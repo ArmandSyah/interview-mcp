@@ -1,0 +1,7 @@
+{
+  "supabaseUrl": "",
+  "publishableKey": "",
+  "billingUrl": "",
+  "paddleClientToken": "",
+  "paymentMode": "sandbox"
+}
