@@ -342,20 +342,32 @@ function Workbench() {
     });
   }
   function resize(event: React.PointerEvent, target: 'chat' | 'bottom') {
-    event.currentTarget.setPointerCapture(event.pointerId);
+    const handle = event.currentTarget;
+    const pointerId = event.pointerId;
+    handle.setPointerCapture(pointerId);
     const initial = target === 'chat' ? chatWidth : bottomHeight;
     const x = event.clientX;
     const y = event.clientY;
-    const move = (next: PointerEvent) =>
+    const move = (next: PointerEvent) => {
+      if (next.pointerId !== pointerId) return;
       target === 'chat'
         ? setChatWidth(Math.max(280, Math.min(540, initial + x - next.clientX)))
         : setBottomHeight(Math.max(130, Math.min(450, initial + y - next.clientY)));
-    const stop = () => {
+    };
+    const stop = (next: Event) => {
+      if (next instanceof PointerEvent && next.pointerId !== pointerId) return;
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      window.removeEventListener('blur', stop);
+      handle.removeEventListener('lostpointercapture', stop);
+      if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
     };
     window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', stop, { once: true });
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    window.addEventListener('blur', stop);
+    handle.addEventListener('lostpointercapture', stop);
   }
 
   const closeErrorDialog = closeError ? (

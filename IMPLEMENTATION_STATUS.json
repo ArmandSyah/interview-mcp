@@ -699,7 +699,7 @@
     "remaining_checks": [
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
       "Startup and close: close during sandbox installation",
-      "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
+      "Windows: minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
     ],
@@ -891,7 +891,20 @@
       "tests": [
         "apps/desktop/tests/e2e/workspace-load-close.spec.ts"
       ],
-      "limits": "Source fixtures hold the native dialog response. Windows checks remain pending."
+      "limits": "Source fixtures hold the native dialog response. Windows checks remain pending.",
+      "independent_review": "A separate agent checked cancellation and unloaded-store protection. It found no blocking issue in the implementation or the two data-preservation stories."
+    },
+    "panel_resize": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Stop panel resizing when its pointer is released or cancelled, capture is lost, or the window loses focus. Other pointers must not control the active drag. Preserve panel size limits and permit a fresh drag.",
+      "defect": "Resize handlers removed their pointer-move listener only on pointerup. A cancelled drag continued resizing the coach panel from 400 to 280 pixels in the reproduced case.",
+      "change": "Both panel separators remove drag listeners on release, cancellation, lost capture, and blur. They filter events by the active pointer ID and release capture after cleanup. Saved data and size limits do not change.",
+      "validation": "The coach cancellation story failed before the fix. All ten native stories passed on Linux in 21.6 seconds. Both panels cover four drag endings, later motion, a fresh drag, unrelated pointer events, and visible size bounds. Build, formatting, and diff checks passed.",
+      "independent_review": "A separate agent reviewed listener removal, capture-release ordering, pointer isolation, and the native assertions. It found no blocking issue.",
+      "tests": [
+        "apps/desktop/tests/e2e/panel-resize.spec.ts"
+      ],
+      "limits": "Cancellation and blur use controlled browser events with real mouse drags. Windows and full platform checks remain pending."
     }
   },
   "last_verified": {
