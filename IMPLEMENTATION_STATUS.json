@@ -697,9 +697,7 @@
       "race_candidates": "The initial sandbox response race is corrected and verified. Native close during an active Docker inspection now cancels the command. Close during full sandbox installation and owned-container cleanup still needs a native fixture."
     },
     "remaining_checks": [
-      "Windows: minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
-      "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
-      "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
+      "Run full Windows and Linux checks for the combined changes, including native window controls and packaged tests. Investigate any failure before merge."
     ],
     "design_completion_story": {
       "result": "passed_native_source",
@@ -919,6 +917,33 @@
         "apps/desktop/tests/sandbox.test.ts"
       ],
       "limits": "The source fixture replaces only Docker execution, runtime HTTP, and discovery environment boundaries. The real manager, ownership checks, consent handler, service, backend, renderer, and saved files remain. These stories do not execute a privileged container. Windows source checks remain pending."
+    },
+    "window_controls": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Window controls must preserve practice. Menu Quit must wait for pending drafts. A second instance must focus the existing window without another backend.",
+      "change": "A process without the instance lock skips initialization. The primary window restores only when minimized, which preserves maximized state.",
+      "data_effect": "No saved workspace format changes. Existing sessions and active selections remain valid.",
+      "tests": [
+        "apps/desktop/tests/e2e/window-controls.spec.ts"
+      ],
+      "validation": "Five native Linux stories passed. They cover minimum size, maximize, restore, fullscreen, zoom, pending coding/design writes, and two real second-process launches. Lock records identify both process IDs and their actual lock results.",
+      "limits": "Linux uses Xvfb with Openbox. Windows source checks include both second-process stories. Packaged runs skip these two source-bootstrap stories. Platform checks remain pending."
+    },
+    "design_controls_and_chat_history": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Palette additions must support Undo and Redo. Clear canvas must support cancellation and Undo. Preserve existing mock hints, timer, chat retention, and approval keyboard behavior.",
+      "defect": "Palette changes did not immediately enter undo history. Undo after Clear canvas could therefore leave the canvas empty.",
+      "change": "Palette additions explicitly enter Excalidraw undo history. No saved workspace format changes.",
+      "tests": [
+        "apps/desktop/tests/e2e/design-controls.spec.ts",
+        "apps/desktop/tests/e2e/chat-history.spec.ts"
+      ],
+      "validation": "The Clear canvas Undo story failed before the fix. Both design and all three chat stories passed afterward. Checks cover exact component bindings, Undo/Redo, restart, mock hints, timer zero, keyboard approval focus, and 200-message retention across streaming and restart.",
+      "limits": "Chat tests use a controlled local provider. They do not call paid AI services. Timer tests preserve the existing behavior: reaching zero does not complete practice."
+    },
+    "final_local_integration": {
+      "validation": "All 11 window, design controls, chat history, and design artifact stories passed in 1.1 minutes. All 271 desktop unit tests passed, with two optional skips. Type checks, formatting, build, and workflow YAML parsing passed.",
+      "platform_status": "Full Windows and Linux checks remain pending for the combined changes."
     }
   },
   "last_verified": {

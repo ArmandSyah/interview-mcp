@@ -68,7 +68,7 @@ async function dialogDecision<T>(show: () => Promise<T>): Promise<T | null> {
 }
 
 app.on('second-instance', () => {
-  window?.restore();
+  if (window?.isMinimized()) window.restore();
   window?.focus();
 });
 async function finishQuit() {
@@ -92,6 +92,7 @@ app.on('before-quit', (event) => {
 });
 
 void app.whenReady().then(async () => {
+  if (!locked) return;
   const root = app.isPackaged ? process.resourcesPath : resolve(__dirname, '../../../..');
   const renderer = resolve(__dirname, '../renderer');
   protocol.handle('interview', (request) => {
