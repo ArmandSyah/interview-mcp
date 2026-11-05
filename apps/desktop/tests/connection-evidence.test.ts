@@ -21,7 +21,7 @@ function fixture({
   const originalSpawn = vi.fn(() => child);
   const children = { ChildProcess, spawn: originalSpawn };
   const originalSend = vi.fn();
-  const window = { webContents: { send: originalSend } };
+  const window = { webContents: Object.assign(new EventEmitter(), { send: originalSend }) };
   const app = new EventEmitter();
   let ms = 0;
   const runtime = {
@@ -54,6 +54,28 @@ function fixture({
     },
   };
 }
+
+it('records document load phases and error codes without URLs or error text', () => {
+  const value = fixture();
+  value.window.webContents.emit('did-start-loading');
+  value.window.webContents.emit('dom-ready');
+  value.window.webContents.emit('did-finish-load');
+  value.window.webContents.emit(
+    'did-fail-load',
+    {},
+    -2,
+    'fixture-private-error',
+    'https://fixture-private-url/?token=fixture-secret',
+    true,
+  );
+  expect(value.evidence().entries.slice(1)).toEqual([
+    { elapsedMs: 0, event: 'document-loading' },
+    { elapsedMs: 0, event: 'document-ready' },
+    { elapsedMs: 0, event: 'document-loaded' },
+    { elapsedMs: 0, event: 'document-load-failed', code: -2, isMainFrame: true },
+  ]);
+  expect(JSON.stringify(value.evidence())).not.toContain('fixture-');
+});
 
 it('records child phases and safe RPC metadata without a change to writes or spawn results', () => {
   const value = fixture();
@@ -207,7 +229,7 @@ it('records only connection state and counts from snapshots without changing the
 
 it('observes newly created windows once and bounds the record count', () => {
   const value = fixture();
-  const window = { webContents: { send: vi.fn() } };
+  const window = { webContents: Object.assign(new EventEmitter(), { send: vi.fn() }) };
   value.app.emit('browser-window-created', {}, window);
   value.app.emit('browser-window-created', {}, window);
   for (let index = 0; index < 1005; index++)

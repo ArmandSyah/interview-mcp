@@ -46,6 +46,7 @@ let draftFlushed = false;
 let finalizingClose = false;
 let closeCommit: Promise<void> | null = null;
 let initialization: Promise<void> = Promise.resolve();
+let rendererLoaded = false;
 const pendingRequests = new Set<Promise<unknown>>();
 const devUrl = process.env.INTERVIEW_DESKTOP_DEV_URL;
 
@@ -139,7 +140,7 @@ void app.whenReady().then(async () => {
       event.preventDefault();
   });
   window.on('close', (event) => {
-    if (draftFlushed || !service) return;
+    if (draftFlushed || !service || !rendererLoaded) return;
     event.preventDefault();
     closeRequested = true;
     updates.cancelPending();
@@ -500,7 +501,38 @@ void app.whenReady().then(async () => {
     initialized = resolve;
   });
   try {
-    await window.loadURL(devUrl || 'interview://workbench/index.html');
+    while (!rendererLoaded && !window.isDestroyed()) {
+      try {
+        await window.loadURL(devUrl || 'interview://workbench/index.html');
+        rendererLoaded = true;
+      } catch {
+        if (window.isDestroyed()) return;
+        window.show();
+        const startupWindow = window;
+        let onClosed!: () => void;
+        const closed = new Promise<null>((resolve) => {
+          onClosed = () => resolve(null);
+          startupWindow.once('closed', onClosed);
+        });
+        const result = await Promise.race([
+          closed,
+          dialog.showMessageBox(startupWindow, {
+            type: 'error',
+            title: 'Cannot load the workspace page',
+            message: 'The workspace page did not load. Your saved data did not change.',
+            buttons: ['Retry', 'Close'],
+            defaultId: 0,
+            cancelId: 1,
+          }),
+        ]).finally(() => startupWindow.removeListener('closed', onClosed));
+        if (!result || window.isDestroyed()) return;
+        if (result.response !== 0) {
+          window.close();
+          return;
+        }
+      }
+    }
+    if (window.isDestroyed()) return;
     window.show();
     await service.initialize();
   } catch (error) {
