@@ -107,7 +107,18 @@
       "artifacts": "The download contains an installer, SHA-256 checksum, build identity, and standalone instructions. Generated guide links identify the source commit when GitHub supplies it. Artifacts are development previews with 30-day retention, not a published installer release.",
       "local_verification": "TypeScript, formatting, installer test discovery, workflow YAML parsing, metadata byte counts, checksum generation, and standalone guide links passed. No Windows installation or removal ran locally.",
       "independent_review": "A subagent independently examined the workflow, lifecycle test, PowerShell arguments, data-retention checks, artifact generator, and Issue 9 writing. It found broken relative links in the extracted guide and compound procedural instructions. The corrections passed independent metadata and source review.",
-      "windows_ci": "Windows installer preview workflow 40688491316 passed for 9224097. The actual Windows installation, removal, and reinstallation test passed in 56.6 seconds. Preview artifact 12816695170 and evidence artifact 12815564364 were uploaded. The downloaded archives passed their published SHA-256 checks. The preview expires on 2026-11-27. The installer has 158124386 bytes and SHA-256 69e9a0724f61c66784970d569fd95d07614251e1833d369d5753bc739b5df2bb. Its build identity identifies 9224097ac5743a52bedee907e74bb80c58ef431d. The final Windows screenshot shows the retained code after reinstallation. The Windows and Linux jobs in Desktop workflow 40688491295 also passed."
+      "windows_ci": "Windows installer preview workflow 40688491316 passed for 9224097. The actual Windows installation, removal, and reinstallation test passed in 56.6 seconds. Preview artifact 12816695170 and evidence artifact 12815564364 were uploaded. The downloaded archives passed their published SHA-256 checks. The preview expires on 2026-11-27. The installer has 158124386 bytes and SHA-256 69e9a0724f61c66784970d569fd95d07614251e1833d369d5753bc739b5df2bb. Its build identity identifies 9224097ac5743a52bedee907e74bb80c58ef431d. The final Windows screenshot shows the retained code after reinstallation. The Windows and Linux jobs in Desktop workflow 40688491295 also passed.",
+      "latest_preview": {
+        "source_commit": "bf68ab1d867ab6a6fea98f5d43c876661f439f0d",
+        "workflow_run": 42024489925,
+        "artifact_id": 13412489850,
+        "artifact_url": "https://github.com/ArmandSyah/interview-mcp/actions/runs/42024489925/artifacts/13412489850",
+        "expires_at": "2026-12-05T12:11:52Z",
+        "bytes": 158137758,
+        "sha256": "214368a2bd3b813809a36885fb9a146bfbf5bf9add1201d60a40c7755173d83b",
+        "verification": "The Windows installation, removal, and reinstallation test passed in 54.8 seconds. The downloaded executable matches its published checksum and build identity. The final screenshot shows the retained coding draft after reinstallation.",
+        "limits": "This unsigned development preview contains the combined audit fixes. Full Desktop workflow 42024437139 remains pending. The artifact is not a published release."
+      }
     },
     "download_website": {
       "status": "plan_reviewed",
@@ -116,7 +127,7 @@
       "independent_review": "The subagent examined the provider facts and Issue 9 wording. It found an impossible anonymous-download test before draft publication. The plan now examines draft files with repository write access, obtains owner approval, publishes the release, tests anonymous downloads, then publishes the website. Vocabulary and part-of-speech corrections were applied. The final independent review found no further concrete issues."
     },
     "low_cost_ai": {
-      "status": "verified_local_pending_platform_ci",
+      "status": "verified_local_and_platform_checks",
       "existing": "Curated hints work with AI off. The desktop supports optional Ollama and a personal Claude API key.",
       "required": "Provide an inexpensive or free assistance and grading mechanism. Define its evidence, rubric, model limits, and relationship to actual code-test results.",
       "implementation": "AI review makes at most one explicit request to the selected provider. A prerequisite error or cancellation can prevent inference. Coding uses four criteria. Design uses six brief criteria and creates a checkpoint. Numeric scores from zero to three require a quotation found in captured code, notes, or diagram labels. Null means the evidence is not sufficient. The app supplies a fixed practice question for the selected criterion. It rejects new model prose, duplicate JSON fields, unknown criteria, invalid scores, tool requests, and cancelled late answers. It does not run tests or complete practice.",
@@ -126,7 +137,8 @@
       "live_model": "Real local qwen3:4b calls passed coding and design response validation. The first unrestricted response proposed a solution and gave credit for question text. That result prompted the restricted quotation/criterion contract. The restricted coding and design calls passed in 1.02 and 1.24 seconds after model load. This verifies inference and the response contract, not score accuracy. Scores are model estimates.",
       "independent_review": "A subagent examined service locks, evidence capture, cancellation, persistence, provider options, state effects, native tests, and Issue 9 writing. It found blank quotations and incomplete test evidence for task-only quotations. Both corrections passed focused tests. It independently passed the grading/provider checks. Documentation states retention, local accounts, checkpoint effects, model limits, and paid-provider data transfer.",
       "full_native_and_ci": "The complete local native suite passed 164 stories with two optional Piston skips in 11.3 minutes. PR 34 Linux had 243 unit passes, two skips, and one fixture-entry assertion failure. Its one-second poll expired before the model fixture started. The three new review tests now use fixture-entry signals and reject an early review return. Cleanup awaits both design review promises. The unit/process suite passed 244 tests with two skips after the poll correction. Application time limits do not change. Platform checks must verify this test correction.",
-      "ci_runtime_follow_up": "For 816f906, the corrected unit suite passed all 244 tests in PR CI. Windows passed. Linux passed all 166 source UI stories with real Piston, managed sandbox integration, and three remote Piston tests. The 45-minute Linux job limit cancelled the run during packaged UI tests. The job limit is now 60 minutes. No application or assertion time limits change. A different Linux push run reached connected state in 1.932 seconds, then the diagnostic pointer click waited 30 seconds for actionability. The trace probe now opens settings with a DOM click because it tests artifact capture. Native interaction stories keep their pointer clicks. Both intended diagnostic failures and the artifact verifier passed locally."
+      "ci_runtime_follow_up": "For 816f906, the corrected unit suite passed all 244 tests in PR CI. Windows passed. Linux passed all 166 source UI stories with real Piston, managed sandbox integration, and three remote Piston tests. The 45-minute Linux job limit cancelled the run during packaged UI tests. The job limit is now 60 minutes. No application or assertion time limits change. A different Linux push run reached connected state in 1.932 seconds, then the diagnostic pointer click waited 30 seconds for actionability. The trace probe now opens settings with a DOM click because it tests artifact capture. Native interaction stories keep their pointer clicks. Both intended diagnostic failures and the artifact verifier passed locally.",
+      "platform_verification": "Desktop workflow 42018575373 passed at 0c776108bcaf1850f66346e642aa9e0284b447dc. Both platforms passed the grading unit tests and complete packaged UI suites. Linux also passed the complete source UI suite. The earlier fixture correction and job-limit follow-up are therefore verified. The combined audit still has separate pending checks."
     },
     "question_language_review": {
       "status": "implemented_with_independently_reviewed_example_model_quality_limited",
@@ -828,7 +840,7 @@
       }
     },
     "queue_saved_practice_and_accounts": {
-      "status": "local_verified_platform_checks_pending",
+      "status": "verified_platform_checks_merged",
       "requirements": "Open the exact saved coding or design attempt. If activation fails, retain the current selection and recall draft. Permit one retry request. Keep queue items and reflection history unchanged when opening practice. Preserve each account draft across token replacement and keep different accounts separate.",
       "coverage": "Native stories verify both saved practice kinds, duplicate clicks, activation failure and retry, unchanged attempt IDs and session arrays, unchanged queue and history, recall close/reopen, exact text limits, extra typed character rejection, whitespace-only Save rejection, and one saved reflection. An optional account fixture verifies same-account token replacement, foreign item rejection, separate account drafts and histories, and return to both accounts.",
       "verification": "All 15 combined queue/design-account stories and all 7 existing coding-account stories passed locally. Type checks, formatting, and diff checks passed. Independent functional review found no assertion weakening in the saved-open and field-limit stories. Root reviewed the isolated account fixture and its request/data assertions.",
@@ -836,11 +848,12 @@
         "apps/desktop/tests/e2e/practice-queue-open.spec.ts",
         "apps/desktop/tests/e2e/practice-queue-accounts.spec.ts"
       ],
-      "limits": "Local queue stories use the real backend and saved files. Remote account stories use an isolated protocol fixture, not Supabase authentication. The current Supabase endpoint does not advertise queue tools. Activation and mode selection remain separate operations; these tests inject failure before activation, not an unstated atomic navigation contract. Platform CI remains pending.",
-      "data_effect": "No application behavior or saved data format changes. The account fixture queue capability is off by default."
+      "limits": "Local queue stories use the real backend and saved files. Remote account stories use an isolated protocol fixture, not Supabase authentication. The current Supabase endpoint does not advertise queue tools. Activation and mode selection remain separate operations; these tests inject failure before activation, not an unstated atomic navigation contract. Platform CI passed as recorded below.",
+      "data_effect": "No application behavior or saved data format changes. The account fixture queue capability is off by default.",
+      "platform_verification": "PR 40 merged as b90e1a4 after all seven checks passed at 0c776108bcaf1850f66346e642aa9e0284b447dc. Desktop run 42018575373 passed 195 Linux source stories, 179 Linux packaged stories with 16 skips, 17 configured Windows source stories, and 174 Windows packaged stories with 21 skips. Source-only and platform-specific stories account for the packaged skips."
     },
     "credential_recovery": {
-      "status": "local_verified_platform_checks_pending",
+      "status": "verified_platform_checks_merged",
       "requirements": "An unreadable saved credential must not prevent use of a different readable credential. Repair or removal must preserve the other credential and all saved practice. An unavailable account credential must hide account data until the same account reconnects.",
       "defect": "Startup decrypted the AI key and MCP credential in one try block. An AI-key error skipped MCP decryption. Subsequent settings recovery could remove that readable MCP credential because its runtime value was empty.",
       "change": "Startup now unlocks each saved credential separately. Either failure keeps the existing recovery message. Healthy account access remains available. Saved credential and workspace formats do not change.",
@@ -851,7 +864,8 @@
       ],
       "limits": "Native source fixtures replace the OS credential API with deterministic test values. They do not establish OS encryption correctness or Supabase authentication. AI stays off. Windows CI includes the source stories before packaging.",
       "independent_review": "A subagent identified the skipped-decryption defect, reviewed the native assertions, and added four fresh-load service regressions. All four focused regressions passed after the fix. Root reproduced the native failure and ran the four corrected native cases.",
-      "validation": "All 260 desktop tests passed, with two optional skips. All four native credential stories passed. Build, type checks, formatting, and diff checks passed. Full platform checks remain pending."
+      "validation": "All 260 desktop unit tests passed, with two optional skips. Four native credential stories passed locally and ran in configured Windows source CI. Build, type, formatting, and full platform checks passed.",
+      "platform_verification": "PR 40 merged as b90e1a4 after all seven checks passed at 0c776108bcaf1850f66346e642aa9e0284b447dc. Desktop run 42018575373 passed 195 Linux source stories, 179 Linux packaged stories with 16 skips, 17 configured Windows source stories, and 174 Windows packaged stories with 21 skips. Source-only and platform-specific stories account for the packaged skips."
     },
     "pending_dialog_close": {
       "status": "local_verified_platform_checks_pending",
