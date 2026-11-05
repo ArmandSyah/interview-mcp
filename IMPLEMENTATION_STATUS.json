@@ -698,7 +698,7 @@
     },
     "remaining_checks": [
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
-      "Startup and close: close with an unreadable-workspace startup dialog and during sandbox installation",
+      "Startup and close: close during sandbox installation",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
@@ -881,6 +881,17 @@
         "apps/desktop/tests/mcp-startup-cancel.test.ts"
       ],
       "limits": "Native source tests hold backend wire responses. Windows runs the source fixture before packaging. HTTP tests use synthetic credentials on loopback and do not test Supabase authentication. Windows checks remain pending. A separate unreadable-workspace startup dialog still needs a close test."
+    },
+    "workspace_load_error_close": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Permit native closure while a workspace-load error dialog is unanswered. Preserve unreadable workspace bytes and do not start the backend.",
+      "defect": "The outer initialization error dialog did not use pending-dialog cancellation, so close waited for its response.",
+      "change": "The error dialog now uses the same cancellation helper as other pending dialogs. No saved-data or error-message changes.",
+      "validation": "The invalid-JSON case failed before the fix at its five-second close deadline. Both invalid-JSON and invalid-settings cases passed after the fix. All five combined load-error/page-load recovery stories passed on Linux in 4.3 seconds. Each new case verifies no backend spawn and exact saved bytes. Type and diff checks passed.",
+      "tests": [
+        "apps/desktop/tests/e2e/workspace-load-close.spec.ts"
+      ],
+      "limits": "Source fixtures hold the native dialog response. Windows checks remain pending."
     }
   },
   "last_verified": {

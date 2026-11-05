@@ -569,14 +569,16 @@ void app.whenReady().then(async () => {
     window.show();
     await service.initialize(startupController.signal);
   } catch (error) {
-    await dialog.showMessageBox(window, {
-      type: 'error',
-      title: 'Cannot open workspace',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Startup failed. Your saved workspace was not overwritten.',
-    });
+    await dialogDecision(() =>
+      dialog.showMessageBox(window!, {
+        type: 'error',
+        title: 'Cannot open workspace',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Startup failed. Your saved workspace was not overwritten.',
+      }),
+    );
   } finally {
     initialized();
   }
