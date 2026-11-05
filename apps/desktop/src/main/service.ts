@@ -109,7 +109,8 @@ export class WorkbenchService {
     this.designs = new DesignStore(store.root);
   }
 
-  async initialize(): Promise<void> {
+  /** Load saved state, then connect. The optional signal cancels engine discovery, not file loads. */
+  async initialize(signal?: AbortSignal): Promise<void> {
     await this.store.load();
     let credentialError: string | null = null;
     if (this.vault.available()) {
@@ -126,7 +127,8 @@ export class WorkbenchService {
       this.mcpKey = unlock(this.store.state.credentials.mcpKey);
     }
     this.scope = this.store.scope(this.mcpKey);
-    await this.reconnect();
+    if (signal?.aborted) return;
+    await this.reconnect(signal);
     if (credentialError) {
       this.error = credentialError;
       this.publish();
@@ -189,11 +191,12 @@ export class WorkbenchService {
     return text.slice(0, 1200);
   }
 
-  async reconnect(): Promise<void> {
-    await this.practiceAction(() => this.withDraftBarrier(() => this.connect()));
+  async reconnect(signal?: AbortSignal): Promise<void> {
+    await this.practiceAction(() => this.withDraftBarrier(() => this.connect(signal)));
   }
 
-  private async connect(): Promise<void> {
+  private async connect(signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) return;
     this.practiceOwned.clear();
     this.designVerified.clear();
     this.designStatusRevision++;
@@ -207,7 +210,8 @@ export class WorkbenchService {
     this.error = null;
     this.publish();
     try {
-      await this.mcp.connect(this.store.state.settings, this.mcpKey);
+      await this.mcp.connect(this.store.state.settings, this.mcpKey, signal);
+      signal?.throwIfAborted();
       if (this.mcp.accountIdentity) {
         const next = structuredClone(this.store.state);
         const scope = this.store.bindAccount(this.mcpKey, this.mcp.accountIdentity, next);
@@ -216,14 +220,16 @@ export class WorkbenchService {
         this.store.state.credentialAccounts = next.credentialAccounts;
         this.scope = scope;
       }
-      this.problems = await this.mcp.call<Problem[]>('list_problems', {});
-      this.progress = await this.mcp.call<string>('get_progress', {});
+      signal?.throwIfAborted();
+      this.problems = await this.mcp.call<Problem[]>('list_problems', {}, signal);
+      this.progress = await this.mcp.call<string>('get_progress', {}, signal);
       this.designProblems = this.mcp.tools.some((tool) => tool.name === 'list_design_problems')
-        ? await this.mcp.call<DesignSummary[]>('list_design_problems', {})
+        ? await this.mcp.call<DesignSummary[]>('list_design_problems', {}, signal)
         : [];
       this.installedPacks = this.mcp.tools.some((tool) => tool.name === 'list_content_packs')
-        ? await this.mcp.call('list_content_packs', {})
+        ? await this.mcp.call('list_content_packs', {}, signal)
         : [];
+      signal?.throwIfAborted();
       this.connection = 'connected';
     } catch (error) {
       await this.mcp.close();

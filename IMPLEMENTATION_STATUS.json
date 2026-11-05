@@ -698,7 +698,7 @@
     },
     "remaining_checks": [
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
-      "Startup and close: close during engine initialization and sandbox installation",
+      "Startup and close: close with an unreadable-workspace startup dialog and during sandbox installation",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
@@ -864,6 +864,23 @@
       "limits": "Controlled response tests exercise late decisions and file writes with real Electron, renderer, service, backend, and saved files. Two additional stories use the real Linux open/save dialogs and confirm process closure with a pending picker. Windows native picker behavior remains pending platform CI. The stories do not inspect OS dialog appearance.",
       "validation": "All 27 file-selection, consent, content-pack, and export regression stories passed on Linux in 1.5 minutes. Both additional write/recovery stories and both real native picker stories passed in 14.6 seconds. Type checks, formatting, and diff checks passed.",
       "independent_review": "A separate agent reviewed every affected handler, cancellation lifetime, accepted-write tracking, and saved-data assertions. It added two consent stories and two write/recovery stories. Its final read-only review found no blocking issue. Root ran all native tests."
+    },
+    "engine_startup_close": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Native close must cancel unfinished engine startup, preserve saved practice, and wait for backend cleanup. File loads and accepted writes must finish. A later connection attempt must remain usable.",
+      "defect": "Shutdown awaited initialization without cancelling its pending handshake or discovery requests. A stalled response prevented native closure.",
+      "change": "A main-owned AbortController covers startup only. The service loads saved state before checking cancellation and passes the signal through engine discovery. MCP startup forwards the signal to handshake, tool discovery, and account identity requests. Connection cleanup retains its promise so repeated close calls wait for the same disposal.",
+      "data_effect": "No saved data format changes. Existing settings, account mappings, and practice remain valid. Cancellation does not interrupt file loading or an accepted account-map write. Normal reconnect and practice operations retain their existing behavior.",
+      "reproduction": "The real-backend handshake test failed before the fix because native close exceeded five seconds with its response held.",
+      "native_verification": "Six stories hold real backend replies at initialize, tools/list, coding catalog, progress, design catalog, and installed-pack catalog. Each requires native closure, a backend exit event, a dead child PID, and exact saved workspace bytes. All six passed. The final combined run passed all 11 stories, including page-load recovery and accepted-export/final-save recovery, in 43.2 seconds.",
+      "service_verification": "Seven independent service cases cover cancellation during file loading, connection, and four discovery requests, plus ordinary startup. Three real HTTP cases cover handshake, tools, and identity cancellation, late responses, cleared metadata, repeated close, and a fresh account connection. The full desktop suite passed 267 tests with two optional skips. After the final metadata guards, all 13 focused service/MCP tests passed with one optional skip. Type, formatting, and diff checks passed.",
+      "independent_review": "A separate agent reviewed startup and cleanup lifetimes, found the SDK repeated-close timing issue, supplied ten service/HTTP cases, and checked the final implementation. Root reproduced the native failure and ran every test. The final review found no blocking issue.",
+      "tests": [
+        "apps/desktop/tests/e2e/engine-startup-close.spec.ts",
+        "apps/desktop/tests/service-startup-cancel.test.ts",
+        "apps/desktop/tests/mcp-startup-cancel.test.ts"
+      ],
+      "limits": "Native source tests hold backend wire responses. Windows runs the source fixture before packaging. HTTP tests use synthetic credentials on loopback and do not test Supabase authentication. Windows checks remain pending. A separate unreadable-workspace startup dialog still needs a close test."
     }
   },
   "last_verified": {

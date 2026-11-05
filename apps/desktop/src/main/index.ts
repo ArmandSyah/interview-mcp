@@ -46,6 +46,7 @@ let draftFlushed = false;
 let finalizingClose = false;
 let closeCommit: Promise<void> | null = null;
 let initialization: Promise<void> = Promise.resolve();
+const startupController = new AbortController();
 let rendererLoaded = false;
 const pendingRequests = new Set<Promise<unknown>>();
 const cancelDialogs = new Set<() => void>();
@@ -159,6 +160,7 @@ void app.whenReady().then(async () => {
     if (draftFlushed || !service || !rendererLoaded) return;
     event.preventDefault();
     closeRequested = true;
+    startupController.abort();
     for (const cancel of cancelDialogs) cancel();
     updates.cancelPending();
     service.cancelSandboxSetup();
@@ -565,7 +567,7 @@ void app.whenReady().then(async () => {
     }
     if (window.isDestroyed()) return;
     window.show();
-    await service.initialize();
+    await service.initialize(startupController.signal);
   } catch (error) {
     await dialog.showMessageBox(window, {
       type: 'error',
