@@ -117,7 +117,8 @@
         "bytes": 158137758,
         "sha256": "214368a2bd3b813809a36885fb9a146bfbf5bf9add1201d60a40c7755173d83b",
         "verification": "The Windows installation, removal, and reinstallation test passed in 54.8 seconds. The downloaded executable matches its published checksum and build identity. The final screenshot shows the retained coding draft after reinstallation.",
-        "limits": "This unsigned development preview contains the combined audit fixes. Full Desktop workflow 42024437139 remains pending. The artifact is not a published release."
+        "limits": "This unsigned development preview contains the combined audit fixes. Full Desktop workflow 42024437139 remains pending. The artifact is not a published release.",
+        "independent_verification": "A separate agent verified the lifecycle log, both Electron connection records, restored-code screenshot, installer byte count, checksum, build identity, and pinned guide links. The evidence covers same-version installation and reinstallation. It does not establish cross-version upgrades or publisher signing."
       }
     },
     "download_website": {
