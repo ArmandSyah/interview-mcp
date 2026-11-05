@@ -90,7 +90,7 @@ No value below has been provisioned by this branch.
 | `PADDLE_API_KEY` | Server-only key from the matching Paddle environment. |
 | `PADDLE_WEBHOOK_SECRET` | Secret for the matching notification destination. |
 | `PADDLE_PRICE_ID` | The fixed USD 10 monthly price ID. |
-| `PADDLE_CHECKOUT_URL` | HTTPS payment page on an allowed origin. No query or fragment. |
+| `PADDLE_CHECKOUT_URL` | Expected account payment page on an allowed HTTPS origin. No query or fragment. |
 | `BILLING_ALLOWED_ORIGINS` | Comma-separated exact HTTPS origins. Wildcards are not accepted. |
 | Website Paddle token | Public sandbox token with the `test_` prefix. This is separate from the secret API key. |
 
@@ -105,6 +105,15 @@ The existing MCP function does not need a CORS or authentication change.
 
 Paddle requires a payment page and account configuration for checkout.
 Configure the page as the payment link in the matching Paddle environment.
+Set the account's `default_url` to the same page as `PADDLE_CHECKOUT_URL`.
+The transaction request omits `checkout.url` and uses that account default.
+An explicit transaction override requires domain approval and can return `transaction_checkout_url_domain_is_not_approved` even when the sandbox default accepts the URL.
+Paddle documents the [override error](https://developer.paddle.com/errors/transactions/transaction_checkout_url_domain_is_not_approved/) and [sandbox default URL rules](https://developer.paddle.com/api-reference/settings/update-checkout-url/).
+
+Before returning a draft or ready transaction, the adapter checks its payment link.
+The link must use the configured HTTPS origin and path. Its `_ptxn` parameter must identify that transaction.
+A missing or mismatched link retains the reservation because Paddle may already have created the transaction.
+`PADDLE_CHECKOUT_URL` remains a destination check. It does not override the provider's account setting.
 Use the [transaction API](https://developer.paddle.com/api-reference/transactions/create-transaction/) for server-created checkout transactions.
 Use the [portal API](https://developer.paddle.com/api-reference/customer-portals/create-customer-portal-session/) for temporary customer links.
 

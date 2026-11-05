@@ -16,6 +16,25 @@ export function createPaddleProvider(
   const base = config.mode === 'sandbox'
     ? 'https://sandbox-api.paddle.com'
     : 'https://api.paddle.com';
+  const expectedCheckout = new URL(config.checkoutUrl);
+  const parseTransaction = (value: unknown) => {
+    const transaction = transactionSchema.parse(value);
+    if (['draft', 'ready'].includes(transaction.status)) {
+      try {
+        const url = new URL(transaction.checkout?.url ?? '');
+        if (
+          url.protocol !== 'https:' || url.origin !== expectedCheckout.origin ||
+          url.pathname !== expectedCheckout.pathname || url.username || url.password || url.hash ||
+          url.searchParams.getAll('_ptxn').length !== 1 ||
+          url.searchParams.get('_ptxn') !== transaction.id
+        ) throw new Error('Unexpected payment link');
+      } catch {
+        // Creation may have succeeded. Keep its reservation if the account link is wrong.
+        throw new ProviderError(true);
+      }
+    }
+    return transaction;
+  };
   const request = async (path: string, body?: unknown): Promise<unknown> => {
     let response: Response;
     try {
@@ -57,21 +76,21 @@ export function createPaddleProvider(
       return customer.id;
     },
     async createTransaction(customerId, reservationId) {
-      return transactionSchema.parse(
+      return parseTransaction(
         await request('/transactions', {
           customer_id: customerId,
           items: [{ price_id: config.priceId, quantity: 1 }],
           currency_code: 'USD',
           collection_mode: 'automatic',
           discount_id: null,
-          checkout: { url: config.checkoutUrl },
+          // Use the account default. A custom checkout.url requires separate domain approval.
           custom_data: { iwb_reservation: reservationId },
         }),
       );
     },
     async transaction(id) {
       paddleId('txn').parse(id);
-      return transactionSchema.parse(await request(`/transactions/${id}`));
+      return parseTransaction(await request(`/transactions/${id}`));
     },
     async subscription(id) {
       paddleId('sub').parse(id);

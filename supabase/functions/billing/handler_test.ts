@@ -493,7 +493,12 @@ Deno.test('HTTP adapter uses sandbox, fixed price, and refuses foreign portal li
   const requestFetch: typeof fetch = (input, init) => {
     seen.push({ url: String(input), init });
     if (String(input).endsWith('/transactions')) {
-      return Promise.resolve(Response.json({ data: transaction }));
+      return Promise.resolve(Response.json({
+        data: {
+          ...transaction,
+          checkout: { url: `${origin}/account?_ptxn=${transactionId}` },
+        },
+      }));
     }
     return Promise.resolve(
       Response.json({
@@ -516,7 +521,48 @@ Deno.test('HTTP adapter uses sandbox, fixed price, and refuses foreign portal li
   assertEquals(payload.items, [{ price_id: priceId, quantity: 1 }]);
   assertEquals(payload.customer_id, customer);
   assertEquals(payload.currency_code, 'USD');
+  assertEquals('checkout' in payload, false);
   await assertRejects(() => provider.portal(customer), ProviderError);
+});
+Deno.test('HTTP adapter validates the account payment link before returning a usable checkout', async () => {
+  for (
+    const url of [
+      null,
+      `http://practice.example/account?_ptxn=${transactionId}`,
+      `https://attacker.example/account?_ptxn=${transactionId}`,
+      `${origin}/other?_ptxn=${transactionId}`,
+      `${origin}/account?_ptxn=${replacementId}`,
+      `${origin}/account?_ptxn=${transactionId}&_ptxn=${replacementId}`,
+      `${origin}/account?_ptxn=${transactionId}#redirect`,
+      `https://user:password@practice.example/account?_ptxn=${transactionId}`,
+    ]
+  ) {
+    const provider = createPaddleProvider({
+      mode: 'sandbox',
+      apiKey: 'test-only',
+      priceId,
+      checkoutUrl: `${origin}/account`,
+    }, () => Promise.resolve(Response.json({ data: { ...transaction, checkout: { url } } })));
+    const error = await assertRejects(
+      () => provider.createTransaction(customer, reservation),
+      ProviderError,
+    );
+    assertEquals(error.uncertain, true);
+    await assertRejects(() => provider.transaction(transactionId), ProviderError);
+  }
+  const provider = createPaddleProvider({
+    mode: 'sandbox',
+    apiKey: 'test-only',
+    priceId,
+    checkoutUrl: origin,
+  }, () =>
+    Promise.resolve(Response.json({
+      data: {
+        ...transaction,
+        checkout: { url: `${origin}/?_ptxn=${transactionId}` },
+      },
+    })));
+  assertEquals((await provider.transaction(transactionId)).id, transactionId);
 });
 Deno.test('HTTP adapter treats transport and server failures as uncertain', async () => {
   for (const status of [400, 408, 429, 500]) {
