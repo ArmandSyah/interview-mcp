@@ -127,9 +127,27 @@ This test creates a temporary database and uses a scripted model.
 INTERVIEW_SERVER_PYTHON="$(pwd)/../../.venv/bin/python" uv run --locked python -m pytest -q
 ```
 
-The lab does not connect to a hosted MCP server or deploy a coach.
-AgentCore and Lambda remain optional future deployments.
-They require an AWS account, verified account authentication, usage controls, and a separate cost decision.
+## Optional AgentCore contract exercise
+
+[The local AgentCore exercise](AGENTCORE.md) adds `/ping` and `/invocations` through the real AgentCore Python SDK.
+It reuses the bounded Strands loop and connects to the same local MCP server.
+It requires a local bearer credential and one fixed runtime session.
+Requests cannot choose a model, MCP address, owner, or practice identifier.
+Its smoke tests need no Ollama service, AWS account, or model download.
+
+This exercise is not a deployable hosted service.
+The local credential identifies the local operator. It does not verify a Supabase account.
+Before hosted use, implement these requirements:
+
+- Verify each Supabase access token and propagate it to one configured HTTPS MCP endpoint.
+- Bind runtime sessions to verified accounts and owned practice identifiers outside model input.
+- Check subscription access and reserve a usage allowance before each model turn.
+- Configure AgentCore JWT verification, or restrict IAM invocation to a backend that performs those checks.
+- Keep tokens out of model context and traces. Retain the tool allowlist and submission approval boundary.
+- Select a hosted model, region, price limit, and cancellation path. Local Ollama is not available inside an AWS runtime.
+- Test real token expiry, cross-account requests, disconnects, costs, and cleanup before deployment.
+
+AgentCore and Lambda hosting require an AWS account and a separate cost decision.
 See [coaching deployment options](../../docs/coaching-agent-options.md).
 
 ## SDK references
