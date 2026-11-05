@@ -698,7 +698,7 @@
     },
     "remaining_checks": [
       "Sandbox UI: consent acceptance, progress/error/retry, repair, owned stop/error/retry, and opt-out persistence",
-      "Startup and close: close during engine initialization, a native file picker, and sandbox installation",
+      "Startup and close: close during engine initialization and sandbox installation",
       "Windows and panels: separator bounds/cancellation, minimum size, maximize/restore/fullscreen/zoom, menu Quit with unsaved work, and second-instance restore/focus/backend count",
       "Design/chat details: remaining palette choices, Clear Canvas confirmation/undo, mock-mode hint controls, timer zero boundary, keyboard approval/focus return, and 200-message retention/scroll",
       "Recheck Windows startup/settings/canvas timing if failures recur; run full platform CI after subsequent application changes"
@@ -846,6 +846,24 @@
       "limits": "Native source fixtures replace the OS credential API with deterministic test values. They do not establish OS encryption correctness or Supabase authentication. AI stays off. Windows CI includes the source stories before packaging.",
       "independent_review": "A subagent identified the skipped-decryption defect, reviewed the native assertions, and added four fresh-load service regressions. All four focused regressions passed after the fix. Root reproduced the native failure and ran the four corrected native cases.",
       "validation": "All 260 desktop tests passed, with two optional skips. All four native credential stories passed. Build, type checks, formatting, and diff checks passed. Full platform checks remain pending."
+    },
+    "pending_dialog_close": {
+      "status": "local_verified_platform_checks_pending",
+      "requirements": "Native close must cancel unanswered file selections and consent decisions. A late response must not authorize an export, pack installation, sandbox setup, or installer launch. Close must still wait for an accepted write and preserve saved practice.",
+      "defect": "File selection and consent kept their IPC operations pending. The renderer and main process waited for these operations before close, so an unanswered dialog prevented shutdown.",
+      "change": "Each dialog decision now races a permanent per-call cancellation. Native close cancels pending decisions. Accepted file writes and installations remain in the existing shutdown queue.",
+      "data_effect": "No saved data format changes. An unanswered selection returns the existing cancellation result. Earlier practice records remain valid.",
+      "reproduction": "The unanswered solution-export test failed before the file-selection fix. Both unanswered consent tests failed before the shared cancellation fix. Each failure reached its five-second native-close deadline.",
+      "tests": [
+        "apps/desktop/tests/e2e/file-dialog-close.spec.ts",
+        "apps/desktop/tests/e2e/file-dialog-recovery.spec.ts",
+        "apps/desktop/tests/e2e/sandbox-close.spec.ts",
+        "apps/desktop/tests/e2e/update-close.spec.ts",
+        "apps/desktop/tests/e2e/native-picker-close.spec.ts"
+      ],
+      "limits": "Controlled response tests exercise late decisions and file writes with real Electron, renderer, service, backend, and saved files. Two additional stories use the real Linux open/save dialogs and confirm process closure with a pending picker. Windows native picker behavior remains pending platform CI. The stories do not inspect OS dialog appearance.",
+      "validation": "All 27 file-selection, consent, content-pack, and export regression stories passed on Linux in 1.5 minutes. Both additional write/recovery stories and both real native picker stories passed in 14.6 seconds. Type checks, formatting, and diff checks passed.",
+      "independent_review": "A separate agent reviewed every affected handler, cancellation lifetime, accepted-write tracking, and saved-data assertions. It added two consent stories and two write/recovery stories. Its final read-only review found no blocking issue. Root ran all native tests."
     }
   },
   "last_verified": {

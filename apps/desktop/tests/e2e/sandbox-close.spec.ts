@@ -5,7 +5,12 @@ import { join } from 'node:path';
 import { launch } from './desktop';
 import { gateIpc } from './ipc-gate';
 
-for (const phase of ['before command', 'active command', 'pending consent'] as const) {
+for (const phase of [
+  'before command',
+  'active command',
+  'pending consent',
+  'unanswered consent',
+] as const) {
   test(`native close cancels sandbox work: ${phase}`, async () => {
     test.skip(process.platform !== 'linux', 'The fixture uses a Linux executable.');
     const data = await mkdtemp(join(tmpdir(), 'interview-sandbox-close-'));
@@ -22,12 +27,13 @@ for (const phase of ['before command', 'active command', 'pending consent'] as c
       process.env.PATH = previousPath;
     }
     let gate: Awaited<ReturnType<typeof gateIpc>> | undefined;
+    const consent = phase === 'pending consent' || phase === 'unanswered consent';
     try {
       const page = await app.firstWindow();
       await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
       await page.getByRole('button', { name: 'Open settings' }).click();
       if (phase === 'before command') gate = await gateIpc(app, 'sandbox-inspect');
-      if (phase === 'pending consent')
+      if (consent)
         await app.evaluate(({ dialog }) => {
           const fixture = dialog as typeof dialog & { releaseConsent?: (response: number) => void };
           dialog.showMessageBox = async () =>
@@ -37,12 +43,12 @@ for (const phase of ['before command', 'active command', 'pending consent'] as c
         });
       await page
         .getByRole('button', {
-          name: phase === 'pending consent' ? 'Enable local execution' : 'Check local sandbox',
+          name: consent ? 'Enable local execution' : 'Check local sandbox',
           exact: true,
         })
         .click();
       if (gate) await expect.poll(async () => (await gate!.calls()).length).toBe(1);
-      else if (phase === 'pending consent')
+      else if (consent)
         await expect
           .poll(() =>
             app.evaluate(({ dialog }) =>
@@ -68,9 +74,15 @@ for (const phase of ['before command', 'active command', 'pending consent'] as c
       await expect.poll(() => closed, { timeout: 5000 }).toBe(true);
       if (phase !== 'active command')
         await expect(readFile(marker, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+      if (phase === 'unanswered consent') {
+        const saved = JSON.parse(await readFile(join(data, 'workspace.json'), 'utf8'));
+        expect(saved.settings.managedSandbox).toBe(false);
+      }
     } finally {
       await gate?.restore().catch(() => {});
-      if (phase === 'pending consent')
+      if (phase === 'unanswered consent')
+        await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
+      else if (phase === 'pending consent')
         await app
           .evaluate(({ dialog }) =>
             (
