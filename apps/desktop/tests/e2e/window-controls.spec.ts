@@ -197,11 +197,17 @@ loaded._compile(fs.readFileSync(original, 'utf8'), original);
           ),
         )
         .toBe(true);
+      // Playwright's Windows launcher is a shell, not the Electron process.
+      const primary = await app.evaluate(({ app }) => ({
+        executable: process.execPath,
+        pid: process.pid,
+        noSandbox: app.commandLine.hasSwitch('no-sandbox'),
+      }));
       second = spawn(
-        app.process().spawnfile,
+        primary.executable,
         [
           entry,
-          ...app.process().spawnargs.filter((arg) => arg === '--no-sandbox'),
+          ...(primary.noSandbox ? ['--no-sandbox'] : []),
           ...(process.platform === 'linux' ? ['--ozone-platform=x11'] : []),
         ],
         { env: desktopEnvironment(data, ''), stdio: ['ignore', 'ignore', 'pipe'] },
@@ -227,7 +233,7 @@ loaded._compile(fs.readFileSync(original, 'utf8'), original);
         .split('\n')
         .map((line) => JSON.parse(line));
       expect(locks).toEqual([
-        expect.objectContaining({ pid: app.process().pid, locked: true }),
+        expect.objectContaining({ pid: primary.pid, locked: true }),
         expect.objectContaining({ pid: second.pid, locked: false }),
       ]);
       await expect
