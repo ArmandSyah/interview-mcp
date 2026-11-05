@@ -240,7 +240,14 @@ The function URL has this form:
 https://<project-ref>.supabase.co/functions/v1/interview-mcp
 ```
 
-The repository migration versions are the same as the recorded remote versions.
+The recorded remote deployment predates two repository migrations:
+
+- `20261028163500_public_catalog.sql` adds the reviewed public question revision.
+- `20261028165000_design_session_recovery.sql` adds design-session recovery.
+
+The updated function must also be deployed for design-session recovery.
+These changes have local and CI checks, but no recorded remote deployment.
+Compare remote migration history with the repository before deployment.
 After Supabase CLI authentication, link the selected project:
 
 ```bash

@@ -43,7 +43,7 @@ sudo apt-get update
 sudo apt-get install libnss3 libasound2t64
 ```
 
-For headless UI tests, also install `xvfb`.
+For headless UI tests, also install `xvfb` and `openbox`.
 WSLg is necessary to show an app window in WSL.
 If WSLg is not available, use a native Windows build.
 
