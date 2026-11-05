@@ -113,16 +113,17 @@ export class WorkbenchService {
     await this.store.load();
     let credentialError: string | null = null;
     if (this.vault.available()) {
-      try {
-        this.apiKey = this.store.state.credentials.apiKey
-          ? this.vault.decrypt(this.store.state.credentials.apiKey)
-          : '';
-        this.mcpKey = this.store.state.credentials.mcpKey
-          ? this.vault.decrypt(this.store.state.credentials.mcpKey)
-          : '';
-      } catch {
-        credentialError = 'Saved credentials could not be unlocked. Re-enter them in Settings.';
-      }
+      const unlock = (stored: string | undefined) => {
+        if (!stored) return '';
+        try {
+          return this.vault.decrypt(stored);
+        } catch {
+          credentialError = 'Saved credentials could not be unlocked. Re-enter them in Settings.';
+          return '';
+        }
+      };
+      this.apiKey = unlock(this.store.state.credentials.apiKey);
+      this.mcpKey = unlock(this.store.state.credentials.mcpKey);
     }
     this.scope = this.store.scope(this.mcpKey);
     await this.reconnect();
