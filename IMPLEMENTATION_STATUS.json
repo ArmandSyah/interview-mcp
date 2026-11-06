@@ -993,6 +993,15 @@
       "other_checks": "Backend CI, container build, remote integration, Supabase Edge Function checks, and PostgreSQL checks all passed on the same commit.",
       "scope": "The recorded interaction matrix has no remaining failed or unverified story. This records tested scenarios and configurations, not proof about every possible execution.",
       "remote_deployment": "Both pending migrations and function version 5 are deployed. Database checks passed and HTTP rejects missing or invalid credentials. The repository migration filenames match remote history. See docs/deployments/2026-11-05-supabase.md for evidence and the signed-in test limit."
+    },
+    "canvas_pointer_controls": {
+      "status": "linux_source_verified_platform_checks_pending",
+      "requirement": "Verify ordinary pointer drawing, movement, bound text, deletion, Undo, and saved scenes after navigation and restart.",
+      "change": "Nine native stories exercise the actual Excalidraw controls. Two stories hold an older scene save during new text edits, then require navigation or native close to wait for the newer save.",
+      "contract": "Saved elements retain identities, geometry, path points, original text, and bindings. No production code or saved-data format changes.",
+      "validation": "All nine Linux source stories passed in 50.7 seconds. Windows and packaged verification remain pending.",
+      "tests": "apps/desktop/tests/e2e/canvas-pointer.spec.ts",
+      "review": "An independent reviewer required complete element comparisons, finite path points, both movement coordinates, and controlled save timing. The final tests include those checks."
     }
   },
   "last_verified": {

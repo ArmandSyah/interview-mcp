@@ -420,7 +420,8 @@ npm run test:desktop -- tests/e2e/save-races.spec.ts
 
 Playwright keeps a trace for each failed native test.
 The trace includes the actions and assertions for that test.
-The full UI audit is not completed.
+The recorded Linux and Windows audit passed at commit `201b616`.
+Later additions have separate verification records in [implementation status](../../IMPLEMENTATION_STATUS.json).
 
 ### Action and settings regression tests
 
@@ -474,7 +475,7 @@ npm run test:desktop -- tests/e2e/lifecycle.spec.ts
 These tests include focus, Tab, Shift+Tab, Escape, save failures, backdrop clicks, checkpoint history, and response order.
 The layout test sets the renderer viewport, which is the content area on the screen, to 1040 × 633.
 It does not test native window resize controls.
-The full UI audit continues.
+Native window controls have separate tests in `window-controls.spec.ts`.
 
 ### Window close and chat cancellation tests
 
@@ -1310,3 +1311,27 @@ npm run test:desktop -- tests/e2e/connection-evidence.spec.ts
 The test uses the local engine and temporary practice data.
 It examines initial connection, reconnection, saved code, and the contents of connection records.
 The new reconnection assertion has a 20-second limit.
+
+### Canvas pointer and save tests
+
+The whiteboard tests use real pointer gestures to create rectangles, diamonds, ellipses, arrows, lines, and freehand paths.
+They compare the complete saved elements after navigation and restart.
+Path elements must contain finite point coordinates.
+
+Other stories move a rectangle, edit bound text, delete it, and restore it with Undo.
+They verify both movement coordinates, the original text, and the shape-to-text binding.
+A wrapped label keeps its original text separately from its displayed lines.
+
+Two controlled races hold an earlier scene save while the user adds newer text.
+Navigation and native window close must wait for a second save with the latest geometry and text.
+Restart must restore the complete latest elements.
+The tests use temporary workspaces. They do not change the user's practice files.
+
+After the build, run these stories from `apps/desktop`:
+
+```bash
+npm run test:desktop -- tests/e2e/canvas-pointer.spec.ts
+```
+
+All nine stories passed on the isolated Linux source app.
+Windows and packaged results remain pending for this addition.

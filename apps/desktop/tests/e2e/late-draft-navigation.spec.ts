@@ -51,8 +51,9 @@ for (const mode of ['coding', 'design'] as const) {
           .click();
         await expect.poll(navigation.calls).toHaveLength(1);
         // Stop the autosave deadline. Change the draft after the first navigation flush.
-        await page.clock.install();
-        await page.clock.pauseAt(new Date());
+        const pausedAt = new Date();
+        await page.clock.install({ time: new Date(pausedAt.getTime() - 60_000) });
+        await page.clock.pauseAt(pausedAt);
         if (mode === 'coding') {
           const editor = page.getByRole('textbox', { name: 'Python solution editor' });
           await editor.focus();
