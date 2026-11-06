@@ -451,6 +451,78 @@ def test_unbound_event_can_retry_after_binding_without_losing_digest_guard(datab
     assert database.sql("select count(*) from iwb_private.billing_events") == "2"
 
 
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("period_end", [None, "2100-02-01T00:00:00Z"])
+@pytest.mark.parametrize("cancel_at", [None, "2099-01-01T00:00:00Z"])
+def test_equal_time_equivalent_events_preserve_state_and_retry(
+    database: Database, reverse, period_end, cancel_at
+):
+    database.bind()
+    first = event(current_period_end=period_end, scheduled_cancel_at=cancel_at)
+    second = event(
+        occurred_at="2029-12-31T19:00:00-05:00",
+        current_period_end="2100-01-31T19:00:00-05:00" if period_end else None,
+        scheduled_cancel_at="2098-12-31T19:00:00-05:00" if cancel_at else None,
+        payload_hash="b" * 64,
+    )
+    if reverse:
+        first, second = second, first
+    assert database.call("apply_event", **first) == {"outcome": "applied"}
+    before = database.call("status")
+    assert database.call("apply_event", **second) == {"outcome": "applied"}
+    assert database.call("status") == before
+    assert before["status"] == "active"
+    assert before["entitled"] is bool(period_end)
+    assert database.call("apply_event", **second) == {"outcome": "duplicate"}
+    assert database.sql("select count(*) from iwb_private.billing_events") == "2"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"status": "canceled"},
+        {"price_id": "pri_other"},
+        {"price_matches": False},
+        {"current_period_end": None},
+        {"current_period_end": "2100-03-01T00:00:00Z"},
+        {"scheduled_cancel_at": "2099-01-01T00:00:00Z"},
+    ],
+)
+@pytest.mark.parametrize("reverse", [False, True])
+def test_equal_time_different_fact_blocks_access_and_matching_retry_cannot_clear(
+    database: Database, changes, reverse
+):
+    database.bind()
+    first, second = event(), event(**changes)
+    if reverse:
+        first, second = second, first
+    assert database.call("apply_event", **first) == {"outcome": "applied"}
+    assert database.call("apply_event", **second) == {"outcome": "conflict"}
+    assert database.call("status")["entitled"] is False
+    assert database.call("status")["status"] == "needs_reconciliation"
+    matching = {**first, "event_id": "evt_" + uuid4().hex, "payload_hash": "c" * 64}
+    assert database.call("apply_event", **matching) == {"outcome": "applied"}
+    assert database.call("status")["entitled"] is False
+    assert database.call("status")["status"] == "needs_reconciliation"
+    assert database.call("apply_event", **second) == {"outcome": "conflict"}
+
+
+def test_concurrent_distinct_equivalent_events_preserve_access(database: Database):
+    database.bind()
+    barrier = Barrier(4)
+
+    def submit(_):
+        pending = event()
+        barrier.wait(timeout=10)
+        return database.call("apply_event", **pending)["outcome"]
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(submit, range(4)))
+    assert results == ["applied"] * 4
+    assert database.call("status")["entitled"] is True
+    assert database.sql("select count(*) from iwb_private.billing_events") == "4"
+
+
 def test_concurrent_duplicate_events_apply_once(database: Database):
     database.bind()
     pending = event()

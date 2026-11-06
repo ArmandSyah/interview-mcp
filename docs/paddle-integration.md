@@ -65,7 +65,11 @@ These rules follow Paddle's [signature instructions](https://developer.paddle.co
 
 The database applies each event atomically and compares its provider timestamp with the stored subscription timestamp.
 An exact duplicate has no additional effect. An older event cannot replace newer subscription state.
-Distinct events with equal timestamps require reconciliation and remove entitlement until a newer event resolves the conflict.
+Distinct events with equal timestamps have no additional state effect when all stored subscription facts match.
+The comparison includes status, price, price eligibility, billing-period end, and scheduled cancellation.
+Dates compare as timestamps, including equivalent time zones and null dates.
+Different facts require reconciliation and remove entitlement until a newer event resolves the conflict.
+A matching event cannot clear an existing reconciliation flag. Earlier event records remain unchanged.
 A reused event ID with different content also produces a conflict.
 An unbound event remains available for retry after the server binds its customer.
 Paddle documents duplicate delivery and event order in its [access guide](https://developer.paddle.com/build/subscriptions/provision-access-webhooks/).
