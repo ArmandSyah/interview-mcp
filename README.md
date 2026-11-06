@@ -247,7 +247,8 @@ Docker tests start only with a user opt-in. See [the desktop test guide](apps/de
 ## Project status
 
 This is a development project. It does not give a validated interview grade.
-The public catalog is small. Supabase hosts the private MCP preview. Checkout is not configured.
+The public catalog is small. Supabase hosts the private MCP preview. The private website supports sandbox checkout.
+Public signup and live payments remain disabled.
 Production trust keys, signed releases, and an archive restore UI are not configured.
 
 See [the desktop guide](apps/desktop/README.md), [MCP server setup](docs/mcp-server.md), and [demo capture](docs/media/README.md).
