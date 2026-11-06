@@ -5,7 +5,7 @@ Paddle is the selected provider for sandbox tests.
 The code defaults to sandbox mode. It does not charge real cards in that mode.
 The sandbox catalog, server secrets, and webhook destination are configured.
 No live payment service is active.
-See the [sandbox deployment record](deployments/2026-11-05-billing.md) for verified results and unfinished checks.
+See the [sandbox acceptance record](deployments/2026-11-06-billing.md) for verified results and remaining launch work.
 The existing desktop app and MCP routes keep their current behavior.
 
 The new `billing` Edge Function handles checkout, account status, the customer portal, and subscription webhooks.
@@ -210,8 +210,8 @@ Future operator recovery must inspect provider state using the saved transaction
 It must confirm ownership before it repairs a reservation. It must not create a replacement after an unverified timeout.
 Refunds, disputes, missed-event reconciliation, request limits, and launch policies need separate work before live billing.
 Provider credentials, catalog setup, and notification setup are complete in sandbox.
-The real sandbox checkout opens, but the browser test stopped before payment submission.
-Payment completion, webhook delivery, portal access, cancellation, and replacement checkout still need real provider tests.
+Real sandbox tests passed through the published private website on 6 November 2026.
+They verified payment completion, webhook-based access, account isolation, HTTPS portal access, cancellation, and concurrent replacement checkout.
 No paid service is active.
 
 The focused Deno tests use injected HTTP responses. They make no Paddle network requests.

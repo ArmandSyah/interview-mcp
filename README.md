@@ -16,8 +16,9 @@ See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
 For Windows installation, follow the [preview installation guide](docs/windows-install.md).
 See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
 Compare [MCP hosting](docs/cloud-hosting-options.md), [Strands and AgentCore coaching](docs/coaching-agent-options.md), and [subscriptions with website signup](docs/subscription-options.md).
-These options describe future services. They do not enable billing or require an AWS account.
-Account registration and checkout are proposals, not available app features.
+The private website supports a USD 10 monthly Paddle sandbox plan. Public signup and live payments remain disabled.
+The [payment verification record](docs/deployments/2026-11-06-billing.md) covers checkout, webhooks, the customer portal, cancellation, and account isolation.
+The optional [Strands lab](experiments/strands-coach/README.md) includes a local AgentCore HTTP exercise. It does not require an AWS account.
 
 The [Supabase preview](docs/supabase-hosting.md) supplies remote hints and system-design tools.
 The desktop accepts an operator-supplied account token. Account registration and automatic sign-in are not available.
