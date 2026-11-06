@@ -122,9 +122,9 @@
       }
     },
     "download_website": {
-      "status": "plan_reviewed",
-      "required": "Prepare a website deployment plan with installer downloads and build identity. No provider purchase or website deployment is authorized by this planning requirement.",
-      "proposal": "docs/download-site-plan.md proposes Cloudflare Pages Free for static pages and GitHub Releases for installers. It defines release metadata, publication gates, download tests, and a USD 0 website budget within provider limits. No account, domain, or site has been provisioned.",
+      "status": "private_preview_verified",
+      "required": "The original requirement covered a deployment plan with installer downloads and build identity. The user later authorized a private Sites preview.",
+      "proposal": "docs/download-site-plan.md compares public release options, including Cloudflare Pages Free and GitHub Releases. The deployed private Sites preview provides sign-in, development downloads, and verified Paddle sandbox billing. No custom domain or public signup is configured. See docs/deployments/2026-11-06-billing.md.",
       "independent_review": "The subagent examined the provider facts and Issue 9 wording. It found an impossible anonymous-download test before draft publication. The plan now examines draft files with repository write access, obtains owner approval, publishes the release, tests anonymous downloads, then publishes the website. Vocabulary and part-of-speech corrections were applied. The final independent review found no further concrete issues."
     },
     "low_cost_ai": {

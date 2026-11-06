@@ -139,7 +139,7 @@ See [Bedrock model pricing](https://aws.amazon.com/bedrock/pricing/).
 
 ## Verification milestones
 
-1. Completed: 48 tests passed with Strands, the optional AgentCore SDK, scripted model responses, and real local MCP coding and design reads.
+1. Completed: 49 tests passed with Strands, the optional AgentCore SDK, scripted model responses, and real local MCP coding and design reads.
 2. Completed: tests cover identifiers, local credentials, request validation, tool limits, hint publication, concurrency, timeout, and cancellation.
 3. Evaluate a local model for useful hints, factual errors, and unwanted solution disclosure.
 4. Integrate desktop events and verify existing approval and draft-preservation stories.
