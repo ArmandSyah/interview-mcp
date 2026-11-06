@@ -1,0 +1,31 @@
+name: Local coach lab
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['experiments/strands-coach/**', 'server/**', '.github/workflows/coach-lab.yml']
+  push:
+    branches: [main]
+    paths: ['experiments/strands-coach/**', 'server/**', '.github/workflows/coach-lab.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen --dev
+      - run: uv sync --locked --extra agentcore
+        working-directory: experiments/strands-coach
+      - name: Test Strands, AgentCore, and actual MCP reads without inference
+        working-directory: experiments/strands-coach
+        run: uv run --locked --extra agentcore python -m pytest -q
+        env:
+          INTERVIEW_SERVER_PYTHON: ${{ github.workspace }}/.venv/bin/python

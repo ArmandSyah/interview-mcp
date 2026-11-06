@@ -1333,5 +1333,12 @@ After the build, run these stories from `apps/desktop`:
 npm run test:desktop -- tests/e2e/canvas-pointer.spec.ts
 ```
 
-All nine stories passed on the isolated Linux source app.
-Windows and packaged results remain pending for this addition.
+All nine stories passed in the Linux source suite and the Linux and Windows packaged suites.
+Desktop workflow [42114081547](https://github.com/ArmandSyah/interview-mcp/actions/runs/42114081547) verified commit `9678848`.
+
+The full Linux source suite passed 252 stories. Its packaged suite passed 219 stories, with 33 source-only skips.
+The Windows packaged suite passed 213 stories, with 39 explicit skips.
+The separate Windows source selection passed 45 stories. It does not include the canvas pointer file.
+
+PR 47 merged as `b4a2ba5` after all seven checks passed.
+These results cover the recorded scenarios and configurations. They do not establish correctness for every possible event order.

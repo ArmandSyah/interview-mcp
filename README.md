@@ -15,7 +15,10 @@ Select **System design** to open the built-in whiteboard. Select **Coding** to o
 See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
 For Windows installation, follow the [preview installation guide](docs/windows-install.md).
 See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
-Account registration and checkout are proposals, not available app features.
+Compare [MCP hosting](docs/cloud-hosting-options.md), [Strands and AgentCore coaching](docs/coaching-agent-options.md), and [subscriptions with website signup](docs/subscription-options.md).
+The private website supports a USD 10 monthly Paddle sandbox plan. Public signup and live payments remain disabled.
+The [payment verification record](docs/deployments/2026-11-06-billing.md) covers checkout, webhooks, the customer portal, cancellation, and account isolation.
+The optional [Strands lab](experiments/strands-coach/README.md) includes a local AgentCore HTTP exercise. It does not require an AWS account.
 
 The [Supabase preview](docs/supabase-hosting.md) supplies remote hints and system-design tools.
 The desktop accepts an operator-supplied account token. Account registration and automatic sign-in are not available.
@@ -244,7 +247,8 @@ Docker tests start only with a user opt-in. See [the desktop test guide](apps/de
 ## Project status
 
 This is a development project. It does not give a validated interview grade.
-The public catalog is small. Supabase hosts the private MCP preview. Checkout is not configured.
+The public catalog is small. Supabase hosts the private MCP preview. The private website supports sandbox checkout.
+Public signup and live payments remain disabled.
 Production trust keys, signed releases, and an archive restore UI are not configured.
 
 See [the desktop guide](apps/desktop/README.md), [MCP server setup](docs/mcp-server.md), and [demo capture](docs/media/README.md).

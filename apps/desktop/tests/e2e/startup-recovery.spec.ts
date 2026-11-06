@@ -3,6 +3,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { LocalStore } from '../../src/main/storage';
+import { connectionEvidence } from '../connection-evidence';
 import { launch } from './desktop';
 
 type StartupFixture = {
@@ -12,6 +13,26 @@ type StartupFixture = {
   respond?: (response: number) => void;
 };
 type FixtureHost = typeof globalThis & { startupFixture: StartupFixture };
+
+function processPresence(pid: number | undefined) {
+  if (!Number.isSafeInteger(pid) || !pid || pid < 1) return { pid, state: 'unknown' };
+  try {
+    process.kill(pid, 0);
+    return { pid, state: 'present' };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return {
+      pid,
+      state: code === 'ESRCH' ? 'absent' : 'unknown',
+      reason:
+        code === 'ESRCH'
+          ? 'not-found'
+          : code === 'EPERM' || code === 'EACCES'
+            ? 'permission'
+            : 'probe-failed',
+    };
+  }
+}
 
 for (const action of ['retry', 'close', 'window-close'] as const) {
   test(`a document load failure permits ${action} and preserves saved data`, async () => {
@@ -24,6 +45,7 @@ for (const action of ['retry', 'close', 'window-close'] as const) {
     await store.persist();
     const saved = await readFile(join(data, 'workspace.json'), 'utf8');
     const entry = join(directory, 'entry.cjs');
+    const lifecyclePath = join(directory, 'startup-lifecycle.jsonl');
     await writeFile(
       entry,
       `
@@ -32,6 +54,23 @@ const Module = require('node:module');
 const path = require('node:path');
 const electron = require('electron');
 const childProcess = require('node:child_process');
+const evidenceStart = process.hrtime.bigint();
+let evidenceCount = 0;
+function record(event, values = {}) {
+  if (evidenceCount++ >= 32) return;
+  try {
+    fs.appendFileSync(${JSON.stringify(lifecyclePath)}, JSON.stringify({
+      event, elapsedMs: Number((process.hrtime.bigint() - evidenceStart) / 1000000n), ...values
+    }) + '\\n');
+  } catch {}
+}
+record('bootstrap', { pid: process.pid });
+for (const event of ['before-quit', 'will-quit']) electron.app.on(event, () => record(event));
+electron.app.on('quit', (_event, code) => record('quit', { code }));
+electron.app.on('browser-window-created', (_event, window) => {
+  window.once('closed', () => record('window-closed'));
+});
+process.once('exit', code => record('process-exit', { code }));
 const state = globalThis.startupFixture = { attempts: 0, spawns: 0, dialogs: [] };
 const originalSpawn = childProcess.spawn;
 childProcess.spawn = (...args) => { state.spawns++; return originalSpawn(...args); };
@@ -43,7 +82,10 @@ electron.net.fetch = (url, options) => {
 };
 electron.dialog.showMessageBox = async (_window, options) => {
   state.dialogs.push(options);
-  return new Promise(resolve => { state.respond = response => resolve({ response, checkboxChecked: false }); });
+  return new Promise(resolve => { state.respond = response => {
+    record('dialog-response', { response });
+    resolve({ response, checkboxChecked: false });
+  }; });
 };
 const original = ${JSON.stringify(resolve('dist/main/index.cjs'))};
 const loaded = new Module(original, module);
@@ -86,6 +128,50 @@ loaded._compile(fs.readFileSync(original, 'utf8'), original);
         await exited;
         expect(await readFile(join(data, 'workspace.json'), 'utf8')).toBe(saved);
       }
+    } catch (error) {
+      // Capture before forced cleanup. The lifecycle file survives a closed inspector.
+      try {
+        const lifecycle = (await readFile(lifecyclePath, 'utf8'))
+          .trim()
+          .split('\n')
+          .filter(Boolean)
+          .slice(0, 32)
+          .map((line) => JSON.parse(line) as { event: string; pid?: number });
+        const launcher = app.process();
+        const snapshot = {
+          lifecycle,
+          electron: processPresence(lifecycle.find((entry) => entry.event === 'bootstrap')?.pid),
+          launcher: {
+            ...processPresence(launcher.pid),
+            exitCode: launcher.exitCode,
+            signalCode: launcher.signalCode,
+            stdout: {
+              destroyed: launcher.stdout?.destroyed,
+              ended: launcher.stdout?.readableEnded,
+            },
+            stderr: {
+              destroyed: launcher.stderr?.destroyed,
+              ended: launcher.stderr?.readableEnded,
+            },
+          },
+        };
+        await test.info().attach('startup-failure-processes', {
+          body: JSON.stringify(snapshot, null, 2),
+          contentType: 'application/json',
+        });
+        const connection = await Promise.race([
+          connectionEvidence(app).catch(() => undefined),
+          new Promise<undefined>((resolve) => setTimeout(resolve, 1000)),
+        ]);
+        if (connection)
+          await test.info().attach('startup-failure-connection', {
+            body: JSON.stringify(connection, null, 2),
+            contentType: 'application/json',
+          });
+      } catch {
+        // Diagnostic failure must not replace the original test failure.
+      }
+      throw error;
     } finally {
       // A failing startup assertion must not leave its isolated Electron process alive.
       await app.evaluate(({ app }) => app.exit(0)).catch(() => {});

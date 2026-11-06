@@ -6,3 +6,9 @@ project_id = "interview-workbench"
 verify_jwt = false
 entrypoint = "./functions/interview-mcp/index.ts"
 import_map = "./deno.json"
+
+[functions.billing]
+# The webhook verifies Paddle signatures. Account routes verify Supabase tokens.
+verify_jwt = false
+entrypoint = "./functions/billing/index.ts"
+import_map = "./deno.json"

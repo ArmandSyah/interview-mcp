@@ -35,6 +35,6 @@ jobs:
       - run: uv sync --frozen --dev
       - run: uv run python -m tools.cloud_catalog --check
       - run: docker pull postgres:17-alpine
-      - run: uv run pytest -q tests/test_cloud_store.py
+      - run: uv run pytest -q tests/test_cloud_store.py tests/test_billing_store.py
         env:
           INTERVIEW_TEST_CLOUD_POSTGRES: '1'

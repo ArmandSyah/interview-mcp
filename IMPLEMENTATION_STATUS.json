@@ -2,7 +2,7 @@
   "status": "verified_preview",
   "goal": "Desktop coding and system-design practice, public release preparation, and Supabase remote MCP development",
   "database": "SQLAlchemy 2.x with local SQLite. Schema version 4.",
-  "delivery_scope": "The desktop passed its recorded platform checks. Supabase version 5 is deployed with database and rejected-request checks. Fresh signed-in v5 calls remain unverified. Public sign-up, payments, and trusted installer publication remain release work.",
+  "delivery_scope": "The desktop passed its recorded Linux and Windows checks. Supabase version 5 passed fresh two-account tests and token refresh. The private website passed the USD 10 Paddle sandbox lifecycle. Public signup remains disabled. Live payments and trusted public installers remain future release work.",
   "delivery_audit": [
     {
       "requirement": "Coding practice with an editor, hints, tests, submission, and saved drafts",
@@ -21,13 +21,13 @@
     },
     {
       "requirement": "Use the Supabase Free project without a VPS",
-      "result": "deployed_private_preview_authenticated_retest_pending",
-      "evidence": "Function version 5 is ACTIVE after restoration of the existing Free project. Deployed database contracts and HTTP rejection checks passed. Earlier version 4 tests verified two real accounts, token replacement, remote practice, and local Piston. A fresh signed-in version 5 test remains unverified. See docs/deployments/2026-11-05-supabase.md."
+      "result": "deployed_private_preview_authenticated_verified",
+      "evidence": "Function version 5 is ACTIVE. Fresh tests verified two real accounts, token refresh, coding/design practice, account isolation, current WorkbenchService recovery, and cleanup. This new test did not run Electron or local Piston. See docs/deployments/2026-11-05-supabase.md."
     },
     {
       "requirement": "Plans for sign-up, revenue, deployment, and public packages",
-      "result": "documented",
-      "evidence": "docs/public-release-plan.md defines the proposed account flow, ownership, payment operations, cost limits, package targets, and public release checks. These are plans, not active services."
+      "result": "options_documented_private_sandbox_verified",
+      "evidence": "Hosting, coaching, subscriptions, and download plans compare options. The private website now supports account sign-in, development downloads, and verified Paddle sandbox billing. Public signup and live payments remain disabled. See docs/deployments/2026-11-06-billing.md."
     },
     {
       "requirement": "A working desktop package",
@@ -58,7 +58,7 @@
     "Credential-excluding portable practice archives; no in-app archive restore UI yet",
     "Signed original content pack/license validation and atomic SQLAlchemy installation",
     "Perpetual purchased-version use with a bounded licensed update window",
-    "Owner-operated signing CLI; no checkout account provisioned",
+    "Owner-operated content-pack signing CLI; pack sales remain separate from subscription checkout",
     "Manual signed stable/beta update checks and verified downloads",
     "Backup before explicit installer opening; no automatic install during practice",
     "Optional Docker onboarding with explicit privileged-container consent and streamed setup phases",
@@ -90,13 +90,13 @@
   "external_prerequisites_not_provisioned": [
     "Production Ed25519 public trust keys; private keys must remain outside the repo",
     "Windows/macOS signing and notarization credentials for trusted public releases",
-    "Optional hosted checkout and reviewed paid-pack publication"
+    "Live checkout and reviewed paid-pack publication"
   ],
   "queued_follow_up": {
     "branch": "feat/subscription-plans",
     "requested_price": "USD 10 each month",
-    "status": "not_started",
-    "condition": "Finish and hand off the current desktop and Supabase work first. No billing is active."
+    "status": "private_sandbox_verified",
+    "condition": "The private website passed real sandbox payment, webhook access, owner isolation, portal, cancellation, and replacement checkout. Test accounts and subscriptions were cleaned up. No live billing is active."
   },
   "expanded_delivery_work": {
     "windows_installation": {
@@ -122,9 +122,9 @@
       }
     },
     "download_website": {
-      "status": "plan_reviewed",
-      "required": "Prepare a website deployment plan with installer downloads and build identity. No provider purchase or website deployment is authorized by this planning requirement.",
-      "proposal": "docs/download-site-plan.md proposes Cloudflare Pages Free for static pages and GitHub Releases for installers. It defines release metadata, publication gates, download tests, and a USD 0 website budget within provider limits. No account, domain, or site has been provisioned.",
+      "status": "private_preview_verified",
+      "required": "The original requirement covered a deployment plan with installer downloads and build identity. The user later authorized a private Sites preview.",
+      "proposal": "docs/download-site-plan.md compares public release options, including Cloudflare Pages Free and GitHub Releases. The deployed private Sites preview provides sign-in, development downloads, and verified Paddle sandbox billing. No custom domain or public signup is configured. See docs/deployments/2026-11-06-billing.md.",
       "independent_review": "The subagent examined the provider facts and Issue 9 wording. It found an impossible anonymous-download test before draft publication. The plan now examines draft files with repository write access, obtains owner approval, publishes the release, tests anonymous downloads, then publishes the website. Vocabulary and part-of-speech corrections were applied. The final independent review found no further concrete issues."
     },
     "low_cost_ai": {
@@ -788,7 +788,7 @@
       "windows_check": "The Windows workflow now runs content, signed-update, and update-close source fixtures before packaging. Results remain pending until that branch completes CI. Packaged tests still check the preview configuration."
     },
     "design_completion_recovery": {
-      "status": "deployed_database_verified_authenticated_remote_retest_pending",
+      "status": "deployed_authenticated_remote_verified",
       "requirements": "Read the owned backend status before editing a saved design session. Keep local notes, scene, review, chat, and IDs. Lock uncertain sessions after a lost completion response. Finish must wait for accepted reads and writes. Concurrent Finish requests must keep the first saved completion time.",
       "changes": "The new get_design_session tool returns the existing session shape. The desktop validates identity and completion fields, saves status locally, and exposes retry after errors. A transient connection revision forces a status refresh after token replacement. The existing draft barrier orders completion after pending drafts and before subsequent edits. Both backends preserve completed_at with an atomic COALESCE update.",
       "data_effect": "No saved workspace fields change. Existing content and practice records stay intact. Earlier completion times keep their stored values. Older servers without the owned-read tool cannot unlock saved design drafts. The new Supabase migration replaces the private dispatcher while preserving the public local-execution wrapper.",
@@ -801,7 +801,7 @@
       ],
       "verification": "Desktop build, type checks, and formatting passed. The full desktop suite passed 255 tests with two optional skips. All 14 selected native stories passed, including account isolation, token replacement, restart recovery, lost response, load errors, and finish retry. The stronger held-read assertion passed its focused rerun. Python design/cloud checks passed 19 tests with 20 PostgreSQL tests skipped. Deno lint, type checks, and all 14 protocol tests passed.",
       "independent_review": "Independent probes reproduced the stale-read and accepted-write races. The final barrier waits for both operations. A lost response remains locked until an owned read completes. The reviewer found no further blocking issue in the reviewed lifecycle, ownership, SQL, or permissions. Another agent reviewed the new documentation with the official Issue 9 rules and dictionary.",
-      "remaining": "No pending deployment. The deployed database passed ownership, completed-status read, and completion retry checks under simulated claims. Fresh signed-in version 5 requests remain unverified because the earlier management login expired.",
+      "remaining": "No pending deployment or signed-in retest. Fresh version 5 account tests verified owned recovery, repeated completion, account isolation, token refresh, and scoped cleanup. See docs/deployments/2026-11-05-supabase.md.",
       "limits": "The lost-response native fixture uses a source bootstrap and skips packaged executables. Windows CI now runs that source test before packaging. Local native tests ran on Linux.",
       "platform_checks": "All seven PR38 checks passed at 1f9d8bd5f029f661b537b74ddb9ccc41d2ccf340, including Desktop run 40732868239 on Windows and Linux and Supabase run 40732868250. PR38 merged as 70507044279ad886ff3339797989d012a7bb55b8. This merge includes the exact PR36 content commits. Windows installer run 40889630561 passed on that merge."
     },
@@ -995,13 +995,30 @@
       "remote_deployment": "Both pending migrations and function version 5 are deployed. Database checks passed and HTTP rejects missing or invalid credentials. The repository migration filenames match remote history. See docs/deployments/2026-11-05-supabase.md for evidence and the signed-in test limit."
     },
     "canvas_pointer_controls": {
-      "status": "linux_source_verified_platform_checks_pending",
+      "status": "linux_source_and_linux_windows_packaged_verified",
       "requirement": "Verify ordinary pointer drawing, movement, bound text, deletion, Undo, and saved scenes after navigation and restart.",
       "change": "Nine native stories exercise the actual Excalidraw controls. Two stories hold an older scene save during new text edits, then require navigation or native close to wait for the newer save.",
       "contract": "Saved elements retain identities, geometry, path points, original text, and bindings. No production code or saved-data format changes.",
-      "validation": "All nine Linux source stories passed in 50.7 seconds. Windows and packaged verification remain pending.",
+      "validation": "All nine canvas stories passed in the full Linux source suite and both full packaged suites at 9678848567ea3337a5175927a8b5829f2bf019a5. Desktop workflow 42114081547 passed on Linux and Windows. The separate 45-story Windows source selection does not include this canvas file.",
       "tests": "apps/desktop/tests/e2e/canvas-pointer.spec.ts",
-      "review": "An independent reviewer required complete element comparisons, finite path points, both movement coordinates, and controlled save timing. The final tests include those checks."
+      "review": "An independent reviewer required complete element comparisons, finite path points, both movement coordinates, and controlled save timing. The final tests include those checks.",
+      "merge": "PR 47 merged as b4a2ba5ffc1cace0684106ba63cc7170f06e114a after all seven checks passed."
+    },
+    "latest_platform_completion": {
+      "commit": "9678848567ea3337a5175927a8b5829f2bf019a5",
+      "merge_commit": "b4a2ba5ffc1cace0684106ba63cc7170f06e114a",
+      "pull_request": 47,
+      "desktop_run": 42114081547,
+      "workflow_url": "https://github.com/ArmandSyah/interview-mcp/actions/runs/42114081547",
+      "linux_job": 127548947036,
+      "windows_job": 127548946576,
+      "linux": "271 unit/process tests passed with 2 optional skips. All 252 source UI stories passed. All 219 applicable packaged stories passed with 33 source-only skips. Two trace probes and one real managed sandbox integration test passed. The remote MCP file passed all 3 tests, including its opt-in real Piston case.",
+      "windows": "270 unit/process tests passed with 3 platform/optional skips. All 45 configured source stories passed. All 213 applicable packaged stories passed with 39 explicit skips. Two packaged trace probes passed.",
+      "canvas_scope": "All nine canvas pointer and save stories ran in the Linux source suite and both packaged suites. They are not part of the separate Windows source selection.",
+      "ci_changes": "Clock fixtures install an earlier time before their fixed pause target. Windows unit files use one worker to avoid competing backend processes. Linux and Windows job limits are 90 and 60 minutes. Individual test deadlines and assertions did not change.",
+      "other_checks": "Backend CI, container build, remote integration, Supabase Edge Function checks, and PostgreSQL checks passed on the same commit. All seven PR checks passed.",
+      "scope": "The tests verify the recorded controls, failure paths, and controlled races in these configurations. This does not establish correctness for every possible execution. The earlier platform_completion entry preserves the PR 44 baseline.",
+      "limits": "This records Desktop workflow results. It does not replace the separately recorded Windows installer lifecycle evidence or establish public release readiness."
     }
   },
   "last_verified": {
@@ -1031,7 +1048,16 @@
       "20261105132732_design_session_recovery"
     ],
     "record": "docs/deployments/2026-11-05-supabase.md",
-    "checks": "Exact deployed source comparison, old catalog hash preservation, transaction-scoped SQL contracts, HTTP rejection checks, advisor review, and cleanup passed.",
-    "limits": "SQL checks use simulated claims. No fresh successful Auth login or signed-in MCP call ran on version 5. The earlier version 4 account test remains historical evidence."
+    "checks": "Exact source comparison, catalog preservation, SQL contracts, HTTP rejection checks, advisor review, fresh two-account MCP tests, token refresh, current WorkbenchService recovery, and cleanup passed.",
+    "limits": "The fresh version 5 test used actual Auth and MCP requests with the Node desktop service. It did not repeat Electron or Docker/Piston execution. Public signup remains disabled."
+  },
+  "sandbox_billing_verification": {
+    "date": "2026-11-06",
+    "status": "verified_private_sandbox",
+    "record": "docs/deployments/2026-11-06-billing.md",
+    "function_version": 2,
+    "equivalent_event_migration": "20261106143840_billing_equivalent_events",
+    "checks": "Actual published website payment, verified webhook access, account isolation, HTTPS portal, cancellation, and concurrent replacement checkout passed. All 93 PostgreSQL billing tests passed. Cleanup left no Auth users, owned billing customers, or noncanceled subscriptions.",
+    "limits": "No live payments or public signup. The replacement transaction was canceled without a second payment."
   }
 }

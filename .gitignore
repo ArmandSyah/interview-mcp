@@ -16,6 +16,10 @@ docs/*
 !docs/terminology.md
 !docs/windows-install.md
 !docs/download-site-plan.md
+!docs/cloud-hosting-options.md
+!docs/coaching-agent-options.md
+!docs/subscription-options.md
+!docs/paddle-integration.md
 !docs/deployments/
 docs/deployments/*
 !docs/deployments/2026-11-05-supabase.md
