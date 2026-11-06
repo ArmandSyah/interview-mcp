@@ -124,6 +124,7 @@ class CoachTurn:
         self.limits = Limits()
         self.hint: str | None = None
         self.context: str | None = None
+        self.context_attempted = False
         self.used = False
 
         @tool(context=True)
@@ -131,6 +132,11 @@ class CoachTurn:
             """Read the fixed practice description and, for design, its saved checkpoint."""
             if self.context is not None:
                 return self.context
+            if self.context_attempted:
+                raise ValueError(
+                    "Context reads have one attempt per turn. Start a new turn to retry."
+                )
+            self.context_attempted = True
             evidence = {}
             for name, arguments in target.calls():
                 if tool_context.cancel_signal.is_set():

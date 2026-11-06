@@ -1,6 +1,7 @@
 # MCP hosting options
 
 Reviewed: 5 November 2026.
+Implementation status updated: 6 November 2026.
 Status: comparison and implementation proposal. This document does not provision resources.
 
 Keep the existing Supabase MCP and database for the first release.
@@ -12,8 +13,16 @@ This approach preserves the deployed practice service and avoids an idle VPS bil
 The existing Supabase Free project has the `interview-mcp` Edge Function, version 5.
 It stores account-owned coding attempts and design evidence in Postgres.
 It does not execute submitted code. The desktop uses local Docker for code execution.
-Public sign-up and automatic desktop sign-in remain implementation work.
-See the [deployment record](deployments/2026-11-05-supabase.md) for verification and its signed-in test limit.
+
+Public signup is intentionally disabled because the user has no domain and SMTP is not configured.
+Existing accounts can sign in. Automatic desktop sign-in remains a separate integration.
+Fresh version 5 tests passed with two real accounts, token refresh, account isolation, and cleanup.
+The [deployment record](deployments/2026-11-05-supabase.md) records the verified workflows and their remaining limits.
+
+The [local Strands lab](../experiments/strands-coach/README.md) is implemented, with an optional local AgentCore HTTP exercise.
+Its latest local suite passed 49 tests, including real MCP reads and a regression for failed context reads.
+These tests use scripted model responses. They create no AWS resources and make no inference calls.
+The lab is separate from the desktop coach and is not a hosted service.
 
 | Option | Idle cost | Repository fit | Main limits |
 | --- | --- | --- | --- |
@@ -107,9 +116,9 @@ See [Cloud Run MCP authentication](https://docs.cloud.google.com/run/docs/host-m
 ## Recommended implementation order
 
 1. Keep Supabase as the hosted practice service.
-2. Add customer sign-up and desktop session refresh.
-3. Add server-side subscription entitlements and usage limits.
-4. Develop the Strands coaching agent locally against the existing MCP.
+2. Keep signup private. Complete automatic desktop sign-in before a public account launch.
+3. Connect verified subscription status to hosted coaching and add usage limits.
+4. Evaluate a local model through the implemented Strands lab before desktop or hosted integration.
 5. Give the agent only the permitted tools and the current user identity.
 6. Deploy the coach to the selected AWS runtime after its bounded prototype passes.
 7. Keep submitted-code execution in the desktop Docker sandbox initially.

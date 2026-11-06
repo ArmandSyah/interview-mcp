@@ -93,6 +93,7 @@ The tests have not verified this lab on Windows.
 - Coding reads only `get_problem_description` for the supplied attempt.
 - Design reads only `get_design_brief` and `get_design_snapshot` for the supplied session and checkpoint.
 - The lab caches successful context within one turn. It makes at most two MCP reads.
+- Context reads have one attempt per turn. After a failed read, start a new turn to retry.
 - Strands permits at most four model calls and four admitted tool calls per turn.
 - Denied calls stop the turn. Remaining calls in that batch do not execute.
 - Ollama receives a limit of 512 output tokens per model call. SDK retries are disabled.

@@ -200,6 +200,26 @@ async def test_bad_context_never_allows_hint(client, result):
     assert turn.hint is None
 
 
+async def test_failed_snapshot_cannot_repeat_mcp_reads_within_turn(client):
+    client.call_tool_async.side_effect = [
+        {"status": "success", "content": [{"text": "Saved design brief."}]},
+        {"status": "error", "content": [{"text": "Snapshot unavailable."}]},
+    ]
+    model = ScriptedModel([[("read_context", {})]] * (MAX_MODELS + 1))
+    turn = CoachTurn(client, Target(session_id=SESSION, checkpoint_id=CHECKPOINT), model)
+    with pytest.raises(ValueError, match="Model call limit"):
+        await turn.run("Retry the unavailable design snapshot.")
+    assert model.calls == MAX_MODELS
+    assert turn.limits.tools == MAX_MODELS
+    assert [call.kwargs["name"] for call in client.call_tool_async.call_args_list] == [
+        "get_design_brief",
+        "get_design_snapshot",
+    ]
+    assert client.call_tool_async.await_count == 2
+    assert turn.context is None
+    assert turn.hint is None
+
+
 @pytest.mark.parametrize("cancel", [True, False])
 async def test_cancel_or_timeout_during_read_stops_next_call(client, cancel):
     entered = asyncio.Event()
