@@ -8,14 +8,18 @@ function fixture({
   existing = false,
   command = '/fixture/interview-mcp',
   args = [] as string[],
+  childPid = undefined as number | undefined,
 } = {}) {
   const stdin = Object.assign(new EventEmitter(), { write: vi.fn(() => false) });
   const stdout = new EventEmitter();
+  const stderr = new EventEmitter();
   const child = Object.assign(new ChildProcess(), {
+    pid: childPid,
     spawnfile: command,
     spawnargs: [command, ...args],
     stdin,
     stdout,
+    stderr,
   });
   const originalWrite = stdin.write;
   const originalSpawn = vi.fn(() => child);
@@ -25,6 +29,7 @@ function fixture({
   const app = new EventEmitter();
   let ms = 0;
   const runtime = {
+    pid: 4321,
     hrtime: { bigint: () => BigInt(ms * 1_000_000) },
     getBuiltinModule: (name: string) =>
       name === 'child_process' ? children : name === 'events' ? { errorMonitor } : path,
@@ -44,6 +49,7 @@ function fixture({
     children,
     stdin,
     stdout,
+    stderr,
     originalWrite,
     originalSpawn,
     originalSend,
@@ -99,7 +105,7 @@ it('records child phases and safe RPC metadata without a change to writes or spa
   value.child.emit('exit', 0, null);
   value.child.emit('close', 0, null);
   expect(value.evidence().entries).toEqual([
-    { elapsedMs: 0, event: 'observer-ready' },
+    { elapsedMs: 0, event: 'observer-ready', processId: 4321 },
     { elapsedMs: 12, event: 'child-spawn-request', childId: 1 },
     { elapsedMs: 12, event: 'child-spawn', childId: 1 },
     {
@@ -119,6 +125,82 @@ it('records child phases and safe RPC metadata without a change to writes or spa
   ]);
   expect(JSON.stringify(value.evidence())).not.toContain(secret);
   expect(JSON.stringify(value.evidence())).not.toContain('/fixture/');
+});
+
+it('records Electron quit events without changing the event or exposing other properties', () => {
+  const value = fixture();
+  const event = { preventDefault: vi.fn(), private: 'fixture-private-event' };
+  const listener = vi.fn();
+  value.app.on('before-quit', listener);
+  value.time(10);
+  value.app.emit('before-quit', event);
+  value.time(20);
+  value.app.emit('will-quit', event);
+  value.time(30);
+  value.app.emit('quit', event, 7);
+  expect(value.evidence().entries).toEqual([
+    { elapsedMs: 0, event: 'observer-ready', processId: 4321 },
+    { elapsedMs: 10, event: 'app-before-quit' },
+    { elapsedMs: 20, event: 'app-will-quit' },
+    { elapsedMs: 30, event: 'app-quit', exitCode: 7 },
+  ]);
+  expect(listener).toHaveBeenCalledExactlyOnceWith(event);
+  expect(event.preventDefault).not.toHaveBeenCalled();
+  expect(JSON.stringify(value.evidence())).not.toContain('fixture-private');
+});
+
+it('records available child process IDs without command arguments or paths', () => {
+  for (const existing of [false, true]) {
+    const value = fixture({ existing, childPid: 2345 });
+    value.children.spawn();
+    value.child.emit('spawn');
+    expect(value.evidence().entries).toContainEqual({
+      elapsedMs: 0,
+      event: existing ? 'child-observed-existing' : 'child-spawn-request',
+      childId: 1,
+      processId: 2345,
+    });
+    expect(value.evidence().entries.at(-1)).toEqual({
+      elapsedMs: 0,
+      event: 'child-spawn',
+      childId: 1,
+      processId: 2345,
+    });
+    expect(JSON.stringify(value.evidence())).not.toContain('/fixture/');
+  }
+});
+
+it('counts stderr bytes and chunks while preserving the original listener and private text', () => {
+  const value = fixture();
+  const listener = vi.fn();
+  value.stderr.on('data', listener);
+  value.children.spawn();
+  const first = Buffer.from('fixture-private-error');
+  const second = 'fixture-private-\u00e9';
+  value.time(10);
+  value.stderr.emit('data', first);
+  value.time(15);
+  value.stderr.emit('data', second);
+  expect(listener.mock.calls).toEqual([[first], [second]]);
+  expect(value.evidence().entries.slice(-2)).toEqual([
+    {
+      elapsedMs: 10,
+      event: 'stderr-first-data',
+      childId: 1,
+      bytes: first.length,
+      chunks: 1,
+      totalBytes: first.length,
+    },
+    {
+      elapsedMs: 15,
+      event: 'stderr-data',
+      childId: 1,
+      bytes: Buffer.byteLength(second),
+      chunks: 2,
+      totalBytes: first.length + Buffer.byteLength(second),
+    },
+  ]);
+  expect(JSON.stringify(value.evidence())).not.toContain('fixture-private');
 });
 
 it('marks a child found after spawn without inventing its start time or adding duplicate observers', () => {

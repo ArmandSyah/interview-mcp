@@ -49,9 +49,15 @@ export function captureConnectionEvidence(
     const childId = ++childNumber;
     record(existing ? 'child-observed-existing' : 'child-spawn-request', {
       childId,
+      ...(child.pid === undefined ? {} : { processId: child.pid }),
       ...(spawnStartedMs === undefined ? {} : { elapsedMs: spawnStartedMs }),
     });
-    child.once('spawn', () => record('child-spawn', { childId }));
+    child.once('spawn', () =>
+      record('child-spawn', {
+        childId,
+        ...(child.pid === undefined ? {} : { processId: child.pid }),
+      }),
+    );
     (child as EventEmitter).once(errorMonitor, () => record('child-error', { childId }));
     child.once('exit', (code, signal) =>
       record('child-exit', { childId, code: code ?? -1, signaled: signal !== null }),
@@ -65,6 +71,19 @@ export function captureConnectionEvidence(
       const bytes = Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
       record(first ? 'stdout-first-data' : 'stdout-data', { childId, bytes });
       first = false;
+    });
+    let stderrChunks = 0;
+    let stderrBytes = 0;
+    child.stderr?.on('data', (chunk: Buffer | string) => {
+      const bytes = Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
+      stderrChunks++;
+      stderrBytes += bytes;
+      record(stderrChunks === 1 ? 'stderr-first-data' : 'stderr-data', {
+        childId,
+        bytes,
+        chunks: stderrChunks,
+        totalBytes: stderrBytes,
+      });
     });
     if (child.stdin) {
       const originalWrite = child.stdin.write;
@@ -162,7 +181,10 @@ export function captureConnectionEvidence(
   }
   app.on('browser-window-created', (_event, window) => observeWindow(window));
   for (const window of BrowserWindow.getAllWindows()) observeWindow(window);
-  record('observer-ready');
+  app.on('before-quit', () => record('app-before-quit'));
+  app.on('will-quit', () => record('app-will-quit'));
+  app.on('quit', (_event, exitCode) => record('app-quit', { exitCode }));
+  record('observer-ready', { processId: runtime.pid });
 }
 
 export async function connectionEvidence(app: ElectronApplication): Promise<Evidence | undefined> {
