@@ -20,6 +20,7 @@ docs/*
 !docs/coaching-agent-options.md
 !docs/subscription-options.md
 !docs/paddle-integration.md
+!docs/frontend-verification.md
 !docs/deployments/
 docs/deployments/*
 !docs/deployments/2026-11-05-supabase.md
@@ -47,6 +48,8 @@ apps/desktop/test-results-source-distribution/
 apps/desktop/test-results-diagnostics/
 apps/desktop/test-results-installer/
 apps/desktop/playwright-report/
+apps/desktop/playwright-evidence-report/
+apps/desktop/test-results-evidence/
 .interview-mcp-vscode/
 supabase/.temp/
 supabase/.branches/

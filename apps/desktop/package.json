@@ -16,6 +16,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:desktop": "playwright test",
+    "test:evidence": "playwright test --config playwright.evidence.config.ts",
+    "verify:evidence": "node scripts/verify-visual-evidence.mjs",
     "demo": "node scripts/capture-demo.mjs",
     "start": "electron .",
     "backend": "node scripts/build-backend.mjs",
