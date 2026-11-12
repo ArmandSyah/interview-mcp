@@ -1,0 +1,76 @@
+name: Frontend visual evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - "src/**"
+      - ".github/workflows/frontend-evidence.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - "src/**"
+      - ".github/workflows/frontend-evidence.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  walkthroughs:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --frozen --dev --python 3.12
+        working-directory: .
+      - name: Install Linux window dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libnss3 libasound2t64 xvfb fonts-dejavu-core
+      - name: Install the recording encoder
+        working-directory: .
+        shell: bash
+        run: |
+          uv run --no-project --with imageio-ffmpeg==0.6.0 python - <<'PY'
+          import os
+          import imageio_ffmpeg
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write(f'FFMPEG_PATH={imageio_ffmpeg.get_ffmpeg_exe()}\n')
+          PY
+      - run: npm ci
+      - run: npm run install:electron
+      - run: npm run backend
+      - run: npm run build
+      - name: Record Linux walkthroughs
+        if: runner.os == 'Linux'
+        run: xvfb-run -a -s '-screen 0 1600x1000x24' npm run test:evidence
+      - name: Record Windows walkthroughs
+        if: runner.os == 'Windows'
+        run: npm run test:evidence
+      - name: Verify timing and artifacts
+        run: npm run verify:evidence
+      - name: Keep screenshots, GIFs, and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-evidence-${{ runner.os }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            apps/desktop/test-results-evidence
+            apps/desktop/playwright-evidence-report
