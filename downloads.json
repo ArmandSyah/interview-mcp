@@ -13,6 +13,26 @@
       "bytes": 149472744,
       "sha256": "0be1f90639212cca5cc1e67d2370db694418a275f1aa5b628cf086d20f299516",
       "url": "https://github.com/ArmandSyah/interview-mcp/releases/download/desktop-v0.2.0-preview.b69c5ef/interview-workbench_0.2.0_amd64.deb"
+    },
+    {
+      "name": "Interview-Workbench-macOS-arm64.dmg",
+      "bytes": 178566383,
+      "sha256": "997c6d1854ebe61ccd3fbcf2aba768ff7062531cb8fd8eebfb5a4b8f57c3d366",
+      "url": "https://github.com/ArmandSyah/interview-mcp/releases/download/desktop-v0.2.0-preview.b69c5ef/Interview-Workbench-macOS-arm64.dmg",
+      "architecture": "arm64",
+      "commit": "c2f416046412edd2a8b7c4625c6c4124bfa5ec09",
+      "signing": "ad hoc",
+      "notarized": false
+    },
+    {
+      "name": "Interview-Workbench-macOS-x64.dmg",
+      "bytes": 185092315,
+      "sha256": "b29b97a95b821c23c4afe9992455e51a9e985981a15adacee12f99c2303b7fa7",
+      "url": "https://github.com/ArmandSyah/interview-mcp/releases/download/desktop-v0.2.0-preview.b69c5ef/Interview-Workbench-macOS-x64.dmg",
+      "architecture": "x64",
+      "commit": "c2f416046412edd2a8b7c4625c6c4124bfa5ec09",
+      "signing": "ad hoc",
+      "notarized": false
     }
   ]
 }
