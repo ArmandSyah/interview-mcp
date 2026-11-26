@@ -71,6 +71,7 @@ function Workbench() {
   const [bootLoading, setBootLoading] = useState(true);
   const loadPending = useRef(false);
   const loadVersion = useRef(0);
+  const searchInput = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [difficulty, setDifficulty] = useState('all');
   const [tab, setTab] = useState<'solution' | 'problem'>('solution');
@@ -432,13 +433,18 @@ function Workbench() {
     );
   const connected = snapshot.connection === 'connected';
   const busy = actions.busy || snapshot.busy;
+  const searchTerm = query.trim().toLowerCase();
+  const filtersApplied = Boolean(query) || difficulty !== 'all';
   const filtered = snapshot.problems.filter(
     (problem) =>
       (difficulty === 'all' || problem.difficulty === difficulty) &&
       `${problem.title} ${problem.tags.join(' ')} ${problem.pattern_tags.join(' ')} ${problem.id}`
         .toLowerCase()
-        .includes(query.toLowerCase()),
+        .includes(searchTerm),
   );
+  const problemCount = filtersApplied
+    ? `${filtered.length} of ${snapshot.problems.length}`
+    : snapshot.problems.length;
   const firstProblem = filtered.find((problem) => problem.difficulty === 'easy') ?? filtered[0];
   const openCodingProblem = (id: string, view: 'solution' | 'problem') =>
     void action(async () => {
@@ -546,8 +552,8 @@ function Workbench() {
         <aside className="sidebar">
           <div className="section-heading">
             <span>{sidebar === 'problems' ? 'PROBLEM EXPLORER' : 'YOUR WORKSPACE'}</span>
-            <span className="count">
-              {sidebar === 'problems' ? snapshot.problems.length : snapshot.sessions.length}
+            <span className="count" role="status" aria-atomic="true">
+              {sidebar === 'problems' ? problemCount : snapshot.sessions.length}
             </span>
           </div>
           {sidebar === 'problems' ? (
@@ -555,6 +561,7 @@ function Workbench() {
               <label className="search-field">
                 <Search size={14} />
                 <input
+                  ref={searchInput}
                   aria-label="Search problems"
                   placeholder="Search problems or patterns"
                   value={query}
@@ -573,6 +580,18 @@ function Workbench() {
                   </button>
                 ))}
               </div>
+              {filtersApplied && (
+                <button
+                  className="reset-filters"
+                  onClick={() => {
+                    setQuery('');
+                    setDifficulty('all');
+                    searchInput.current?.focus();
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
               <div className="problem-list">
                 {filtered.map((problem) => {
                   const session = snapshot.sessions.find((item) => item.problem.id === problem.id);
@@ -601,7 +620,9 @@ function Workbench() {
                 {!filtered.length && (
                   <p className="empty-small">
                     {connected
-                      ? 'No matching problems.'
+                      ? snapshot.problems.length
+                        ? 'No matching problems.'
+                        : 'No problems in this catalog.'
                       : 'Connect to your interview MCP to load problems.'}
                   </p>
                 )}
@@ -777,7 +798,11 @@ function Workbench() {
                   </button>
                 </>
               ) : connected ? (
-                <p>Change your search or difficulty filter to find a problem.</p>
+                <p>
+                  {snapshot.problems.length
+                    ? 'Use Clear filters in the explorer to see all problems.'
+                    : 'The connected catalog has no problems.'}
+                </p>
               ) : (
                 <>
                   <p>Connect the practice engine to load your problems.</p>

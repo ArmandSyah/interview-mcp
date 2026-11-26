@@ -44,6 +44,18 @@ test('problem search includes titles, IDs, tags, and patterns and combines with 
     await expect(page.locator('.problem-card')).toHaveCount(0);
     await page.getByRole('button', { name: 'all', exact: true }).click();
     await expect(page.locator('.problem-card')).toHaveCount(5);
+    await search.fill('  Delivery Hold  ');
+    await expect(page.getByRole('button', { name: /Delivery Hold Clusters/ })).toBeVisible();
+    await page.getByRole('button', { name: 'hard', exact: true }).click();
+    await expect(page.locator('.section-heading .count')).toHaveText('0 of 5');
+    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('');
+    await expect(page.getByRole('button', { name: 'all', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.locator('.problem-card')).toHaveCount(5);
     const after = await page.evaluate(() => window.interview.snapshot());
     expect(after.activeProblemId).toBe(before.activeProblemId);
     expect(after.sessions).toEqual(before.sessions);

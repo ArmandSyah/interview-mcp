@@ -492,6 +492,17 @@ svg {
   color: #ceb9ed;
   border-color: #6c5b86;
 }
+.reset-filters {
+  align-self: flex-start;
+  margin: -7px 13px 8px;
+  padding: 5px 0;
+  background: transparent;
+  border: 0;
+  color: #c9b8e2;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .problem-list {
   overflow: auto;
   flex: 1;
