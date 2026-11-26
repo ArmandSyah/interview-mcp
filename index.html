@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Download Interview Workbench for local coding and system design practice.">
+<title>Download Interview Workbench</title>
+<style>
+* { box-sizing: border-box }
+body { margin: 0; color: #132c36; background: #f4f8fa; font: 1.05rem/1.6 Inter,system-ui,sans-serif }
+main,header,footer { max-width: 76rem; margin: auto; padding: 1.5rem clamp(1.2rem,4vw,3rem) }
+header,footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap }
+header { border-bottom: 1px solid #c5d5dc }
+.brand { font-weight: 750 }
+.brand b { color: #076b79; margin-right: .5rem; font-family: monospace }
+.hero { padding: clamp(2.5rem,7vw,6rem) 0 2rem; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 2rem }
+h1 { font-size: clamp(2.7rem,6vw,5rem); line-height: 1; letter-spacing: -.065em; margin: .5rem 0 1.4rem }
+p { max-width: 45rem }
+.meta { color: #38616c; font: .95rem/1.5 monospace }
+figure { margin: 0 }
+img { width: 100%; border-radius: .55rem; box-shadow: 0 10px 38px #15334024 }
+figcaption { margin-top: .5rem; font-size: .9rem }
+a { color: #035d70; text-underline-offset: .2em }
+a:focus-visible { outline: 3px solid #ac4d13; outline-offset: 4px }
+.platforms { display: grid; grid-template-columns: repeat(2,1fr); gap: 1rem }
+article { padding: 1.5rem; background: white; border: 1px solid #c7d6dc; border-radius: .65rem }
+h2,h3 { line-height: 1.2 } h3 { font-size: 1.35rem; margin-top: 0 }
+.button { display: inline-block; color: white; background: #075967; border-radius: .35rem; padding: .65rem 1rem; font-weight: 650; text-decoration: none }
+.button:hover { background: #093d48 }
+footer { border-top: 1px solid #c5d5dc; margin-top: 2rem }
+@media(max-width:48rem) { .hero,.platforms { grid-template-columns: 1fr } }
+</style>
+</head>
+<body>
+<header><span class="brand"><b aria-hidden="true">[w]</b> Interview Workbench</span><a href="https://github.com/ArmandSyah/interview-mcp">Source code</a></header>
+<main>
+<section class="hero"><div><span class="meta">Desktop preview · 0.2.0</span>
+<h1>Practice coding and system design.</h1>
+<p>Work through interview problems in a code editor, sketch designs on a whiteboard, and return to your saved drafts. Practice locally without an account.</p>
+</div><figure><a href="coding-workbench.png"><img src="coding-workbench.png" alt="Interview Workbench with the problem explorer, code editor, and coaching panel open"></a><figcaption>The coding workspace</figcaption></figure></section>
+<h2>Download Interview Workbench</h2>
+<div class="platforms">
+<article><h3>Windows x64</h3><p>Extract the ZIP file and open the setup program. Windows may show an unknown publisher because the installer is unsigned.</p>
+<a class="button" href="https://github.com/ArmandSyah/interview-mcp/releases/download/desktop-v0.2.0-preview.b69c5ef/interview-workbench-windows-x64-b69c5ef.zip">Download for Windows</a></article>
+<article><h3>Linux x64</h3><p>On Debian or Ubuntu, open the Debian package with your software installer. Start Interview Workbench from the applications menu.</p>
+<a class="button" href="https://github.com/ArmandSyah/interview-mcp/releases/download/desktop-v0.2.0-preview.b69c5ef/interview-workbench_0.2.0_amd64.deb">Download for Linux</a></article>
+</div><p>macOS has no package in this preview. Running code tests requires Docker and the local sandbox.</p>
+<p class="meta">Build b69c5ef · <a href="https://github.com/ArmandSyah/interview-mcp/releases/tag/desktop-v0.2.0-preview.b69c5ef">Release notes and checksums</a></p>
+</main><footer><span>Interview Workbench</span><a href="https://github.com/ArmandSyah/interview-mcp/issues">Report an issue</a></footer>
+</body></html>

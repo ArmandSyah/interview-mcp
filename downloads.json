@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "commit": "b69c5efdc4846b573852016e4d47f1e620904783",
+  "assets": [
+    {
+      "name": "interview-workbench-windows-x64-b69c5ef.zip",
+      "bytes": 158091377,
+      "sha256": "8b4d385a781dbd24c5a4f3049561efc9474cac4c99d76ae83f61a95b2d52ab2b",
+      "url": "https://github.com/ArmandSyah/interview-mcp/releases/download/desktop-v0.2.0-preview.b69c5ef/interview-workbench-windows-x64-b69c5ef.zip"
+    },
+    {
+      "name": "interview-workbench_0.2.0_amd64.deb",
+      "bytes": 149472744,
+      "sha256": "0be1f90639212cca5cc1e67d2370db694418a275f1aa5b628cf086d20f299516",
+      "url": "https://github.com/ArmandSyah/interview-mcp/releases/download/desktop-v0.2.0-preview.b69c5ef/interview-workbench_0.2.0_amd64.deb"
+    }
+  ]
+}
