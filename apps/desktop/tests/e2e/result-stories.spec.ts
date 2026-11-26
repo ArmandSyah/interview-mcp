@@ -111,6 +111,12 @@ test('result controls preserve the captured draft and display pass, wrong answer
     ).toBeVisible();
     const cases = page.locator('.test-case');
     await expect(cases).toHaveCount(3);
+    const failures = page.getByRole('checkbox', { name: 'Failed cases only' });
+    await failures.check();
+    await expect(cases).toHaveCount(2);
+    await expect(cases.first().locator('summary')).toContainText('Case 2');
+    await failures.uncheck();
+    await expect(cases).toHaveCount(3);
     await expect(cases.nth(0)).not.toHaveAttribute('open');
     await cases.nth(0).locator('summary').click();
     await expect(cases.nth(0)).toHaveAttribute('open', '');
@@ -129,9 +135,12 @@ test('result controls preserve the captured draft and display pass, wrong answer
     await expect(page.getByText('Fixture progress for alice', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: /TEST RESULTS/ }).click();
     await expect(page.getByText('1 of 3 tests passed', { exact: true })).toBeVisible();
+    await failures.check();
     passing = true;
     await page.getByRole('button', { name: 'Run tests', exact: true }).click();
     await expect(page.getByText('1 of 1 tests passed', { exact: true })).toBeVisible();
+    await expect(failures).toHaveCount(0);
+    await expect(cases).toHaveCount(1);
     await expect(page.getByText('Results are for an older draft', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Attempt completed', { exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Submit', exact: true }).click();

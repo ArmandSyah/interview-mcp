@@ -813,13 +813,15 @@ function Workbench() {
               >
                 <Trophy size={13} /> PROGRESS
               </button>
-              <span className="results-shortcut">⌘ / Ctrl + Enter to test</span>
+              {active && bottomTab === 'tests' && (
+                <span className="results-shortcut">⌘ / Ctrl + Enter to test</span>
+              )}
             </div>
             <div className="results-body">
               {bottomTab === 'progress' ? (
                 <Markdown text={snapshot.progress || 'Your attempts will appear here.'} />
               ) : (
-                <TestResults session={active} busy={snapshot.busy} />
+                <TestResults key={active?.attemptId} session={active} busy={snapshot.busy} />
               )}
             </div>
           </section>
@@ -1105,6 +1107,7 @@ function savedTestReport(session?: PracticeSession) {
 }
 
 function TestResults({ session, busy }: { session?: PracticeSession; busy: boolean }) {
+  const [onlyFailed, setOnlyFailed] = useState(false);
   const result = savedTestReport(session);
   if (session?.result != null && !result)
     return <p role="alert">Cannot display the saved test report. Run tests again.</p>;
@@ -1112,10 +1115,17 @@ function TestResults({ session, busy }: { session?: PracticeSession; busy: boole
     return (
       <div className="tests-empty">
         <Terminal size={23} strokeWidth={1.4} />
-        <p>{busy ? 'Working…' : 'Run your solution to see what holds up.'}</p>
-        <span>Test cases, output, and errors appear here.</span>
+        <p>{session ? 'No test results yet' : 'Choose a problem to start testing'}</p>
+        {session && (
+          <span>
+            {busy ? 'Working…' : 'Use Run tests to compare your output with the expected values.'}
+          </span>
+        )}
       </div>
     );
+  const mixed = result.tests_passed > 0 && result.tests_passed < result.tests_total;
+  const visibleCases =
+    onlyFailed && mixed ? result.tests.filter((test) => !test.passed) : result.tests;
   return (
     <>
       <div className="test-summary">
@@ -1123,6 +1133,16 @@ function TestResults({ session, busy }: { session?: PracticeSession; busy: boole
           {result.all_passed ? <Check size={14} /> : <X size={14} />}
           {result.tests_passed} of {result.tests_total} tests passed
         </span>
+        {mixed && (
+          <label className="case-filter">
+            <input
+              type="checkbox"
+              checked={onlyFailed}
+              onChange={(event) => setOnlyFailed(event.target.checked)}
+            />
+            Failed cases only
+          </label>
+        )}
         {session?.submitted && <span className="completed-badge">Attempt completed</span>}
         {session?.resultStale && (
           <span className="stale-badge">Results are for an older draft</span>
@@ -1132,7 +1152,7 @@ function TestResults({ session, busy }: { session?: PracticeSession; busy: boole
         )}
       </div>
       <div className="test-cases">
-        {result.tests.map((test) => (
+        {visibleCases.map((test) => (
           <details
             key={test.index}
             className={`test-case ${test.passed ? 'passed' : 'failed'}`}
@@ -1157,9 +1177,24 @@ function TestResults({ session, busy }: { session?: PracticeSession; busy: boole
                 <span>Actual</span>
                 <code>{JSON.stringify(test.actual)}</code>
               </div>
-              {test.error && <pre className="test-error">{test.error}</pre>}
-              {test.user_stdout && <pre>{test.user_stdout}</pre>}
-              {test.user_stderr && <pre className="test-error">{test.user_stderr}</pre>}
+              {test.error && (
+                <div>
+                  <span>Error</span>
+                  <pre className="test-error">{test.error}</pre>
+                </div>
+              )}
+              {test.user_stdout && (
+                <div>
+                  <span>Output</span>
+                  <pre>{test.user_stdout}</pre>
+                </div>
+              )}
+              {test.user_stderr && (
+                <div>
+                  <span>Stderr</span>
+                  <pre className="test-error">{test.user_stderr}</pre>
+                </div>
+              )}
             </div>
           </details>
         ))}
