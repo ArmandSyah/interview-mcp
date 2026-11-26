@@ -323,9 +323,6 @@ svg {
 .failed {
   color: #e69797;
 }
-.in-progress {
-  color: #cbb180;
-}
 .app-shell {
   height: 100vh;
   display: flex;
@@ -476,10 +473,6 @@ svg {
   font-size: 10px;
   padding: 0;
 }
-.search-field kbd {
-  font-size: 12px;
-  color: #657187;
-}
 .difficulty-filters {
   display: flex;
   gap: 5px;
@@ -524,16 +517,38 @@ svg {
   border-color: #554767;
   box-shadow: inset 2px 0 #bba0e9;
 }
-.problem-card-top {
-  display: flex;
-  align-items: center;
-  gap: 7px;
+.problem-list .problem-card {
+  margin: 0;
+  padding: 11px 10px;
+  gap: 3px;
+  border: 0;
+  border-bottom: 1px solid #333841;
+  border-radius: 0;
 }
-.problem-number {
-  font-size: 10px;
-  font-family: monospace;
-  color: #748096;
-  margin-right: auto;
+.problem-list .problem-title {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.problem-list .problem-card.active {
+  background: #25343a;
+  box-shadow: inset 3px 0 #8fc6bd;
+}
+.problem-list .problem-card:focus-visible {
+  outline: 2px solid #a6d8ce;
+  outline-offset: -2px;
+}
+.problem-details,
+.practice-state {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.problem-details {
+  color: #adb8c8;
+  text-transform: capitalize;
+}
+.practice-state {
+  color: #b1d6cb;
 }
 .difficulty {
   font-size: 9px;
@@ -558,12 +573,6 @@ svg {
   font-size: 12px;
   font-weight: 500;
   line-height: 19px;
-}
-.problem-pattern {
-  color: #8793a6;
-  font-size: 10px;
-  line-height: 15px;
-  text-transform: capitalize;
 }
 .sidebar-bottom {
   border-top: 1px solid var(--border);
