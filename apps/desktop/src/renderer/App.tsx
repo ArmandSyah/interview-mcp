@@ -560,7 +560,6 @@ function Workbench() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
-                <kbd>⌕</kbd>
               </label>
               <div className="difficulty-filters">
                 {['all', 'easy', 'medium', 'hard'].map((value) => (
@@ -575,30 +574,27 @@ function Workbench() {
                 ))}
               </div>
               <div className="problem-list">
-                {filtered.map((problem, index) => {
+                {filtered.map((problem) => {
                   const session = snapshot.sessions.find((item) => item.problem.id === problem.id);
                   return (
                     <button
                       key={problem.id}
+                      aria-current={active?.problem.id === problem.id ? true : undefined}
                       className={`problem-card ${active?.problem.id === problem.id ? 'active' : ''}`}
                       disabled={busy}
                       onClick={() => openCodingProblem(problem.id, 'solution')}
                     >
-                      <div className="problem-card-top">
-                        <span className="problem-number">{String(index + 1).padStart(2, '0')}</span>
-                        <span className={`difficulty ${problem.difficulty}`}>
-                          {problem.difficulty}
-                        </span>
-                        {session?.submitted ? (
-                          <Check size={13} className="success" />
-                        ) : session ? (
-                          <Circle size={9} className="in-progress" />
-                        ) : null}
-                      </div>
                       <span className="problem-title">{problem.title}</span>
-                      <span className="problem-pattern">
-                        {problem.pattern_tags[0] || problem.tags.slice(0, 2).join(' · ')}
+                      <span className="problem-details">
+                        {[problem.difficulty, problem.pattern_tags[0] || problem.tags[0]]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
+                      {session && (
+                        <span className="practice-state">
+                          {session.submitted ? 'Submitted' : 'In progress'}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
