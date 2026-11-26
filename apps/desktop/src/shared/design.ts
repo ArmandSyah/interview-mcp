@@ -77,6 +77,13 @@ export type DesignScene = {
     }
   >;
 };
+/** Reusable diagram items owned by one local workspace, separate from its attempts. */
+export type DesignLibrary = {
+  id: string;
+  status: 'published' | 'unpublished';
+  created: number;
+  elements: Record<string, unknown>[];
+}[];
 export type DesignDraft = {
   version: 1;
   scene: DesignScene;

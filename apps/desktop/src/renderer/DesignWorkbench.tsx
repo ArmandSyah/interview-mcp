@@ -13,6 +13,7 @@ import type {
   AppState,
   BinaryFiles,
   ExcalidrawInitialDataState,
+  LibraryItems,
 } from '@excalidraw/excalidraw/types';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { Settings2, Sparkles, Send, Square, X } from 'lucide-react';
@@ -30,6 +31,7 @@ import {
   noteSections,
   type DesignCheckpoint,
   type DesignDraft,
+  type DesignLibrary,
   type DesignScene,
 } from '../shared/design';
 import type { Snapshot } from '../shared/types';
@@ -47,6 +49,8 @@ type Props = {
   snapshot: Snapshot;
   drafts: DraftWriter<DesignDraft>;
   saveDraft: (id: string, draft: DesignDraft) => void;
+  libraryDrafts: DraftWriter<DesignLibrary>;
+  saveLibrary: (workspaceId: string, library: DesignLibrary) => void;
   flushWorkspace: () => Promise<void>;
   saved: string;
   message: string;
@@ -83,6 +87,8 @@ export function DesignWorkbench({
   snapshot,
   drafts,
   saveDraft,
+  libraryDrafts,
+  saveLibrary,
   flushWorkspace,
   saved,
   message,
@@ -98,6 +104,8 @@ export function DesignWorkbench({
     (item) => item.id === snapshot.activeDesignSessionId,
   );
   const [draft, setDraft] = useState<DesignDraft | null>(null);
+  const [library, setLibrary] = useState<DesignLibrary>([]);
+  const latestLibrary = useRef<DesignLibrary | null>(null);
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -132,6 +140,7 @@ export function DesignWorkbench({
     let live = true;
     activeId.current = session?.id ?? null;
     latest.current = null;
+    latestLibrary.current = null;
     api.current = null;
     setDraft(null);
     setRunning(false);
@@ -140,11 +149,16 @@ export function DesignWorkbench({
     setLoadError('');
     loadPending.current = !!session;
     if (session)
-      void window.interview
-        .loadDesignDraft(session.id)
-        .then((value) => {
+      void Promise.all([
+        window.interview.loadDesignDraft(session.id),
+        window.interview.loadDesignLibrary(snapshot.workspaceId),
+      ])
+        .then(([value, savedLibrary]) => {
           if (!live) return;
           const current = drafts.get(session.id) ?? value;
+          const currentLibrary = libraryDrafts.get(snapshot.workspaceId) ?? savedLibrary;
+          latestLibrary.current = currentLibrary;
+          setLibrary(currentLibrary);
           latest.current = current;
           setDraft(current);
           setDirty(designEvidenceChanged(value, current));
@@ -157,8 +171,16 @@ export function DesignWorkbench({
         });
     return () => {
       live = false;
+      latestLibrary.current = null;
     };
-  }, [session?.id, drafts, loadAttempt, snapshot.designStatusRevision]);
+  }, [
+    session?.id,
+    drafts,
+    libraryDrafts,
+    loadAttempt,
+    snapshot.designStatusRevision,
+    snapshot.workspaceId,
+  ]);
   function retryLoad() {
     if (!session || loadPending.current || busy) return;
     loadPending.current = true;
@@ -451,7 +473,19 @@ export function DesignWorkbench({
                 excalidrawAPI={(value) => {
                   api.current = value;
                 }}
-                initialData={draft.scene as unknown as ExcalidrawInitialDataState}
+                initialData={
+                  {
+                    ...draft.scene,
+                    libraryItems: library as unknown as LibraryItems,
+                  } as unknown as ExcalidrawInitialDataState
+                }
+                onLibraryChange={(items) => {
+                  if (draftsFrozen() || !latestLibrary.current) return;
+                  const value = structuredClone(items) as unknown as DesignLibrary;
+                  if (JSON.stringify(value) === JSON.stringify(latestLibrary.current)) return;
+                  latestLibrary.current = value;
+                  saveLibrary(snapshot.workspaceId, value);
+                }}
                 onChange={(elements, state, files) => {
                   if (locked || !latest.current) return;
                   const scene = sceneData(elements, state, files, latest.current.scene);

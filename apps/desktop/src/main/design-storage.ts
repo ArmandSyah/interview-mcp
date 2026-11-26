@@ -9,6 +9,7 @@ import {
   canonicalDesignJSON,
   emptyDesignDraft,
   type DesignDraft,
+  type DesignLibrary,
   type DesignScene,
   type DiagramElement,
 } from '../shared/design';
@@ -124,6 +125,37 @@ export function validateDraft(input: unknown): DesignDraft {
   if (total > 12_000_000) throw new Error('Total image assets must be at most 12 MB');
   return draft;
 }
+
+/** Apply the canvas limits to all stored library elements, including labels and deleted records. */
+export function validateLibrary(input: unknown): DesignLibrary {
+  const library = z
+    .array(
+      z
+        .object({
+          id: elementId,
+          status: z.enum(['published', 'unpublished']),
+          created: z.number().finite(),
+          elements: z.array(z.record(z.string(), z.unknown())).max(MAX_DIAGRAM_ELEMENTS),
+        })
+        .strict(),
+    )
+    .max(MAX_DIAGRAM_ELEMENTS)
+    .parse(input);
+  if (library.reduce((count, item) => count + item.elements.length, 0) > MAX_DIAGRAM_ELEMENTS)
+    throw new Error(`The library must contain at most ${MAX_DIAGRAM_ELEMENTS} elements.`);
+  if (Buffer.byteLength(JSON.stringify(library)) > 6_000_000)
+    throw new Error('Library data must be at most 6 MB.');
+  const ids = new Set<string>();
+  return library.map((item) => {
+    if (ids.has(item.id)) throw new Error('Duplicate library item identity');
+    ids.add(item.id);
+    if (item.elements.some((element) => element.type === 'image'))
+      throw new Error('Keep image assets in a design; library items do not include images.');
+    const draft = emptyDesignDraft();
+    draft.scene.elements = item.elements;
+    return { ...item, elements: validateDraft(draft).scene.elements };
+  });
+}
 export function summarizeDiagram(draft: DesignDraft): DiagramElement[] {
   const elements = draft.scene.elements.filter((element) => !element.isDeleted);
   const labels = new Map<string, string>();
@@ -168,6 +200,41 @@ export class DesignStore {
   private writes: Promise<unknown> = Promise.resolve();
   private loaded = new Set<string>();
   constructor(private readonly root: string) {}
+  private libraryPath(scope: string): string {
+    if (!/^[a-f0-9]{24}$/.test(scope)) throw new Error('Invalid workspace identity');
+    return join(this.root, 'design', scope, 'library.json');
+  }
+  /** Read saved items. Missing files mean an empty library; damaged files remain untouched. */
+  async loadLibrary(scope: string): Promise<DesignLibrary> {
+    await this.writes.catch(() => {});
+    const path = this.libraryPath(scope);
+    let library: DesignLibrary;
+    try {
+      const contents = await readFile(path, 'utf8');
+      if (Buffer.byteLength(contents) > 6_000_000) throw new Error('Library data is too large');
+      library = validateLibrary(JSON.parse(contents));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        throw new Error('Cannot read the saved library. Existing files have not been overwritten.');
+      library = [];
+    }
+    this.loaded.add(path);
+    return library;
+  }
+  /** Save one workspace's library atomically. Attempts and checkpoints are unchanged. */
+  async saveLibrary(scope: string, input: unknown): Promise<void> {
+    const path = this.libraryPath(scope);
+    if (!this.loaded.has(path)) await this.loadLibrary(scope);
+    const contents = JSON.stringify(validateLibrary(input));
+    const work = this.writes
+      .catch(() => {})
+      .then(async () => {
+        await mkdir(join(path, '..'), { recursive: true, mode: 0o700 });
+        await this.atomic(path, contents);
+      });
+    this.writes = work;
+    await work;
+  }
   private path(scope: string, sessionId: string, checkpointId?: string): string {
     if (!/^[a-f0-9]{24}$/.test(scope)) throw new Error('Invalid workspace identity');
     z.string().uuid().parse(sessionId);

@@ -19,6 +19,7 @@ import {
   emptyDesignDraft,
   type DesignCheckpoint,
   type DesignDraft,
+  type DesignLibrary,
   type DesignReview,
   type DesignSession,
   type DesignSummary,
@@ -749,6 +750,22 @@ export class WorkbenchService {
     }
   }
 
+  async loadDesignLibrary(workspaceId: string): Promise<DesignLibrary> {
+    return this.draftWrite(async () => {
+      if (workspaceId !== this.scope)
+        throw new Error('Workspace changed. Reopen the design library.');
+      return this.designs.loadLibrary(this.scope);
+    });
+  }
+
+  async saveDesignLibrary(workspaceId: string, library: DesignLibrary): Promise<void> {
+    return this.draftWrite(async () => {
+      if (workspaceId !== this.scope)
+        throw new Error('Workspace changed. Reopen the design library.');
+      await this.designs.saveLibrary(this.scope, library);
+    });
+  }
+
   async loadDesignDraft(sessionId: string): Promise<DesignDraft> {
     return this.draftWrite(async () => {
       await this.verifyDesignSession(sessionId);
@@ -932,6 +949,7 @@ export class WorkbenchService {
   async exportWorkspace(): Promise<string> {
     this.idle();
     await this.designs.flush();
+    const designLibrary = await this.designs.loadLibrary(this.scope);
     const workspace = structuredClone(this.store.workspace(this.scope));
     const practice = await this.mcp.call<{ design_checkpoints: DesignCheckpoint[] }>(
       'export_practice_data',
@@ -962,6 +980,7 @@ export class WorkbenchService {
         workspace,
         practice,
         designs,
+        designLibrary,
         installedPacks: this.installedPacks,
       },
       null,

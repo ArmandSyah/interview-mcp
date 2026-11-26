@@ -1,8 +1,8 @@
 # Frontend verification
 
 This audit covers the desktop app and its sign-in, download, and payment website.
-It adds paced visual evidence to the existing automated regression suite.
-It does not change normal app behavior or shorten existing test deadlines.
+It adds paced visual evidence to the existing automated regression suite and fixes confirmed defects.
+Existing test deadlines stay unchanged.
 
 ## Evidence rules
 
@@ -53,7 +53,8 @@ Recorded results must identify the tested commit and any skipped cases.
 | Run tests, result details, stale results, errors, submit, follow-up questions | `result-stories`, `workbench`, `action-races` | Pending real execution walkthrough |
 | Curated hints, coach input, stop, tool results, approval, rejection, clear history, AI review | `chat-input`, `chat-cancellation`, `approval-stories`, `chat-history`, `ai-review` | Real curated hint implemented; remaining flows pending |
 | Design catalog, attempts, mode switch, notes, timer, guided/mock mode, checkpoint, history, review, finish | `design-controls`, `design-finish`, `design-review-navigation`, `design-completion-recovery` | Initial design walkthrough implemented |
-| Whiteboard tools, components, text, selection, move, delete, undo/redo, zoom, menus, export | `canvas-pointer`, `design-artifacts`, `inactive-design-drafts` | Components and pointer tools implemented, including labels, move, delete, undo/redo, zoom, clear, and restart; remaining menus and export pending |
+| Whiteboard tools, components, text, selection, move, delete, undo/redo, zoom, menus, export | `canvas-pointer`, `design-artifacts`, `inactive-design-drafts` | Components and pointer tools implemented, including labels, move, delete, undo/redo, zoom, clear, and restart; remaining menus pending |
+| Personal Library save, reuse, restart, reset, and design export | `design-library`, `design-artifacts` | Library reuse, JSON, scene and image export, canceled export, restart, and reset implemented |
 | Practice queue add, filters, open, reschedule, pause/resume, recall, reflection, rating, history | `practice-queue-stories`, `practice-queue-create`, `practice-queue-open`, `practice-queue-races` | Reminder changes, filters, reflection history, and draft recovery after restart implemented |
 | Settings, local/remote connection, account credentials, provider fields, browse, save, cancel, focus and errors | `settings-stories`, `settings-recovery`, `account-settings`, `settings-error-focus`, `credential-recovery` | Provider choices, cancellation, URL errors, notices, and local reconnect implemented; remaining flows pending |
 | Sandbox status, enable, progress, cancel, stop, close | `sandbox-setup`, `sandbox-close`, `sandbox-status-races` | Pending |
@@ -73,8 +74,78 @@ Direct inspection found additional controls beyond the main shape toolbar.
 The More tools menu exposes frames, web embeds, a laser pointer, and Mermaid import.
 The Library panel has canvas item storage, a public library link, search, and an options menu.
 The Help dialog has keyboard shortcuts and external resource links.
-These controls still need behavior tests and paced recordings.
+Library storage and reset have behavior tests and recordings. Library search, external links, and the More tools and Help controls still need coverage.
 Opening these panels alone does not verify their actions or saved data.
+
+## Personal Library behavior
+
+The audit found that Personal Library items disappeared after an app restart.
+The app now saves these items separately from design attempts and checkpoints.
+Each workspace has one library, which can be empty.
+Each library can contain multiple reusable items. Each item contains diagram elements, including any bound labels.
+A new attempt can insert independent copies of these elements.
+Removing a library item does not remove copies already inserted in a design.
+
+Library items stay on the computer and follow the existing workspace identity.
+Local practice, each remote account, and each unrelated bearer credential have separate workspaces.
+A replacement token for the same verified account keeps its workspace and library.
+The load and save methods require the active workspace ID. A stale or different ID fails without accessing another workspace's library.
+Save returns no value after the file write completes. A write failure keeps the pending changes available for retry.
+Design notes can save while a library write awaits confirmation.
+Navigation and window close wait for both saves, including changes made during an earlier save.
+
+Older workspaces start with an empty library. Their diagrams and checkpoints stay unchanged.
+Items lost before this fix cannot be recovered from the library. Their original canvas elements remain available if saved in a design.
+New practice backups include `designLibrary`. Older backups can omit this field.
+Library contents do not enter coach requests or checkpoint digests.
+Damaged library files remain untouched and cause a visible load error.
+
+The library accepts at most 3,000 stored elements across all items and at most 6 MB of data.
+This count includes labels and deleted element records. It does not include elements stored only in design attempts.
+Library items follow the existing canvas validation rules. Image assets stay in design drafts, outside the library.
+Saved links remain inert, and remote embeds remain unsupported.
+
+The regression tests cover restart, workspace separation, token replacement, backups, failed saves, and closing during queued saves.
+The paced library walkthrough also covers reuse in another attempt, design exports, and library reset.
+
+### Repeat the live desktop checks
+
+After the desktop build, run these commands from `apps/desktop` with a graphical display.
+The first command launches Electron with temporary workspaces.
+The second command records the library and export walkthrough. It needs the recording encoder described above.
+
+```sh
+npm run test:desktop -- tests/e2e/design-library.spec.ts
+npm run test:evidence -- library-export.spec.ts
+npm run verify:evidence
+```
+
+The Desktop workflow discovers the regression tests. The Frontend visual evidence workflow discovers the recording.
+Both workflows use Playwright to drive the app.
+
+### Manual check
+
+Use a disposable workspace for the reset check.
+
+- [ ] Open System design. Start Link Alias Service. Add a Service shape with its label.
+- [ ] Select the shape and label. Open Library and add the selection. Expect one reusable item.
+- [ ] Switch to Coding and back. Expect the item in Personal Library.
+- [ ] Start another design attempt. Insert the item. Move the copy. Check the first attempt still has its original diagram.
+- [ ] Add another item. Immediately edit Requirements and close the window. Reopen the app. Verify both items, the note, and the diagram.
+- [ ] Export the design as an image. Open it and check the labels. Cancel another export and check the original file.
+- [ ] Cancel a library reset. Expect both items. Confirm a reset in the disposable workspace. Check that inserted shapes remain.
+- [ ] With AI off, request a curated coding hint. Check that your draft stays intact.
+- [ ] With a configured provider, ask for one hint about your draft. Check that the response addresses your code without completing it.
+- [ ] Ask the design coach about an omitted failure case. Check the answer against the checkpoint and confirm the diagram stays intact.
+
+### Next steps for the AI coach
+
+1. Extend the existing golden conversations with paired drafts for the same problem.
+   Give each draft a different mistake. Score whether the first hint identifies the relevant mistake without revealing the solution.
+2. Add design examples with a labeled diagram, a missing requirement, and a later edit.
+   Check that the coach cites the selected checkpoint and asks one relevant follow-up question.
+3. Run these cases against a configured provider on demand. Record the model version, hint quality, response time, and token usage.
+   Compare results with the curated hints before changing prompts or switching models.
 
 ## Delivery
 

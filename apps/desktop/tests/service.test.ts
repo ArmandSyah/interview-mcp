@@ -100,6 +100,90 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+it('libraries stay in their workspace, survive account token rotation, and enter credential-free backups', async () => {
+  const { service, mcp } = await fixture();
+  const local = service.snapshot().workspaceId;
+  const library = [
+    {
+      id: 'local-service',
+      status: 'unpublished' as const,
+      created: 1,
+      elements: [{ id: 'shape', type: 'rectangle', x: 0, y: 0, width: 100, height: 60 }],
+    },
+  ];
+  try {
+    mcp.call.mockClear();
+    await service.saveDesignLibrary(local, library);
+    const saved = await service.loadDesignLibrary(local);
+    expect(mcp.call).not.toHaveBeenCalled();
+    mcp.call.mockImplementationOnce(async (name) => {
+      expect(name).toBe('export_practice_data');
+      return { design_checkpoints: [] };
+    });
+    const backup = JSON.parse(await service.exportWorkspace());
+    expect(backup.designLibrary).toEqual(saved);
+    expect(backup).not.toHaveProperty('credentials');
+    mcp.accountIdentity = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      issuer: 'https://fixture.invalid/auth/v1',
+    };
+    const settings = {
+      ...defaultSettings,
+      connection: 'remote' as const,
+      mcpUrl: 'https://fixture.invalid/mcp',
+    };
+    await service.updateSettings({ ...settings, mcpKey: 'fixture-alice-old' });
+    const alice = service.snapshot().workspaceId;
+    expect(alice).not.toBe(local);
+    expect(await service.loadDesignLibrary(alice)).toEqual([]);
+    await expect(service.loadDesignLibrary(local)).rejects.toThrow('Workspace changed');
+    await expect(service.saveDesignLibrary(local, [])).rejects.toThrow('Workspace changed');
+    await service.saveDesignLibrary(alice, [{ ...library[0], id: 'alice-service' }]);
+    await service.updateSettings({ ...settings, mcpKey: 'fixture-alice-new' });
+    expect(service.snapshot().workspaceId).toBe(alice);
+    expect((await service.loadDesignLibrary(alice))[0].id).toBe('alice-service');
+    await service.updateSettings(defaultSettings);
+    expect(await service.loadDesignLibrary(local)).toEqual(saved);
+  } finally {
+    await service.close();
+  }
+});
+
+it('a queued library write cannot cross a workspace change', async () => {
+  const { service, store } = await fixture();
+  const originalScope = service.snapshot().workspaceId;
+  const writing = deferred();
+  const persist = store.persist.bind(store);
+  const held = vi.spyOn(store, 'persist').mockImplementationOnce(async (...args) => {
+    await writing.promise;
+    await persist(...args);
+  });
+  const change = service.updateSettings({
+    ...defaultSettings,
+    connection: 'remote',
+    mcpUrl: 'https://fixture.invalid/mcp',
+    mcpKey: 'fixture-other-workspace',
+  });
+  let queued: Promise<string | null> | undefined;
+  try {
+    await vi.waitFor(() => expect(held).toHaveBeenCalledTimes(1));
+    queued = service.saveDesignLibrary(originalScope, []).then(
+      () => null,
+      (error: Error) => error.message,
+    );
+    writing.resolve();
+    await change;
+    expect(await queued).toBe('Workspace changed. Retry the draft save.');
+    const currentScope = service.snapshot().workspaceId;
+    expect(currentScope).not.toBe(originalScope);
+    expect(await service.loadDesignLibrary(currentScope)).toEqual([]);
+  } finally {
+    writing.resolve();
+    await Promise.allSettled([change, queued]);
+    await service.close();
+  }
+});
+
 it('AI review captures code once, permits autosave, and does not execute tools or complete practice', async () => {
   const waiting = deferred();
   const entered = deferred();

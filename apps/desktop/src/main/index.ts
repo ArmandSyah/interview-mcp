@@ -422,6 +422,23 @@ void app.whenReady().then(async () => {
     service.startDesign(id.parse(value), z.boolean().parse(fresh)),
   );
   handler('design-activate', (value) => service.activateDesign(z.string().uuid().parse(value)));
+  handler('design-library-load', (value) =>
+    service.loadDesignLibrary(
+      z
+        .string()
+        .regex(/^[a-f0-9]{24}$/)
+        .parse(value),
+    ),
+  );
+  handler('design-library-save', (value, library) =>
+    service.saveDesignLibrary(
+      z
+        .string()
+        .regex(/^[a-f0-9]{24}$/)
+        .parse(value),
+      library as Parameters<WorkbenchService['saveDesignLibrary']>[1],
+    ),
+  );
   handler('design-load', (value) => service.loadDesignDraft(z.string().uuid().parse(value)));
   handler('design-save', (value, draft) =>
     service.saveDesignDraft(

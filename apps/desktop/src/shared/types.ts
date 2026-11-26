@@ -151,6 +151,10 @@ export type DesktopAPI = {
   setMode(mode: 'coding' | 'design'): Promise<void>;
   startDesign(problemId: string, newAttempt?: boolean): Promise<void>;
   activateDesign(sessionId: string): Promise<void>;
+  /** Load the active workspace's reusable items. Older workspaces return an empty library. */
+  loadDesignLibrary(workspaceId: string): Promise<import('./design').DesignLibrary>;
+  /** Save reusable items. Reject stale workspace IDs and preserve saved data on failure. */
+  saveDesignLibrary(workspaceId: string, library: import('./design').DesignLibrary): Promise<void>;
   loadDesignDraft(sessionId: string): Promise<import('./design').DesignDraft>;
   saveDesignDraft(sessionId: string, draft: import('./design').DesignDraft): Promise<string>;
   checkpointDesign(label?: string): Promise<import('./design').DesignCheckpoint>;

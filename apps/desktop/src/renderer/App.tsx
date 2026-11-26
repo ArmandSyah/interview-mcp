@@ -39,7 +39,7 @@ import { useChatStop } from './chat-stop';
 import { ApprovalDialog } from './ApprovalDialog';
 import type { Approval, ChatItem, PracticeSession, Snapshot } from '../shared/types';
 import { parseTestReport } from '../shared/test-report';
-import type { DesignDraft } from '../shared/design';
+import type { DesignDraft, DesignLibrary } from '../shared/design';
 
 function cleanError(error: unknown): string {
   return (error instanceof Error ? error.message : 'Operation failed').replace(
@@ -110,6 +110,11 @@ function Workbench() {
   const designDrafts = useRef(
     new DraftWriter<DesignDraft>((id, draft) => window.interview.saveDesignDraft(id, draft)),
   );
+  const libraryDrafts = useRef(
+    new DraftWriter<DesignLibrary>((id, library) =>
+      window.interview.saveDesignLibrary(id, library),
+    ),
+  );
   const designSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [designSaveState, setDesignSaveState] = useState('Saved locally');
   const chatEnd = useRef<HTMLDivElement>(null);
@@ -125,8 +130,10 @@ function Workbench() {
   const flushDesign = useCallback(async () => {
     if (designSaveTimer.current) clearTimeout(designSaveTimer.current);
     try {
-      await designDrafts.current.flush();
-      if (!designDrafts.current.dirty) setDesignSaveState('Saved locally');
+      do {
+        await Promise.all([libraryDrafts.current.flush(), designDrafts.current.flush()]);
+      } while (libraryDrafts.current.dirty || designDrafts.current.dirty);
+      setDesignSaveState('Saved locally');
     } catch (error) {
       setDesignSaveState('Save failed');
       setError(cleanError(error));
@@ -136,6 +143,17 @@ function Workbench() {
   const saveDesignDraft = useCallback(
     (id: string, draft: DesignDraft) => {
       designDrafts.current.set(id, draft);
+      setDesignSaveState('Saving…');
+      if (designSaveTimer.current) clearTimeout(designSaveTimer.current);
+      designSaveTimer.current = setTimeout(() => {
+        void flushDesign().catch(() => {});
+      }, 600);
+    },
+    [flushDesign],
+  );
+  const saveDesignLibrary = useCallback(
+    (workspaceId: string, library: DesignLibrary) => {
+      libraryDrafts.current.set(workspaceId, library);
       setDesignSaveState('Saving…');
       if (designSaveTimer.current) clearTimeout(designSaveTimer.current);
       designSaveTimer.current = setTimeout(() => {
@@ -445,6 +463,8 @@ function Workbench() {
           snapshot={{ ...snapshot, error: error || snapshot.error }}
           drafts={designDrafts.current}
           saveDraft={saveDesignDraft}
+          libraryDrafts={libraryDrafts.current}
+          saveLibrary={saveDesignLibrary}
           flushWorkspace={flush}
           saved={designSaveState}
           message={designMessages[snapshot.workspaceId] ?? ''}

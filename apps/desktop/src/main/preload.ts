@@ -30,6 +30,9 @@ const api: DesktopAPI = {
   setMode: (mode) => ipcRenderer.invoke('workbench:mode', mode),
   startDesign: (id, fresh) => ipcRenderer.invoke('workbench:design-start', id, fresh ?? false),
   activateDesign: (id) => ipcRenderer.invoke('workbench:design-activate', id),
+  loadDesignLibrary: (id) => ipcRenderer.invoke('workbench:design-library-load', id),
+  saveDesignLibrary: (id, library) =>
+    ipcRenderer.invoke('workbench:design-library-save', id, library),
   loadDesignDraft: (id) => ipcRenderer.invoke('workbench:design-load', id),
   saveDesignDraft: (id, draft) => ipcRenderer.invoke('workbench:design-save', id, draft),
   checkpointDesign: (label) =>

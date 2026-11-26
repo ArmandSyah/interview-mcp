@@ -8,10 +8,101 @@ import {
   designDigest,
   summarizeDiagram,
   validateDraft,
+  validateLibrary,
 } from '../src/main/design-storage';
 import { emptyDesignDraft, MAX_DIAGRAM_ELEMENTS } from '../src/shared/design';
 
 const scope = 'a'.repeat(24);
+
+const libraryItem = {
+  id: 'library-service',
+  status: 'unpublished' as const,
+  created: 1,
+  elements: [{ id: 'service', type: 'rectangle', x: 0, y: 0, width: 100, height: 50 }],
+};
+
+it('keeps reusable library items separate from attempts and other workspaces across restart', async () => {
+  const { store, root, id } = await fixture();
+  const other = 'b'.repeat(24);
+  expect(await store.loadLibrary(scope)).toEqual([]);
+  const draft = emptyDesignDraft();
+  draft.notes.requirements = 'Existing notes';
+  const digest = await store.save(scope, id, draft);
+  const checkpointId = randomUUID();
+  await store.checkpoint(scope, id, checkpointId);
+  await store.saveLibrary(scope, [libraryItem]);
+  const restored = new DesignStore(root);
+  expect(await restored.loadLibrary(scope)).toEqual(validateLibrary([libraryItem]));
+  expect(await restored.loadLibrary(other)).toEqual([]);
+  expect(designDigest(await restored.load(scope, id))).toBe(digest);
+  expect((await restored.readCheckpoint(scope, id, checkpointId, digest)).notes.requirements).toBe(
+    'Existing notes',
+  );
+  await restored.saveLibrary(other, [{ ...libraryItem, id: 'other-library-item' }]);
+  await restored.saveLibrary(scope, []);
+  expect(await new DesignStore(root).loadLibrary(scope)).toEqual([]);
+  expect((await new DesignStore(root).loadLibrary(other))[0].id).toBe('other-library-item');
+});
+
+it('preserves a damaged library and rejects invalid replacements without changing saved items', async () => {
+  const { store, root } = await fixture();
+  await store.saveLibrary(scope, [libraryItem]);
+  const path = join(root, 'design', scope, 'library.json');
+  const saved = await readFile(path, 'utf8');
+  await expect(store.saveLibrary(scope, [libraryItem, libraryItem])).rejects.toThrow('Duplicate');
+  await expect(
+    store.saveLibrary(scope, [
+      { ...libraryItem, elements: [{ ...libraryItem.elements[0], type: 'embeddable' }] },
+    ]),
+  ).rejects.toThrow('unsupported');
+  expect(await readFile(path, 'utf8')).toBe(saved);
+  await writeFile(path, 'damaged library');
+  await expect(new DesignStore(root).loadLibrary(scope)).rejects.toThrow(
+    'Existing files have not been overwritten',
+  );
+  await expect(new DesignStore(root).saveLibrary(scope, [])).rejects.toThrow(
+    'Existing files have not been overwritten',
+  );
+  expect(await readFile(path, 'utf8')).toBe('damaged library');
+});
+
+it('retains the last queued library value and removes active links from saved items', async () => {
+  const { store } = await fixture();
+  await store.loadLibrary(scope);
+  const first = {
+    ...libraryItem,
+    elements: [{ ...libraryItem.elements[0], link: 'https://example.invalid' }],
+  };
+  const second = { ...libraryItem, id: 'newer-library-item' };
+  await Promise.all([store.saveLibrary(scope, [first]), store.saveLibrary(scope, [first, second])]);
+  const saved = await store.loadLibrary(scope);
+  expect(saved.map((item) => item.id)).toEqual([first.id, second.id]);
+  expect(saved[0].elements[0].link).toBeNull();
+});
+
+it('applies library limits across all items and rejects image references without assets', () => {
+  const large = Array.from({ length: MAX_DIAGRAM_ELEMENTS }, (_, index) => ({
+    ...libraryItem.elements[0],
+    id: `element-${index}`,
+  }));
+  expect(() =>
+    validateLibrary([
+      { ...libraryItem, elements: large },
+      { ...libraryItem, id: 'extra' },
+    ]),
+  ).toThrow('at most 3000 elements');
+  expect(() =>
+    validateLibrary([
+      {
+        ...libraryItem,
+        elements: [{ ...libraryItem.elements[0], type: 'image', fileId: 'missing' }],
+      },
+    ]),
+  ).toThrow('image assets');
+  expect(() =>
+    validateLibrary([{ ...libraryItem, elements: [{ ...libraryItem.elements[0], x: Infinity }] }]),
+  ).toThrow();
+});
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'interview-design-store-'));
   return { root, store: new DesignStore(root), id: randomUUID() };
