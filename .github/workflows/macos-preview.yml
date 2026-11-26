@@ -1,0 +1,66 @@
+name: macOS desktop preview
+on:
+  push:
+    branches: [release/macos-preview]
+    paths:
+      - '.github/workflows/macos-preview.yml'
+      - 'apps/desktop/**'
+      - 'server/**'
+      - 'problems/examples/**'
+      - 'uv.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen --dev
+        working-directory: .
+      - run: npm ci
+      - run: npm run install:electron
+      - run: npm run backend
+      - run: npm run build
+      - name: Create ad hoc signed disk image
+        run: npx electron-builder --mac dmg --${{ matrix.arch }} --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false
+      - name: Install from the disk image
+        run: |
+          dmg="release/Interview-Workbench-macOS-${{ matrix.arch }}.dmg"
+          mv release/*.dmg "$dmg"
+          mount="$RUNNER_TEMP/mounted-preview"
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$dmg"
+          ditto "$mount/Interview Workbench.app" "$RUNNER_TEMP/Interview Workbench.app"
+          hdiutil detach "$mount"
+          app="$RUNNER_TEMP/Interview Workbench.app"
+          codesign --verify --deep --strict "$app"
+          echo "INTERVIEW_DESKTOP_EXECUTABLE=$app/Contents/MacOS/Interview Workbench" >> "$GITHUB_ENV"
+      - name: Test coding and design in the installed app
+        run: npx playwright test workbench.spec.ts --grep 'real desktop|offline design canvas'
+        env:
+          INTERVIEW_DESKTOP_PYTHON: /no-host-python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-${{ matrix.arch }}
+          path: apps/desktop/release/*.dmg
+          if-no-files-found: error
