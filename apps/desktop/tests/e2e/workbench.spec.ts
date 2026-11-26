@@ -9,7 +9,7 @@ import { launch } from './desktop';
 async function pasteCode(page: Page, text: string): Promise<void> {
   const editor = page.locator('.monaco-editor textarea');
   await editor.focus();
-  await page.keyboard.press('Control+a');
+  await page.keyboard.press('ControlOrMeta+a');
   // Exercise the editor's paste handler without overwriting the user's OS clipboard.
   // insertText simulates typing, which applies Python auto-indent to every newline.
   await editor.evaluate((element, contents) => {
@@ -134,7 +134,7 @@ test('real desktop: browse, edit, hints, save/reopen, and a model-to-MCP tool lo
 
     // Close immediately after an edit; the main process must request a final flush.
     await editor.focus();
-    await page.keyboard.press('Control+End');
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End');
     await page.keyboard.insertText('# immediate close saved\n');
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
     await app.close();
