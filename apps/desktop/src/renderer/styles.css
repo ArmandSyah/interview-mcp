@@ -474,7 +474,8 @@ svg {
   padding: 0;
 }
 .difficulty-filters {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 5px;
   margin: 0 13px 15px;
 }
@@ -484,7 +485,7 @@ svg {
   border: 1px solid #303743;
   background: transparent;
   border-radius: 4px;
-  padding: 5px 9px;
+  padding: 5px 1px;
   color: #8e99ab;
 }
 .difficulty-filters button.active {

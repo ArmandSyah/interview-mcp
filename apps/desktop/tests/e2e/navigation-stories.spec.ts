@@ -8,7 +8,12 @@ test('problem search includes titles, IDs, tags, and patterns and combines with 
   const app = await launch(await mkdtemp(join(tmpdir(), 'interview-catalog-ui-')));
   try {
     const page = await app.firstWindow();
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1040, 660));
     await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
+    const lastFilter = await page.getByRole('button', { name: 'hard', exact: true }).boundingBox();
+    const sidebar = await page.locator('.sidebar').boundingBox();
+    if (!lastFilter || !sidebar) throw new Error('Cannot measure the difficulty filters');
+    expect(lastFilter.x + lastFilter.width).toBeLessThanOrEqual(sidebar.x + sidebar.width);
     await page.getByRole('button', { name: /Delivery Hold Clusters/ }).click();
     await expect(page.getByTestId('code-editor')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Open settings' })).toBeEnabled();
