@@ -7,7 +7,7 @@ import {
   ChevronRight,
   Circle,
   Code2,
-  Command,
+  PanelRight,
   FileCode2,
   FolderOpen,
   Lightbulb,
@@ -103,6 +103,7 @@ function Workbench() {
   const chatStop = useChatStop(snapshot?.chatId ?? null, setError);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved');
   const [sidebar, setSidebar] = useState<'problems' | 'files'>('problems');
+  const [coachVisible, setCoachVisible] = useState(true);
   const [chatWidth, setChatWidth] = useState(360);
   const [bottomHeight, setBottomHeight] = useState(220);
   const drafts = useRef(new DraftWriter<string>((id, code) => window.interview.saveCode(id, code)));
@@ -497,8 +498,6 @@ function Workbench() {
           <span className="local-badge">LOCAL FIRST</span>
         </div>
         <div className="topbar-center">
-          <Command size={13} />
-          <span>Your practice workspace</span>
           <button className="secondary small" disabled={busy} onClick={openQueue}>
             Practice queue
           </button>
@@ -510,6 +509,15 @@ function Workbench() {
             System design
           </button>
         </div>
+        <button
+          type="button"
+          className="secondary small coach-toggle"
+          aria-controls="coding-coach"
+          aria-expanded={coachVisible}
+          onClick={() => setCoachVisible(!coachVisible)}
+        >
+          <PanelRight size={14} /> {coachVisible ? 'Hide coach' : 'Show coach'}
+        </button>
         <button
           className="icon-button"
           aria-label="Open settings"
@@ -710,7 +718,10 @@ function Workbench() {
                 <div className="toolbar-actions">
                   <button
                     className="secondary small"
-                    onClick={() => void action(() => window.interview.hint())}
+                    onClick={() => {
+                      setCoachVisible(true);
+                      void action(() => window.interview.hint());
+                    }}
                     disabled={busy || !connected}
                   >
                     <Lightbulb size={13} /> Hint
@@ -825,12 +836,18 @@ function Workbench() {
           </section>
         </main>
         <div
+          hidden={!coachVisible}
           className="resize-vertical"
           role="separator"
           aria-label="Resize coach panel"
           onPointerDown={(event) => resize(event, 'chat')}
         />
-        <aside className="coach-panel" style={{ width: chatWidth }}>
+        <aside
+          id="coding-coach"
+          hidden={!coachVisible}
+          className="coach-panel"
+          style={{ width: chatWidth }}
+        >
           <header className="coach-heading">
             <div>
               <Sparkles size={17} />
