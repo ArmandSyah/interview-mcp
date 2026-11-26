@@ -779,46 +779,44 @@ svg {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
-  max-width: 650px;
-}
-.welcome-symbol {
-  width: 66px;
-  height: 66px;
-  border: 1px solid #49415b;
-  background: #292532;
-  color: #baa1df;
-  border-radius: 15px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 28px;
+  justify-content: safe center;
 }
 .welcome h1 {
-  font-size: clamp(26px, 2.5vw, 38px);
-  letter-spacing: -1.2px;
-  line-height: 1.15;
-  font-weight: 550;
-  margin: 15px 0 18px;
-  color: #e1e3ea;
-}
-.welcome > p {
-  font-size: 12px;
-  line-height: 21px;
-  color: #909caf;
-  max-width: 360px;
-  margin: 0 0 26px;
+  width: 100%;
+  margin: 0 0 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #45444a;
+  font-size: 13px;
+  font-weight: 500;
+  color: #bbb8b0;
 }
 .welcome h2 {
-  font-size: 16px;
-  margin: 0 0 12px;
+  max-width: 19ch;
+  margin: 0;
+  font:
+    normal clamp(30px, 3.3vw, 52px)/1.08 'Crimson Text',
+    Georgia,
+    serif;
+  letter-spacing: -0.025em;
+  color: #f1e8d7;
+  overflow-wrap: anywhere;
 }
-.welcome-foot {
-  margin-top: 25px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 10px;
-  color: #708098;
+.welcome p {
+  margin: 12px 0 24px;
+  color: #b2b5bf;
+  line-height: 1.5;
+}
+.brief-meta {
+  font-size: 13px;
+  text-transform: capitalize;
+}
+.welcome .primary {
+  background: #e5cf9d;
+  color: #241f17;
+  border-color: #e5cf9d;
+}
+.welcome .primary:hover {
+  background: #f2dfb8;
 }
 .resize-horizontal {
   height: 4px;
@@ -1052,17 +1050,6 @@ svg {
 }
 .coach-welcome {
   padding-top: 30px;
-}
-.coach-avatar {
-  width: 43px;
-  height: 43px;
-  display: grid;
-  place-items: center;
-  background: #302b3e;
-  border: 1px solid #4d425f;
-  border-radius: 11px;
-  color: #bda3e5;
-  margin-bottom: 18px;
 }
 .coach-welcome h3 {
   font-size: 18px;

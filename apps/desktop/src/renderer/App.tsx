@@ -764,32 +764,32 @@ function Workbench() {
             </>
           ) : (
             <div className="welcome">
-              <div className="welcome-symbol">
-                <Code2 size={38} strokeWidth={1.5} />
-              </div>
               <h1>Your next interview practice</h1>
-              <p>Read the problem, try an approach, and request a hint when you get stuck.</p>
-              {connected && firstProblem && (
+              {connected && firstProblem ? (
                 <>
                   <h2 id="suggested-problem">{firstProblem.title}</h2>
+                  <p className="brief-meta">
+                    {[firstProblem.difficulty, ...firstProblem.pattern_tags].join(' · ')}
+                  </p>
                   <button
                     className="primary"
                     disabled={busy}
                     aria-describedby="suggested-problem"
                     onClick={() => openCodingProblem(firstProblem.id, 'problem')}
                   >
-                    Read practice problem <ArrowRight size={15} />
+                    Read practice problem
+                  </button>
+                </>
+              ) : connected ? (
+                <p>Change your search or difficulty filter to find a problem.</p>
+              ) : (
+                <>
+                  <p>Connect the practice engine to load your problems.</p>
+                  <button className="primary" onClick={() => setSettingsOpen(true)}>
+                    Connect your MCP
                   </button>
                 </>
               )}
-              {!connected && (
-                <button className="primary" onClick={() => setSettingsOpen(true)}>
-                  Connect your MCP <ArrowRight size={15} />
-                </button>
-              )}
-              <div className="welcome-foot">
-                <ShieldCheck size={13} /> Local files. Your models. No hosting subscription.
-              </div>
             </div>
           )}
           <div
@@ -878,24 +878,23 @@ function Workbench() {
           <div className="chat-history">
             {!chat.length && (
               <div className="coach-welcome">
-                <div className="coach-avatar">
-                  <Sparkles size={22} />
-                </div>
                 <h3>
-                  A thinking partner,
-                  <br />
-                  not an answer machine.
+                  {snapshot.settings.provider === 'disabled'
+                    ? 'Practice hints'
+                    : 'Discuss your draft'}
                 </h3>
-                <p>
-                  Talk through your approach, ask a focused question, or explore a failing test.
-                  Your current draft gives the coach context.
-                </p>
+                {snapshot.settings.provider !== 'disabled' && (
+                  <p>
+                    Ask about your approach or a failing test. The coach can read your current
+                    draft.
+                  </p>
+                )}
                 {snapshot.settings.provider === 'disabled' ? (
                   <>
+                    <p>Use Hint in the editor for a clue from the problem author.</p>
                     <button className="suggestion" onClick={() => setSettingsOpen(true)}>
                       Connect a local or API model <ArrowRight size={13} />
                     </button>
-                    <p className="tiny muted">The Hint button works without an AI model.</p>
                   </>
                 ) : (
                   [
