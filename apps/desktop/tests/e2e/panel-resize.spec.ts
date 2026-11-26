@@ -116,3 +116,33 @@ for (const panel of ['coach', 'results'] as const) {
     }
   });
 }
+
+test('hide and restore the coach while practicing in the minimum window', async () => {
+  const app = await launch(await mkdtemp(join(tmpdir(), 'interview-coach-toggle-')));
+  try {
+    const page = await app.firstWindow();
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1040, 660));
+    await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: /Delivery Hold Clusters/ }).click();
+    const editor = page.getByTestId('code-editor');
+    await expect(editor).toBeVisible();
+    const initial = await editor.boundingBox();
+    if (!initial) throw new Error('Cannot measure the open editor');
+    const hide = page.getByRole('button', { name: 'Hide coach' });
+    await hide.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Show coach' })).toBeFocused();
+    await expect(page.getByRole('separator', { name: 'Resize coach panel' })).toHaveCount(0);
+    await expect
+      .poll(async () => (await editor.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(initial.width + 250);
+    await page.getByRole('button', { name: 'Show coach' }).click();
+    await expect.poll(async () => (await editor.boundingBox())?.width).toBe(initial.width);
+    await hide.click();
+    await page.getByRole('button', { name: 'Hint', exact: true }).click();
+    await expect(hide).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.chat-message.assistant')).toBeVisible();
+  } finally {
+    await app.close();
+  }
+});

@@ -378,6 +378,12 @@ svg {
   font-size: 11px;
   padding-right: 160px;
 }
+.coach-panel[hidden] {
+  display: none;
+}
+.coach-toggle {
+  flex-shrink: 0;
+}
 .icon-button {
   display: inline-flex;
   align-items: center;
