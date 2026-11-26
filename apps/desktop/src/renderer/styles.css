@@ -808,29 +808,9 @@ svg {
   max-width: 360px;
   margin: 0 0 26px;
 }
-.welcome-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-  margin-bottom: 25px;
-}
-.welcome-steps > div {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.welcome-steps span {
-  color: #647088;
-  font-size: 10px;
-  font-family: monospace;
-}
-.welcome-steps svg {
-  color: #aa97c6;
-}
-.welcome-steps p {
-  margin: 0;
-  font-size: 11px;
-  color: #b5bdcc;
+.welcome h2 {
+  font-size: 16px;
+  margin: 0 0 12px;
 }
 .welcome-foot {
   margin-top: 25px;

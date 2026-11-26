@@ -439,6 +439,12 @@ function Workbench() {
         .toLowerCase()
         .includes(query.toLowerCase()),
   );
+  const firstProblem = filtered.find((problem) => problem.difficulty === 'easy') ?? filtered[0];
+  const openCodingProblem = (id: string, view: 'solution' | 'problem') =>
+    void action(async () => {
+      await window.interview.startProblem(id);
+      setTab(view);
+    });
   const completed = snapshot.sessions.filter((session) => session.submitted).length;
   const currentError = error || snapshot.error;
   const openQueue = () => {
@@ -576,12 +582,7 @@ function Workbench() {
                       key={problem.id}
                       className={`problem-card ${active?.problem.id === problem.id ? 'active' : ''}`}
                       disabled={busy}
-                      onClick={() =>
-                        void action(async () => {
-                          setTab('solution');
-                          await window.interview.startProblem(problem.id);
-                        })
-                      }
+                      onClick={() => openCodingProblem(problem.id, 'solution')}
                     >
                       <div className="problem-card-top">
                         <span className="problem-number">{String(index + 1).padStart(2, '0')}</span>
@@ -766,33 +767,21 @@ function Workbench() {
               <div className="welcome-symbol">
                 <Code2 size={38} strokeWidth={1.5} />
               </div>
-              <span className="eyebrow">THINK. BUILD. UNDERSTAND.</span>
-              <h1>
-                Your next interview
-                <br />
-                starts here.
-              </h1>
-              <p>
-                A focused coding workspace with a coach that helps you reason through the
-                problem—not solve it for you.
-              </p>
-              <div className="welcome-steps">
-                <div>
-                  <span>01</span>
-                  <BookOpen size={16} />
-                  <p>Choose a problem from the explorer</p>
-                </div>
-                <div>
-                  <span>02</span>
-                  <FileCode2 size={16} />
-                  <p>Write your solution in the editor</p>
-                </div>
-                <div>
-                  <span>03</span>
-                  <Sparkles size={16} />
-                  <p>Get a nudge, test, and refine</p>
-                </div>
-              </div>
+              <h1>Your next interview practice</h1>
+              <p>Read the problem, try an approach, and request a hint when you get stuck.</p>
+              {connected && firstProblem && (
+                <>
+                  <h2 id="suggested-problem">{firstProblem.title}</h2>
+                  <button
+                    className="primary"
+                    disabled={busy}
+                    aria-describedby="suggested-problem"
+                    onClick={() => openCodingProblem(firstProblem.id, 'problem')}
+                  >
+                    Read practice problem <ArrowRight size={15} />
+                  </button>
+                </>
+              )}
               {!connected && (
                 <button className="primary" onClick={() => setSettingsOpen(true)}>
                   Connect your MCP <ArrowRight size={15} />

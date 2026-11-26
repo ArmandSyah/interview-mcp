@@ -24,6 +24,22 @@ async function pasteCode(page: Page, text: string): Promise<void> {
     );
   }, text);
 }
+test('the welcome action opens the matching brief before the editor', async () => {
+  const app = await launch(await mkdtemp(join(tmpdir(), 'interview-first-practice-')));
+  try {
+    const page = await app.firstWindow();
+    await expect(page.getByText('MCP connected · 5 problems')).toBeVisible({ timeout: 20_000 });
+    const welcome = page.locator('.welcome');
+    const title = await welcome.getByRole('heading', { level: 2 }).innerText();
+    await welcome.getByRole('button', { name: 'Read practice problem' }).click();
+    await expect(page.locator('.problem-description')).toContainText(title);
+    await page.getByRole('button', { name: 'solution.py', exact: true }).click();
+    await expect(page.getByTestId('code-editor')).toBeVisible();
+  } finally {
+    await app.close();
+  }
+});
+
 test('real desktop: browse, edit, hints, save/reopen, and a model-to-MCP tool loop', async () => {
   const data = await mkdtemp(join(tmpdir(), 'interview-desktop-e2e-'));
   let app = await launch(data);

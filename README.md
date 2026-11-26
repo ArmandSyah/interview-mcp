@@ -14,6 +14,7 @@ Docker and a hosting account are not necessary for these features.
 Select **System design** to open the built-in whiteboard. Select **Coding** to open the editor.
 Personal Library keeps reusable shapes in the active workspace. Library items stay on your computer.
 See [MCP server setup](docs/mcp-server.md#vs-code) for VS Code.
+For a tester download, session tasks, and the hosting comparison, see the [pilot guide](docs/tester-pilot.md).
 For Windows installation, follow the [preview installation guide](docs/windows-install.md).
 See the [public release plan](docs/public-release-plan.md) for accounts, paid packs, deployment, and installers.
 Compare [MCP hosting](docs/cloud-hosting-options.md), [Strands and AgentCore coaching](docs/coaching-agent-options.md), and [subscriptions with website signup](docs/subscription-options.md).
